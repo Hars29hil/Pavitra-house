@@ -51,7 +51,7 @@ const Dashboard = () => {
     <div className="min-h-screen pb-20 relative animate-fade-in">
       <AppHeader title="HSH" />
 
-      <main className="p-4 md:p-6 space-y-8 max-w-5xl mx-auto">
+      <main className="px-3 py-4 md:p-6 space-y-6 sm:space-y-8 max-w-5xl mx-auto">
         <div className="space-y-6">
           {/* Main Content: Student List */}
           <div className="space-y-6">

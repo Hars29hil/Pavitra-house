@@ -47,7 +47,7 @@ export const StudentListItem = ({ student, onClick, hideContactActions = false }
   return (
     <div
       onClick={onClick}
-      className="w-full flex items-center gap-2 sm:gap-4 p-3 sm:p-5 glass-card rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg hover:scale-[1.01] active:scale-[0.99] animate-fade-in text-left cursor-pointer group"
+      className="w-full flex items-center gap-2 sm:gap-4 p-2.5 sm:p-5 glass-card rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg hover:scale-[1.01] active:scale-[0.99] animate-fade-in text-left cursor-pointer group"
     >
       <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden shadow-soft group-hover:shadow-soft-lg transition-all shrink-0 bg-primary/10 flex items-center justify-center">
         {student.profileImage && !imgError ? (
@@ -86,18 +86,18 @@ export const StudentListItem = ({ student, onClick, hideContactActions = false }
             <Button
               size="icon"
               variant="secondary"
-              className="h-8 w-8 sm:h-10 sm:w-10 text-success bg-success/10 hover:bg-success hover:text-white rounded-lg sm:rounded-xl transition-all shadow-sm hover:shadow-soft"
+              className="h-7 w-7 sm:h-10 sm:w-10 text-success bg-success/10 hover:bg-success hover:text-white rounded-lg sm:rounded-xl transition-all shadow-sm hover:shadow-soft"
               onClick={handleWhatsApp}
             >
-              <img src="/whatsapp-logo.png" alt="WhatsApp" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" />
+              <img src="/whatsapp-logo.png" alt="WhatsApp" className="w-3.5 h-3.5 sm:w-5 sm:h-5 object-contain" />
             </Button>
             <Button
               size="icon"
               variant="secondary"
-              className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-lg sm:rounded-xl transition-all shadow-sm hover:shadow-soft"
+              className="h-7 w-7 sm:h-10 sm:w-10 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-lg sm:rounded-xl transition-all shadow-sm hover:shadow-soft"
               onClick={handleCall}
             >
-              <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
+              <Phone className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
             </Button>
           </div>
         )}
