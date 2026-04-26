@@ -3,8 +3,15 @@ const cors = require("cors");
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode");
 const qrcodeTerminal = require("qrcode-terminal");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
+
+console.log("\n🚀 WHATSAPP BACKEND STARTING (v1.1) 🚀\n");
+
+// Test Route
+app.get("/api/test", (req, res) => res.json({ success: true, message: "Backend v1.1 is active" }));
 
 /* =======================
    GLOBAL ERROR HANDLERS
@@ -51,82 +58,91 @@ let isReady = false;
 let isAuthenticated = false;
 global.qrCode = null;
 
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        headless: true,
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-accelerated-2d-canvas",
-            "--no-first-run",
-            "--no-zygote",
-            "--single-process",
-            "--disable-gpu",
-            "--renderer-process-limit=1",
-            "--disable-extensions"
-        ]
-    },
-    webVersionCache: {
-        type: 'remote',
-        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
+let client;
+
+function initializeClient() {
+    if (client && client.pupBrowser) {
+        console.log("🧹 Cleaning up existing client browser...");
+        try { client.destroy(); } catch (e) {}
     }
-});
 
-/* =======================
-   WHATSAPP EVENTS
-======================= */
-client.on("qr", async (qr) => {
-    console.log("\n📲 QR RECEIVED — Scan with WhatsApp\n");
-
-    // ✅ TERMINAL QR
-    qrcodeTerminal.generate(qr, { small: true });
-
-    // ✅ FRONTEND QR
-    try {
-        global.qrCode = await qrcode.toDataURL(qr);
-        console.log("✅ Frontend QR set successfully. Length:", global.qrCode.length);
-    } catch (err) {
-        console.error("❌ Error generating frontend QR:", err);
-    }
-});
-
-client.on("ready", () => {
-    console.log("\n✅ WhatsApp Connected & Ready\n");
-    isReady = true;
-});
-
-client.on("authenticated", () => {
-    console.log("🔐 WhatsApp Authenticated");
-    isAuthenticated = true;
-    global.qrCode = null;
-});
-
-client.on("auth_failure", (msg) => {
-    console.error("❌ WhatsApp Auth Failure:", msg);
-});
-
-client.on("loading_screen", (percent, message) => {
-    console.log(`⏳ WhatsApp Loading: ${percent}% - ${message}`);
-});
-
-client.on("disconnected", (reason) => {
-    console.log("❌ WhatsApp Disconnected:", reason);
-    isReady = false;
-    isAuthenticated = false;
-    global.qrCode = null;
+    console.log("🛠️ Initializing WhatsApp Client...");
     
-    // Attempt auto-reconnect on disconnect
-    try {
-        client.initialize();
-    } catch(e) {}
-});
+    client = new Client({
+        authStrategy: new LocalAuth(),
+        puppeteer: {
+            headless: true,
+            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-accelerated-2d-canvas",
+                "--no-first-run",
+                "--no-zygote",
+                "--disable-gpu",
+                "--disable-extensions",
+                "--disable-notifications",
+                "--disable-popup-blocking",
+                "--hide-scrollbars"
+            ]
+        }
+    });
+
+    /* =======================
+       WHATSAPP EVENTS
+    ======================= */
+    client.on("qr", async (qr) => {
+        console.log("\n📲 QR RECEIVED — Scan with WhatsApp\n");
+        qrcodeTerminal.generate(qr, { small: true });
+        try {
+            global.qrCode = await qrcode.toDataURL(qr);
+            console.log("✅ Frontend QR set successfully. Length:", global.qrCode.length);
+        } catch (err) {
+            console.error("❌ Error generating frontend QR:", err);
+        }
+    });
+
+    client.on("ready", () => {
+        console.log("\n✅ WhatsApp Connected & Ready\n");
+        isReady = true;
+    });
+
+    client.on("authenticated", () => {
+        console.log("🔐 WhatsApp Authenticated");
+        isAuthenticated = true;
+        global.qrCode = null;
+    });
+
+    client.on("auth_failure", (msg) => {
+        console.error("❌ WhatsApp Auth Failure:", msg);
+    });
+
+    client.on("loading_screen", (percent, message) => {
+        console.log(`⏳ WhatsApp Loading: ${percent}% - ${message}`);
+    });
+
+    client.on("disconnected", async (reason) => {
+        console.log("❌ WhatsApp Disconnected:", reason);
+        isReady = false;
+        isAuthenticated = false;
+        global.qrCode = null;
+        
+        try {
+            console.log("🔄 Re-initializing in 2 seconds...");
+            setTimeout(initializeClient, 2000); 
+        } catch(e) {
+            console.error("❌ Failed to trigger re-initialization:", e);
+        }
+    });
+
+    client.initialize();
+}
 
 /* =======================
    INIT CLIENT
 ======================= */
-client.initialize();
+initializeClient();
 
 /* =======================
    ROUTES
@@ -161,8 +177,92 @@ app.get("/api/qr", (req, res) => {
 app.get("/api/status", (req, res) => {
     res.json({
         success: true,
-        connected: isReady
+        connected: isReady,
+        authenticated: isAuthenticated,
+        hasQr: !!global.qrCode
     });
+});
+
+// Reconnect/Restart Client
+app.post("/api/reconnect", async (req, res) => {
+    console.log("🔄 Manual Reconnect Requested");
+    try {
+        isReady = false;
+        isAuthenticated = false;
+        global.qrCode = null;
+
+        // Try to destroy first if possible
+        try {
+            await client.destroy();
+        } catch (e) {
+            console.warn("⚠️ Client destroy failed (probably not initialized):", e.message);
+        }
+
+        // Re-initialize
+        initializeClient();
+        
+        res.json({ success: true, message: "Re-initializing WhatsApp client..." });
+    } catch (err) {
+        console.error("❌ Reconnect Error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Logout (Delete Session)
+app.post("/api/logout", async (req, res) => {
+    console.log("🚪 Logout Requested");
+    try {
+        isReady = false;
+        isAuthenticated = false;
+        global.qrCode = null;
+
+        try {
+            await client.logout();
+            await client.destroy();
+        } catch (e) {
+            console.warn("⚠️ Logout/Destroy failed:", e.message);
+        }
+
+        // Re-initialize (this will generate a fresh QR since we logged out)
+        initializeClient();
+
+        res.json({ success: true, message: "Logged out and re-initializing..." });
+    } catch (err) {
+        console.error("❌ Logout Error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Reset Session (Hard Reset)
+app.post("/api/reset-session", async (req, res) => {
+    console.log("🧨 HARD RESET REQUESTED");
+    try {
+        isReady = false;
+        isAuthenticated = false;
+        global.qrCode = null;
+
+        // 1. Destroy client
+        try {
+            if (client) await client.destroy();
+        } catch (e) {
+            console.warn("⚠️ Destroy failed:", e.message);
+        }
+
+        // 2. Delete Auth Folder
+        const authPath = path.join(__dirname, ".wwebjs_auth");
+        if (fs.existsSync(authPath)) {
+            console.log("🗑️ Deleting auth folder...");
+            fs.rmSync(authPath, { recursive: true, force: true });
+        }
+
+        // 3. Re-initialize
+        initializeClient();
+
+        res.json({ success: true, message: "Session reset. Generating new QR..." });
+    } catch (err) {
+        console.error("❌ Reset Error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 // Send Message
@@ -188,30 +288,48 @@ app.post("/api/send", async (req, res) => {
     try {
         let sanitized = number.toString().replace(/\D/g, "");
 
+        // Handle Indian number formatting
         if (sanitized.length === 10) {
             sanitized = "91" + sanitized;
+        } else if (sanitized.length === 11 && sanitized.startsWith("0")) {
+            sanitized = "91" + sanitized.substring(1);
         }
 
-        console.log(`🚀 Sending to: ${sanitized}`);
+        console.log(`🚀 Sending to sanitized number: ${sanitized}`);
 
-        let numberId;
         try {
-            numberId = await client.getNumberId(sanitized);
-        } catch { }
+            // Verify if the number is registered on WhatsApp
+            const isRegistered = await client.isRegisteredUser(sanitized);
+            
+            if (!isRegistered) {
+                console.warn(`⚠️ Number ${sanitized} is not registered on WhatsApp`);
+                // Try with @c.us anyway as a last resort, or return error
+            }
 
-        if (numberId) {
-            await client.sendMessage(numberId._serialized, message);
-        } else {
-            await client.sendMessage(`${sanitized}@c.us`, message);
+            const numberId = await client.getNumberId(sanitized);
+            const chatId = numberId ? numberId._serialized : `${sanitized}@c.us`;
+            
+            console.log(`📝 Using Chat ID: ${chatId}`);
+            
+            await client.sendMessage(chatId, message);
+            res.json({ success: true, message: "Message sent" });
+        } catch (innerErr) {
+            console.error("❌ Inner Send Error:", innerErr);
+            // One last attempt with direct string ID
+            try {
+                await client.sendMessage(`${sanitized}@c.us`, message);
+                res.json({ success: true, message: "Message sent via direct JID" });
+            } catch (finalErr) {
+                throw finalErr;
+            }
         }
-
-        res.json({ success: true, message: "Message sent" });
 
     } catch (err) {
-        console.error("❌ SEND ERROR:", err);
+        console.error("❌ FINAL SEND ERROR:", err);
         res.status(500).json({
             success: false,
-            error: err.message
+            error: err.message,
+            details: "Could not resolve WhatsApp ID. Check if the number is correct and has a country code."
         });
     }
 });

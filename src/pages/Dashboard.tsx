@@ -64,7 +64,7 @@ const Dashboard = () => {
                   placeholder="Search name, room, mobile..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-14 pl-12 glass-card border-white/40 rounded-2xl focus:ring-primary/30 focus:border-primary transition-all text-base font-medium shadow-soft"
+                  className="h-12 sm:h-14 pl-12 glass-card border-white/40 rounded-2xl focus:ring-primary/30 focus:border-primary transition-all text-base font-medium shadow-soft"
                 />
               </div>
 
@@ -75,7 +75,7 @@ const Dashboard = () => {
                   <button
                     onClick={() => setShowAlumni(false)}
                     className={cn(
-                      "flex-1 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold rounded-xl transition-all duration-300 whitespace-nowrap",
+                      "flex-1 px-3 sm:px-6 py-2 sm:py-3 text-[10px] sm:text-sm font-bold rounded-xl transition-all duration-300 whitespace-nowrap",
                       !showAlumni
                         ? "gradient-primary text-white shadow-soft"
                         : "text-muted-foreground hover:text-foreground hover:bg-white/50"
@@ -86,7 +86,7 @@ const Dashboard = () => {
                   <button
                     onClick={() => setShowAlumni(true)}
                     className={cn(
-                      "flex-1 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold rounded-xl transition-all duration-300 whitespace-nowrap",
+                      "flex-1 px-3 sm:px-6 py-2 sm:py-3 text-[10px] sm:text-sm font-bold rounded-xl transition-all duration-300 whitespace-nowrap",
                       showAlumni
                         ? "gradient-primary text-white shadow-soft"
                         : "text-muted-foreground hover:text-foreground hover:bg-white/50"
@@ -99,10 +99,10 @@ const Dashboard = () => {
                 {/* Add Student Button */}
                 <button
                   onClick={() => navigate('/students/add')}
-                  className="h-12 sm:h-14 px-6 gradient-primary text-white rounded-2xl shadow-soft-lg flex items-center justify-center gap-2 hover:shadow-soft-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 font-bold text-sm shrink-0"
+                  className="h-11 sm:h-14 px-6 gradient-primary text-white rounded-xl sm:rounded-2xl shadow-soft-lg flex items-center justify-center gap-2 hover:shadow-soft-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 font-bold text-sm shrink-0"
                   title="Add Student"
                 >
-                  <Plus className="w-5 h-5" />
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span>Add Student</span>
                 </button>
               </div>

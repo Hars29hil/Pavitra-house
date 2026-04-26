@@ -142,7 +142,7 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
           <img
             src="/header-logo.png"
             alt="Logo"
-            className="h-14 sm:h-16 w-auto object-contain cursor-pointer transition-transform hover:scale-110 active:scale-90 mix-blend-multiply"
+            className="h-10 sm:h-14 w-auto object-contain cursor-pointer transition-transform hover:scale-110 active:scale-90 mix-blend-multiply"
             onClick={() => navigate('/dashboard')}
           />
         </div >

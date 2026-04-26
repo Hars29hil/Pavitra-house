@@ -39,6 +39,65 @@ export default function Whatsapp() {
     const [sending, setSending] = useState(false);
     const [showAlumni, setShowAlumni] = useState(false);
 
+    const handleReconnect = async () => {
+        try {
+            setLoading(true);
+            const res = await api.post('/api/reconnect');
+            if (res.data.success) {
+                toast.success("Restarting WhatsApp client...");
+            } else {
+                toast.error("Failed to restart client");
+            }
+        } catch (error) {
+            console.error("Reconnect Error:", error);
+            toast.error("Connection error. Make sure the backend is running.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResetSession = async () => {
+        if (!confirm("This will PERMANENTLY delete your login session and force a new QR code. Use this only if you are stuck. Continue?")) return;
+        
+        try {
+            setLoading(true);
+            const res = await api.post('/api/reset-session');
+            if (res.data.success) {
+                toast.success("Session reset. Waiting for new QR...");
+                setQr(null);
+                setConnected(false);
+            } else {
+                toast.error("Reset failed");
+            }
+        } catch (error) {
+            console.error("Reset Error:", error);
+            toast.error("Connection error. Make sure the backend is running.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        if (!confirm("Are you sure you want to logout? This will require scanning the QR code again.")) return;
+        
+        try {
+            setLoading(true);
+            const res = await api.post('/api/logout');
+            if (res.data.success) {
+                toast.success("Logged out. Waiting for new QR...");
+                setQr(null);
+                setConnected(false);
+            } else {
+                toast.error("Logout failed");
+            }
+        } catch (error) {
+            console.error("Logout Error:", error);
+            toast.error("Connection error. Make sure the backend is running.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         // 1. Fetch Data ONCE on mount
         const fetchData = async () => {
@@ -64,11 +123,9 @@ export default function Whatsapp() {
             if (!isMounted) return;
 
             try {
-                // Direct Call to QR API (No separate status check)
-                const qrRes = await fetch(`${API_BASE}/api/qr`, {
-                    headers: { "ngrok-skip-browser-warning": "true" }
-                });
-                const qrData = await qrRes.json();
+                // Use the configured api instance for consistency
+                const res = await api.get('/api/qr');
+                const qrData = res.data;
 
                 if (qrData.success && qrData.message === "Already connected") {
                     setConnected(true);
@@ -84,17 +141,17 @@ export default function Whatsapp() {
                     setConnected(false);
                     setQr(qrData.qr);
                     setLoading(false);
-                    timeoutId = setTimeout(checkStatus, 3000); // Refresh QR every 3s
+                    timeoutId = setTimeout(checkStatus, 1000); // Check every 1s for faster display
                 } else {
                     setConnected(false);
                     setQr(null);
-                    setLoading(true);
-                    timeoutId = setTimeout(checkStatus, 3000);
+                    setLoading(false);
+                    timeoutId = setTimeout(checkStatus, 1000); // Check every 1s
                 }
             } catch (error) {
                 console.error("Connection Error:", error);
                 setLoading(false);
-                timeoutId = setTimeout(checkStatus, 5000);
+                timeoutId = setTimeout(checkStatus, 2000); // Wait slightly longer on error
             }
         };
 
@@ -333,12 +390,22 @@ export default function Whatsapp() {
                         {loading ? (
                             <div className="flex items-center gap-2 text-primary">
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                <span>Checking status...</span>
+                                <span>Processing...</span>
                             </div>
                         ) : connected ? (
-                            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-600 font-bold">
-                                <CheckCircle2 className="w-6 h-6" />
-                                <span>System Online & Ready</span>
+                            <div className="space-y-4">
+                                <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-600 font-bold">
+                                    <CheckCircle2 className="w-6 h-6" />
+                                    <span>System Online & Ready</span>
+                                </div>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="w-full text-destructive border-destructive/20 hover:bg-destructive/10"
+                                    onClick={handleLogout}
+                                >
+                                    Logout / Disconnect
+                                </Button>
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -346,11 +413,47 @@ export default function Whatsapp() {
                                     Scan QR Code to Connect
                                 </div>
                                 {qr ? (
-                                    <img src={qr} alt="QR Code" className="w-48 h-48 mx-auto object-contain rounded-xl border-4 border-white shadow-md bg-white" />
+                                    <div className="space-y-4">
+                                        <img src={qr} alt="QR Code" className="w-48 h-48 mx-auto object-contain rounded-xl border-4 border-white shadow-md bg-white" />
+                                        <div className="flex flex-col gap-2 w-full">
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="w-full"
+                                                onClick={handleReconnect}
+                                            >
+                                                Refresh QR / Reconnect
+                                            </Button>
+                                            <button 
+                                                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors underline"
+                                                onClick={handleResetSession}
+                                            >
+                                                Stuck? Hard Reset Session
+                                            </button>
+                                        </div>
+                                    </div>
                                 ) : (
-                                    <div className="w-48 h-48 mx-auto flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
-                                        <Loader2 className="w-8 h-8 animate-spin text-slate-400 mb-2" />
-                                        <span className="text-xs text-slate-400">Loading QR...</span>
+                                    <div className="space-y-4 text-center">
+                                        <div className="w-48 h-48 mx-auto flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
+                                            <Loader2 className="w-8 h-8 animate-spin text-slate-400 mb-2" />
+                                            <span className="text-xs text-slate-400">Loading QR...</span>
+                                        </div>
+                                        <div className="flex flex-col gap-2 w-full">
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="w-full"
+                                                onClick={handleReconnect}
+                                            >
+                                                Force Re-initialize
+                                            </Button>
+                                            <button 
+                                                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors underline"
+                                                onClick={handleResetSession}
+                                            >
+                                                Still stuck? Reset Session
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
