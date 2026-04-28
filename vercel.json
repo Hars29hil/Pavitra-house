@@ -2,7 +2,7 @@
     "rewrites": [
         {
             "source": "/api/:match*",
-            "destination": "http://72.60.97.177:4000/api/:match*"
+            "destination": "https://duh-confiding-rule.ngrok-free.dev/api/:match*"
         },
         {
             "source": "/(.*)",
