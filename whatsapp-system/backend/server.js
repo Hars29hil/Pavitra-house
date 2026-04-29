@@ -40,7 +40,7 @@ app.use(express.json());
 ======================= */
 app.use((req, res, next) => {
     if (req.originalUrl === "/api/qr" || req.originalUrl === "/api/status") return next();
-    
+
     const time = new Date().toISOString();
     console.log(`📡 [${time}] ${req.method} ${req.originalUrl}`);
 
@@ -63,16 +63,16 @@ let client;
 function initializeClient() {
     if (client && client.pupBrowser) {
         console.log("🧹 Cleaning up existing client browser...");
-        try { client.destroy(); } catch (e) {}
+        try { client.destroy(); } catch (e) { }
     }
 
     console.log("🛠️ Initializing WhatsApp Client...");
-    
+
     client = new Client({
         authStrategy: new LocalAuth(),
         puppeteer: {
             headless: true,
-            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            // Removed Windows path for Hostinger compatibility
             args: [
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
@@ -80,11 +80,7 @@ function initializeClient() {
                 "--disable-accelerated-2d-canvas",
                 "--no-first-run",
                 "--no-zygote",
-                "--disable-gpu",
-                "--disable-extensions",
-                "--disable-notifications",
-                "--disable-popup-blocking",
-                "--hide-scrollbars"
+                "--disable-gpu"
             ]
         }
     });
@@ -127,11 +123,11 @@ function initializeClient() {
         isReady = false;
         isAuthenticated = false;
         global.qrCode = null;
-        
+
         try {
             console.log("🔄 Re-initializing in 2 seconds...");
-            setTimeout(initializeClient, 2000); 
-        } catch(e) {
+            setTimeout(initializeClient, 2000);
+        } catch (e) {
             console.error("❌ Failed to trigger re-initialization:", e);
         }
     });
@@ -152,7 +148,7 @@ initializeClient();
 app.get("/", (req, res) => {
     res.status(200).json({
         success: true,
-        message: "WhatsApp API running (QR + Logs Enabled)"
+        message: "WhatsApp API successfully running (QR + Logs Enabled)"
     });
 });
 
@@ -200,7 +196,7 @@ app.post("/api/reconnect", async (req, res) => {
 
         // Re-initialize
         initializeClient();
-        
+
         res.json({ success: true, message: "Re-initializing WhatsApp client..." });
     } catch (err) {
         console.error("❌ Reconnect Error:", err);
@@ -286,31 +282,37 @@ app.post("/api/send", async (req, res) => {
     }
 
     try {
+        // 1. Remove all non-numeric characters
         let sanitized = number.toString().replace(/\D/g, "");
 
-        // Handle Indian number formatting
+        // 2. Auto-fix common Indian number formats
         if (sanitized.length === 10) {
+            // Assume Indian number if 10 digits
             sanitized = "91" + sanitized;
         } else if (sanitized.length === 11 && sanitized.startsWith("0")) {
+            // Convert 09876... to 919876...
             sanitized = "91" + sanitized.substring(1);
+        } else if (sanitized.length === 12 && sanitized.startsWith("91")) {
+            // Already has country code, do nothing
         }
 
         console.log(`🚀 Sending to sanitized number: ${sanitized}`);
 
         try {
-            // Verify if the number is registered on WhatsApp
-            const isRegistered = await client.isRegisteredUser(sanitized);
-            
-            if (!isRegistered) {
-                console.warn(`⚠️ Number ${sanitized} is not registered on WhatsApp`);
-                // Try with @c.us anyway as a last resort, or return error
-            }
+            // Try to format it correctly for WhatsApp
+            const chatId = sanitized.includes('@c.us') ? sanitized : `${sanitized}@c.us`;
 
-            const numberId = await client.getNumberId(sanitized);
-            const chatId = numberId ? numberId._serialized : `${sanitized}@c.us`;
-            
+            // OPTIONAL: Verify if the number is registered (but don't crash if it fails)
+            try {
+                const isRegistered = await client.isRegisteredUser(sanitized);
+                if (!isRegistered) {
+                    console.warn(`⚠️ Number ${sanitized} might not be on WhatsApp. Trying anyway...`);
+                }
+            } catch (regErr) {
+                console.warn("⚠️ Could not verify registration, proceeding anyway.");
+            }
             console.log(`📝 Using Chat ID: ${chatId}`);
-            
+
             await client.sendMessage(chatId, message);
             res.json({ success: true, message: "Message sent" });
         } catch (innerErr) {

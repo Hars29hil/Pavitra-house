@@ -4,6 +4,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node --max-old-space-size=384 server.js",
+    "build": "echo 'No build step needed'",
+    "migrate": "echo 'No migration needed'",
     "start:247": "pm2 start server.js --name whatsapp-backend --time --node-args='--max-old-space-size=384'",
     "stop:247": "pm2 stop whatsapp-backend",
     "restart:247": "pm2 restart whatsapp-backend",
@@ -18,5 +20,8 @@
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
     "whatsapp-web.js": "^1.34.6"
+  },
+  "devDependencies": {
+    "ngrok": "^5.0.0-beta.2"
   }
 }

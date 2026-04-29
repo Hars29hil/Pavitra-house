@@ -7,7 +7,7 @@ import axios from 'axios';
 // - If VITE_API_URL is set, use it.
 // - Otherwise, use relative path "" (proxied by Vercel) or localhost fallback? 
 // BETTER: Use "" to use current domain, which triggers Vercel proxy
-export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+export const API_BASE_URL = "https://darkviolet-loris-131111.hostingersite.com";
 
 const api = axios.create({
     baseURL: API_BASE_URL,
