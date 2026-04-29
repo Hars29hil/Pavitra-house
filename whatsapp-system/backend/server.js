@@ -147,6 +147,35 @@ app.post("/api/send", async (req, res) => {
     }
 });
 
+// Send Message to Group
+app.post("/api/send-group", async (req, res) => {
+    const { groupLink, message } = req.body;
+
+    if (!isReady) {
+        return res.status(400).json({ success: false, message: "WhatsApp not connected" });
+    }
+
+    try {
+        let inviteCode = groupLink;
+        if (groupLink.includes('chat.whatsapp.com/')) {
+            inviteCode = groupLink.split('chat.whatsapp.com/')[1].split('/')[0].split('?')[0];
+        }
+
+        console.log(`🚀 Sending to group invite code: ${inviteCode}`);
+        
+        // Join/Get group ID from invite code
+        const groupId = await sock.groupAcceptInvite(inviteCode);
+        
+        await sock.sendMessage(groupId, { text: message });
+        res.json({ success: true, message: "Message sent to group" });
+    } catch (err) {
+        console.error("❌ Group Send Error:", err);
+        // If already in group, sometimes acceptInvite fails. 
+        // In a real app, you'd store group IDs, but for now we try to send.
+        res.status(500).json({ success: false, error: "Make sure the link is valid and the bot can join/see the group." });
+    }
+});
+
 // Reset Session (Logout)
 app.post("/api/reset-session", async (req, res) => {
     try {
