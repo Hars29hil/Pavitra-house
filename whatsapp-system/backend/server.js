@@ -136,7 +136,6 @@ function initializeClient() {
         }
     });
 
-    client.initialize();
 }
 
 /* =======================
