@@ -459,11 +459,10 @@ export const getSetting = async (key: string) => {
     const { data, error } = await supabase
         .from('settings')
         .select('value')
-        .eq('key', key)
-        .single();
+        .eq('key', key);
 
-    if (error) return null;
-    return data?.value;
+    if (error || !data || data.length === 0) return null;
+    return data[0]?.value;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
