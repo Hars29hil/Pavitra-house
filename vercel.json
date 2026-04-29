@@ -2,7 +2,7 @@
     "rewrites": [
         {
             "source": "/api/:match*",
-            "destination": "https://duh-confiding-rule.ngrok-free.dev/api/:match*"
+            "destination": "https://darkviolet-loris-131111.hostingersite.com/api/:match*"
         },
         {
             "source": "/(.*)",
