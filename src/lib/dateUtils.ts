@@ -1,18 +1,28 @@
-/**
- * Calculate age from date of birth
- * @param dob - Date of birth in YYYY-MM-DD format
- * @returns Age in years
- */
-export const calculateAge = (dob: string): number => {
+export const calculateAge = (dob: string | Date): number => {
     if (!dob) return 0;
 
-    const birthDate = new Date(dob);
-    const today = new Date();
+    let birthDate: Date;
+    
+    if (dob instanceof Date) {
+        birthDate = dob;
+    } else {
+        // Handle DD-MM-YYYY or DD/MM/YYYY
+        const ddmmyyyyRegex = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/;
+        const match = dob.trim().match(ddmmyyyyRegex);
+        if (match) {
+            const [, day, month, year] = match;
+            birthDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+        } else {
+            birthDate = new Date(dob);
+        }
+    }
 
+    if (isNaN(birthDate.getTime())) return 0;
+
+    const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
 
-    // Adjust age if birthday hasn't occurred this year yet
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
         age--;
     }

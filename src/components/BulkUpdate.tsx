@@ -143,14 +143,21 @@ export const BulkUpdate = ({ students, onUpdate }: BulkUpdateProps) => {
 
                 // Auto-generate id, createdAt, and calculate age for each student
                 const processedData = data.map((student) => {
-                    // Calculate age from DOB if DOB is provided
-                    const age = student.dob ? calculateAge(student.dob) : (student.age || 0);
+                    // Normalize DOB if it's a Date object from Excel
+                    let dobStr = student.dob;
+                    if (student.dob instanceof Date) {
+                        const d = student.dob;
+                        dobStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    }
+
+                    const age = dobStr ? calculateAge(dobStr) : (student.age || 0);
 
                     return {
                         ...student,
-                        id: crypto.randomUUID(), // Generate unique ID
-                        createdAt: new Date().toISOString(), // Set current timestamp
-                        age: age, // Auto-calculated age from DOB
+                        dob: dobStr,
+                        id: crypto.randomUUID(),
+                        createdAt: new Date().toISOString(),
+                        age: age,
                     };
                 });
 
