@@ -72,7 +72,6 @@ function initializeClient() {
         authStrategy: new LocalAuth(),
         puppeteer: {
             headless: true,
-            // Removed Windows path for Hostinger compatibility
             args: [
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
@@ -80,9 +79,14 @@ function initializeClient() {
                 "--disable-accelerated-2d-canvas",
                 "--no-first-run",
                 "--no-zygote",
-                "--disable-gpu"
+                "--disable-gpu",
+                "--single-process"
             ]
         }
+    });
+
+    client.initialize().catch(err => {
+        console.error("❌ FAILED TO INITIALIZE CLIENT:", err);
     });
 
     /* =======================
