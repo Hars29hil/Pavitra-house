@@ -24,6 +24,24 @@ export interface EducationResource {
 }
 
 // --- Helpers ---
+const formatDateForDb = (dateStr: string | undefined | null) => {
+    if (!dateStr || typeof dateStr !== 'string') return dateStr;
+    
+    // Check if it matches DD-MM-YYYY or DD/MM/YYYY
+    const ddmmyyyyRegex = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/;
+    const match = dateStr.trim().match(ddmmyyyyRegex);
+    
+    if (match) {
+        const [, day, month, year] = match;
+        // Pad day and month with leading zeros (e.g. 1 -> 01)
+        const paddedDay = day.padStart(2, '0');
+        const paddedMonth = month.padStart(2, '0');
+        return `${year}-${paddedMonth}-${paddedDay}`;
+    }
+    
+    return dateStr;
+};
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fromDbStudent = (db: any): Student => ({
@@ -52,6 +70,7 @@ const toDbStudent = (student: Partial<Student>) => {
     if (student.isAlumni !== undefined) db.is_alumni = student.isAlumni;
     if (student.createdAt !== undefined) db.created_at = student.createdAt;
     if (student.profileImage !== undefined) db.profile_image = student.profileImage;
+    if (student.dob !== undefined) db.dob = formatDateForDb(student.dob);
 
     delete db.roomNo;
     delete db.isAlumni;
@@ -83,7 +102,7 @@ const fromDbTask = (db: any): Task => ({
 const toDbTask = (task: Partial<Task>) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db: any = { ...task };
-    if (task.dueDate !== undefined) db.due_date = task.dueDate;
+    if (task.dueDate !== undefined) db.due_date = formatDateForDb(task.dueDate);
     if (task.assignedTo !== undefined) db.assigned_to = task.assignedTo;
     if (task.assignedToName !== undefined) db.assigned_to_name = task.assignedToName;
     if (task.isPracticeQuestion !== undefined) db.is_practice_question = task.isPracticeQuestion;
