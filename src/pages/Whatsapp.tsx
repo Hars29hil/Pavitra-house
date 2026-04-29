@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -38,6 +39,8 @@ export default function Whatsapp() {
     const [message, setMessage] = useState("");
     const [sending, setSending] = useState(false);
     const [showAlumni, setShowAlumni] = useState(false);
+    const [groupLink, setGroupLink] = useState("");
+    const [isSavingGroup, setIsSavingGroup] = useState(false);
 
     const handleReconnect = async () => {
         try {
@@ -108,6 +111,13 @@ export default function Whatsapp() {
                 ]);
                 setStudents(studentsData);
                 setKaryakartas(categoriesData);
+                
+                // Load Group Link from settings
+                const savedGroupLink = await api.get('/api/status'); // We could use a setting, but let's check if we have a way to get settings
+                // Better: use the store helper
+                const { getSetting } = await import('@/lib/store');
+                const link = await getSetting('whatsapp_group_link');
+                if (link) setGroupLink(link);
             } catch (error) {
                 console.error("Failed to load data", error);
             }
@@ -245,6 +255,63 @@ export default function Whatsapp() {
         setMessage("");
         setSelectedIds(new Set());
         toast.success(`Sent: ${successCount}, Failed: ${failCount}`);
+    };
+
+    const handleGroupSend = async () => {
+        if (!groupLink) {
+            toast.error("Please enter a WhatsApp Group Link first");
+            return;
+        }
+        if (!message) {
+            toast.error("Enter a message to send");
+            return;
+        }
+
+        try {
+            setSending(true);
+            // If students are selected, we might want to personalize? 
+            // Usually group messages are generic, but let's support {name} if exactly one student is selected
+            let finalMessage = message;
+            if (selectedIds.size === 1) {
+                const student = students.find(s => selectedIds.has(s.id));
+                if (student) {
+                    finalMessage = message
+                        .replace(/{name}/g, student.name || "")
+                        .replace(/{room}/g, student.roomNo || "")
+                        .replace(/{mobile}/g, student.mobile || "")
+                        .replace(/{dob}/g, student.dob || "");
+                }
+            }
+
+            const res = await api.post('/api/send-group', {
+                groupLink: groupLink,
+                message: finalMessage
+            });
+
+            if (res.data.success) {
+                toast.success("Message sent to group successfully!");
+                setMessage("");
+            } else {
+                toast.error("Failed to send to group");
+            }
+        } catch (error) {
+            toast.error("Connection error while sending to group");
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const saveGroupLinkSetting = async () => {
+        try {
+            setIsSavingGroup(true);
+            const { updateSetting } = await import('@/lib/store');
+            await updateSetting('whatsapp_group_link', groupLink);
+            toast.success("Group link saved!");
+        } catch (error) {
+            toast.error("Failed to save group link");
+        } finally {
+            setIsSavingGroup(false);
+        }
     };
 
     const mainGroups = karyakartas.filter(k => k.type === 'main');
@@ -460,6 +527,40 @@ export default function Whatsapp() {
                         )}
                     </div>
 
+                    {/* Group Settings Card */}
+                    <div className="p-6 glass-card rounded-3xl shadow-soft border-white/40">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                <Users className="w-5 h-5 text-primary" />
+                                Group Settings
+                            </h3>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">WhatsApp Group Link</Label>
+                                <div className="flex gap-2">
+                                    <Input 
+                                        placeholder="https://chat.whatsapp.com/..." 
+                                        value={groupLink}
+                                        onChange={(e) => setGroupLink(e.target.value)}
+                                        className="h-11 rounded-xl bg-white/50"
+                                    />
+                                    <Button 
+                                        size="sm" 
+                                        className="rounded-xl h-11 px-4"
+                                        onClick={saveGroupLinkSetting}
+                                        disabled={isSavingGroup}
+                                    >
+                                        {isSavingGroup ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                                    </Button>
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground px-1">
+                                Enter the invite link of the group you want to send messages to.
+                            </p>
+                        </div>
+                    </div>
+
                     {/* Compose Message */}
                     <div className="p-6 glass-card rounded-3xl shadow-soft border-white/40 flex flex-col gap-4">
                         <h3 className="font-bold text-lg">Compose Message</h3>
@@ -495,15 +596,27 @@ export default function Whatsapp() {
                             </div>
                         </div>
 
-                        <Button
-                            size="lg"
-                            className="w-full text-lg h-14 rounded-xl shadow-soft hover:shadow-soft-lg gap-2"
-                            onClick={handleBulkSend}
-                            disabled={sending || !connected || selectedIds.size === 0 || !message}
-                        >
-                            {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                            Send to {selectedIds.size} Students
-                        </Button>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <Button
+                                size="lg"
+                                variant="outline"
+                                className="w-full text-base h-14 rounded-xl shadow-soft border-primary/20 text-primary hover:bg-primary/5 gap-2"
+                                onClick={handleGroupSend}
+                                disabled={sending || !connected || !message || !groupLink}
+                            >
+                                {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Users className="w-5 h-5" />}
+                                Send to Group
+                            </Button>
+                            <Button
+                                size="lg"
+                                className="w-full text-base h-14 rounded-xl shadow-soft hover:shadow-soft-lg gap-2"
+                                onClick={handleBulkSend}
+                                disabled={sending || !connected || selectedIds.size === 0 || !message}
+                            >
+                                {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                                Send to {selectedIds.size} Students
+                            </Button>
+                        </div>
                         {!connected && (
                             <p className="text-xs text-center text-destructive">Connect WhatsApp to send messages</p>
                         )}
