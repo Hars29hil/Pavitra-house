@@ -62,6 +62,7 @@ const AddStudent = () => {
 
   const [loading, setLoading] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
 
   // 1. Recover History (Prevent random back swipes)
   useEffect(() => {
@@ -84,16 +85,18 @@ const AddStudent = () => {
   useUnsavedChanges(isDirty);
 
   useEffect(() => {
-    const fetchStudent = async () => {
-      if (isEditing && id) {
-        try {
-          const students = await getStudents();
-          const student = students.find(s => s.id === id);
+    const fetchAllData = async () => {
+      try {
+        const data = await getStudents();
+        setAllStudents(data);
+
+        if (isEditing && id) {
+          const student = data.find(s => s.id === id);
           if (student) {
             setFormData({
               roomNo: student.roomNo || '',
               name: student.name || '',
-              age: student.age.toString() || '',
+              age: student.age?.toString() || '',
               dob: student.dob || '',
               mobile: student.mobile || '',
               email: student.email || '',
@@ -112,12 +115,12 @@ const AddStudent = () => {
             toast({ title: "Error", description: "Student not found", variant: "destructive" });
             navigate('/dashboard');
           }
-        } catch (error) {
-          console.error(error);
         }
+      } catch (error) {
+        console.error(error);
       }
     };
-    fetchStudent();
+    fetchAllData();
   }, [id, isEditing, navigate, toast]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -401,9 +404,9 @@ const AddStudent = () => {
                 <p className="text-muted-foreground text-sm">Upload multiple students at once via Excel</p>
               </div>
 
-              {/* We pass a dummy student to ensure headers are generated for the template */}
+              {/* If we have actual students, pass them to extract actual data. Otherwise pass dummy for template. */}
               <BulkUpdate
-                students={[{
+                students={allStudents.length > 0 ? allStudents : [{
                   id: 'TEMPLATE_ID',
                   name: 'John Doe',
                   roomNo: '101',
