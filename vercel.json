@@ -2,7 +2,7 @@
     "rewrites": [
         {
             "source": "/api/:match*",
-            "destination": "https://darkviolet-loris-131111.hostingersite.com/api/:match*"
+            "destination": "https://pavitra-house-backend.onrender.com/api/:match*"
         },
         {
             "source": "/(.*)",
