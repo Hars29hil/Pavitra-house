@@ -414,7 +414,7 @@ const Birthdays = () => {
                             birthdayStudents.map((student, index) => (
                                 <div
                                     key={student.id}
-                                    className="animate-slide-in w-full flex items-center justify-between p-5 bg-white border border-border/50 rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg"
+                                    className="animate-slide-in w-full flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-white border border-border/50 rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg gap-4"
                                     style={{ animationDelay: `${index * 50}ms` }}
                                 >
                                     <div
@@ -431,7 +431,7 @@ const Birthdays = () => {
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                                         <Button
                                             onClick={async (e) => {
                                                 e.stopPropagation();
@@ -451,7 +451,7 @@ const Birthdays = () => {
                                                     toast.error(`Failed to send wish to group`);
                                                 }
                                             }}
-                                            className="rounded-xl font-bold gap-2 border shadow-sm"
+                                            className="flex-1 sm:flex-none rounded-xl font-bold gap-2 border shadow-sm"
                                             variant="outline"
                                         >
                                             <Users className="w-4 h-4" /> Send to Group
@@ -476,7 +476,7 @@ const Birthdays = () => {
                                                     toast.error(`Failed to send wish to ${student.name}`);
                                                 }
                                             }}
-                                            className="rounded-xl font-bold gap-2 bg-primary text-white hover:bg-primary/90 shadow-md"
+                                            className="flex-1 sm:flex-none rounded-xl font-bold gap-2 bg-primary text-white hover:bg-primary/90 shadow-md"
                                         >
                                             <Send className="w-4 h-4" /> Send Wish
                                         </Button>
