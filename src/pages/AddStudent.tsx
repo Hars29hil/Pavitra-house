@@ -188,12 +188,15 @@ const AddStudent = () => {
       // Room Occupancy Check
       const students = await getStudents();
       const roommates = students.filter(s => s.roomNo === formData.roomNo && s.id !== id && !s.isAlumni);
+      
+      const isLargeRoom = formData.roomNo && formData.roomNo.endsWith('000');
+      const maxStudents = isLargeRoom ? 6 : 2;
 
-      if (roommates.length >= 2) {
+      if (roommates.length >= maxStudents) {
         toast({
-          title: "Room Occupied",
-          description: `Room ${formData.roomNo} already has 2 students.`,
-          variant: "destructive"
+          title: "Validation Error",
+          description: `Room ${formData.roomNo} already has ${maxStudents} students.`,
+          variant: "destructive",
         });
         setLoading(false);
         return;
