@@ -387,7 +387,7 @@ const AddStudent = () => {
                       value={formData[field.name as keyof typeof formData] as string}
                       onChange={handleChange}
                       className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-                      required={!['job', 'interest', 'profileImage', 'linkedin', 'socialLink'].includes(field.name)}
+                      required={!['job', 'interest', 'profileImage', 'linkedin', 'socialLink', 'college', 'result', 'year'].includes(field.name)}
                     />
                   )}
                 </div>
