@@ -14,9 +14,23 @@ const api = axios.create({
     timeout: 30000, // 30 second timeout
     headers: {
         'Content-Type': 'application/json',
-        "ngrok-skip-browser-warning": "true",
     },
 });
+
+// Add request interceptor to dynamically add ngrok header only if baseUrl/url contains ngrok
+api.interceptors.request.use(
+    (config) => {
+        const url = config.url || "";
+        const baseURL = config.baseURL || "";
+        if (url.includes("ngrok") || baseURL.includes("ngrok")) {
+            config.headers["ngrok-skip-browser-warning"] = "true";
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
 
 // Add response interceptor for better error handling
 api.interceptors.response.use(
