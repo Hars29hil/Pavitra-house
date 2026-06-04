@@ -6,8 +6,8 @@ import axios from 'axios';
 // - If DEV (Localhost), use Local Backend.
 // - If VITE_API_URL is set, use it.
 // - Otherwise, use relative path "" (proxied by Vercel) or localhost fallback? 
-// BETTER: Use "" to use current domain, which triggers Vercel proxy
-export const API_BASE_URL = "";
+// BETTER: Use "" to use current domain, which triggers Vercel proxy, unless VITE_API_URL is explicitly provided.
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
 const api = axios.create({
     baseURL: API_BASE_URL,
