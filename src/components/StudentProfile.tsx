@@ -108,6 +108,13 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
                 { label: 'Interests', value: student.interest, icon: Heart },
             ]
         },
+        {
+            title: "Social Profiles",
+            items: [
+                { label: 'LinkedIn', value: student.linkedin, icon: Linkedin },
+                { label: 'Social Link', value: student.socialLink, icon: Globe },
+            ]
+        },
         ...(student.isAlumni ? [{
             title: "Professional Information",
             items: [
@@ -200,9 +207,21 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
                                         <div className="w-10 h-10 rounded-xl bg-muted/30 flex items-center justify-center shrink-0">
                                             {Icon && <Icon className="w-5 h-5 text-muted-foreground" />}
                                         </div>
-                                        <div className="min-w-0">
+                                        <div className="min-w-0 flex-1">
                                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight leading-none mb-1">{item.label}</p>
-                                            <p className="text-sm sm:text-base font-bold text-foreground truncate">{item.value || "N/A"}</p>
+                                            {['LinkedIn', 'Social Link'].includes(item.label) && item.value ? (
+                                                <a 
+                                                    href={item.value.startsWith('http') ? item.value : `https://${item.value}`} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer" 
+                                                    className="text-sm sm:text-base font-bold text-blue-600 hover:underline truncate block"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    {item.value}
+                                                </a>
+                                            ) : (
+                                                <p className="text-sm sm:text-base font-bold text-foreground truncate">{item.value || "N/A"}</p>
+                                            )}
                                         </div>
                                     </div>
                                 );

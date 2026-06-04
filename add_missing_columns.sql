@@ -49,4 +49,6 @@ ORDER BY ordinal_position;
 -- profile_image (text)
 -- job (text)
 -- college (text)
+-- linkedin (text)
+-- social_link (text)
 -- ============================================

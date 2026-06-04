@@ -15,6 +15,8 @@ export interface Student {
   profileImage?: string;
   job?: string; // For alumni (or internships)
   college?: string;
+  linkedin?: string;
+  socialLink?: string;
 }
 
 export interface Task {

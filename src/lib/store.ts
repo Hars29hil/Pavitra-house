@@ -61,6 +61,8 @@ const fromDbStudent = (db: any): Student => ({
     profileImage: db.profile_image,
     job: db.job,
     college: db.college,
+    linkedin: db.linkedin,
+    socialLink: db.social_link,
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,11 +73,13 @@ const toDbStudent = (student: Partial<Student>) => {
     if (student.createdAt !== undefined) db.created_at = student.createdAt;
     if (student.profileImage !== undefined) db.profile_image = student.profileImage;
     if (student.dob !== undefined) db.dob = formatDateForDb(student.dob);
+    if (student.socialLink !== undefined) db.social_link = student.socialLink;
 
     delete db.roomNo;
     delete db.isAlumni;
     delete db.createdAt;
     delete db.profileImage;
+    delete db.socialLink;
 
     // Remove empty ID to allow auto-generation
     if (!db.id || db.id === '') {

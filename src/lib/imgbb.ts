@@ -1,37 +1,30 @@
+import api from './api';
 
-const IMGBB_API_KEY = 'ae5b3131d7716b62c274cbadb4e8c95a';
-
-interface ImgBBResponse {
+interface UploadResponse {
     success: boolean;
-    data: {
-        url: string;
-        // other fields omitted
-    };
+    url: string;
+    filename: string;
 }
 
 export const uploadToImgBB = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append("image", file);
 
-    // ImgBB API endpoint
-    const url = `https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`;
-
     try {
-        const response = await fetch(url, {
-            method: "POST",
-            body: formData,
+        const response = await api.post<UploadResponse>("/api/upload", formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
         });
 
-        const result: ImgBBResponse = await response.json();
-
-        if (result.success) {
-            return result.data.url;
+        if (response.data && response.data.success) {
+            return response.data.url;
         } else {
-            console.error("ImgBB Upload Error:", result);
-            throw new Error("Failed to upload image to ImgBB");
+            console.error("Backend Upload Error:", response.data);
+            throw new Error("Failed to upload image to backend");
         }
     } catch (error) {
-        console.error("ImgBB Network Error:", error);
+        console.error("Backend Upload Network Error:", error);
         throw error;
     }
 };

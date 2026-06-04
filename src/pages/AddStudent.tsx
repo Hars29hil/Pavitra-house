@@ -58,6 +58,8 @@ const AddStudent = () => {
     job: '',
     college: '',
     isAlumni: false,
+    linkedin: '',
+    socialLink: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -108,6 +110,8 @@ const AddStudent = () => {
               job: student.job || '',
               college: student.college || '',
               isAlumni: Boolean(student.isAlumni),
+              linkedin: student.linkedin || '',
+              socialLink: student.socialLink || '',
             });
             // Reset dirty after loading initial data
             setIsDirty(false);
@@ -252,6 +256,8 @@ const AddStudent = () => {
     { name: 'year', label: 'Year', type: 'text', placeholder: '2nd Year' },
     { name: 'result', label: 'Result/CGPA', type: 'text', placeholder: '8.5 CGPA' },
     { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music' },
+    { name: 'linkedin', label: 'LinkedIn URL', type: 'text', placeholder: 'https://linkedin.com/in/username' },
+    { name: 'socialLink', label: 'Social Media URL (Instagram, Facebook, X, etc.)', type: 'text', placeholder: 'https://instagram.com/username' },
     { name: 'job', label: 'Job / Work (Alumni)', type: 'text', placeholder: 'Software Engineer @ Google' },
   ];
 
@@ -334,7 +340,7 @@ const AddStudent = () => {
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "w-full h-11 sm:h-12 justify-start text-left font-normal bg-background/50 border-border/50 rounded-xl text-xs sm:text-sm",
+                             "w-full h-11 sm:h-12 justify-start text-left font-normal bg-background/50 border-border/50 rounded-xl text-xs sm:text-sm",
                             !formData[field.name as keyof typeof formData] && "text-muted-foreground"
                           )}
                         >
@@ -381,7 +387,7 @@ const AddStudent = () => {
                       value={formData[field.name as keyof typeof formData] as string}
                       onChange={handleChange}
                       className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-                      required={field.name !== 'job' && field.name !== 'interest' && field.name !== 'profileImage'}
+                      required={!['job', 'interest', 'profileImage', 'linkedin', 'socialLink'].includes(field.name)}
                     />
                   )}
                 </div>
