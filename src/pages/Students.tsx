@@ -64,7 +64,7 @@ const Students = () => {
     <div className="min-h-screen bg-background pb-20 relative animate-fade-in">
       <AppHeader title="Hari-Saurabh Hostel" />
 
-      <main className="p-4 md:p-6 space-y-8 max-w-5xl mx-auto">
+      <main className="p-4 md:p-6 space-y-8 max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="space-y-1">
           <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
@@ -118,7 +118,7 @@ const Students = () => {
           </div>
 
           {/* Student List */}
-          <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-1 mb-20">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-20">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />

@@ -167,7 +167,7 @@ const Categories = () => {
     <div className="min-h-screen bg-background pb-20 relative animate-fade-in">
       <AppHeader title="Hari-Saurabh Hostel" />
 
-      <main className="p-4 md:p-6 space-y-8 max-w-5xl mx-auto">
+      <main className="p-4 md:p-6 space-y-8 max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="space-y-1">
           <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
@@ -229,9 +229,9 @@ const Categories = () => {
         </div>
 
         {/* Hierarchical List */}
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {loading ? (
-            <div className="py-20 text-center text-muted-foreground flex flex-col items-center">
+            <div className="py-20 text-center text-muted-foreground flex flex-col items-center col-span-full">
               <Loader2 className="w-10 h-10 animate-spin mb-2" />
               <p>Loading Karyakartas...</p>
             </div>
@@ -362,7 +362,7 @@ const Categories = () => {
               })}
 
               {mainKaryakartas.length === 0 && (
-                <div className="py-20 text-center text-muted-foreground border-2 border-dashed border-border/50 rounded-3xl">
+                <div className="py-20 text-center text-muted-foreground border-2 border-dashed border-border/50 rounded-3xl col-span-full">
                   <p>No Karyakarta hierarchies created yet.</p>
                 </div>
               )}

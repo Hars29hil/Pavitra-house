@@ -178,7 +178,7 @@ const Birthdays = () => {
         <div className="min-h-screen pb-20 relative animate-fade-in">
             <AppHeader title="Hari-Saurabh Hostel" />
 
-            <main className="p-4 md:p-6 space-y-8 max-w-5xl mx-auto">
+            <main className="p-4 md:p-6 space-y-8 max-w-7xl mx-auto">
                 {/* Header Section */}
                 <div className="relative overflow-hidden rounded-3xl p-8 glass-card animate-slide-in flex items-center justify-between">
                     <div className="absolute inset-0 gradient-primary opacity-5"></div>
@@ -409,7 +409,7 @@ const Birthdays = () => {
                         </Button>
                     </div>
 
-                    <div className="space-y-4 pb-safe">
+                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 pb-safe">
                         {birthdayStudents.length > 0 ? (
                             birthdayStudents.map((student, index) => (
                                 <div
@@ -484,7 +484,7 @@ const Birthdays = () => {
                                 </div>
                             ))
                         ) : (
-                            <div className="text-center py-20 glass-card border-dashed border-2 border-border/50 rounded-3xl animate-fade-in flex flex-col items-center justify-center gap-4">
+                            <div className="text-center py-20 glass-card border-dashed border-2 border-border/50 rounded-3xl animate-fade-in flex flex-col items-center justify-center gap-4 col-span-full">
                                 <div className="w-20 h-20 bg-gradient-to-br from-primary/10 to-blue-500/10 rounded-full flex items-center justify-center animate-pulse">
                                     <Sparkles className="w-10 h-10 text-muted-foreground/40" />
                                 </div>

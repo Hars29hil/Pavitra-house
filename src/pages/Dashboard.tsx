@@ -51,25 +51,26 @@ const Dashboard = () => {
     <div className="min-h-screen pb-20 relative animate-fade-in">
       <AppHeader title="HSH" />
 
-      <main className="w-full max-w-md mx-auto px-3 py-4 space-y-5">
+      <main className="w-full max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search name, room, mobile..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-11 pl-10 rounded-xl text-sm shadow-sm"
-          />
-        </div>
+        {/* Top Controls: Search, Toggle, Add */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          {/* Search */}
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search name, room, mobile..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-11 pl-10 rounded-xl text-sm shadow-sm w-full"
+            />
+          </div>
 
-        {/* Toggle + Add */}
-        <div className="flex flex-col gap-3">
-
-          {/* Toggle */}
-          <div className="flex p-1 bg-gray-100 rounded-xl">
-            <button
+          {/* Toggle + Add */}
+          <div className="flex w-full md:w-auto items-center gap-3">
+            {/* Toggle */}
+            <div className="flex flex-1 md:flex-none p-1 bg-gray-100 rounded-xl md:w-48">
+              <button
               onClick={() => setShowAlumni(false)}
               className={cn(
                 "flex-1 py-2 text-xs font-semibold rounded-lg transition",
@@ -94,19 +95,20 @@ const Dashboard = () => {
             </button>
           </div>
 
-          {/* Add Button */}
-          <button
-            onClick={() => navigate('/students/add')}
-            className="h-11 bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 text-sm font-semibold"
-          >
-            <Plus className="w-4 h-4" />
-            Add Student
-          </button>
-
+            {/* Add Button */}
+            <button
+              onClick={() => navigate('/students/add')}
+              className="h-11 px-4 bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 text-sm font-semibold whitespace-nowrap shrink-0 hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Student</span>
+              <span className="sm:hidden">Add</span>
+            </button>
+          </div>
         </div>
 
         {/* Student List */}
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredStudents.length > 0 ? (
             filteredStudents.map((student, index) => (
               <div
