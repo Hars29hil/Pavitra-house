@@ -1,9 +1,9 @@
 const express = require("express");
 const cors = require("cors");
-const { 
-    default: makeWASocket, 
-    useMultiFileAuthState, 
-    DisconnectReason, 
+const {
+    default: makeWASocket,
+    useMultiFileAuthState,
+    DisconnectReason,
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore
 } = require("@whiskeysockets/baileys");
@@ -69,7 +69,7 @@ async function connectToWhatsApp() {
             const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
             console.log("❌ Connection closed. Reason:", lastDisconnect?.error?.message, "Reconnecting:", shouldReconnect);
             connectionStatus = "Disconnected";
-            
+
             if (shouldReconnect) {
                 setTimeout(connectToWhatsApp, 3000);
             }
@@ -98,7 +98,7 @@ connectToWhatsApp().catch(err => console.error("Initial connection error:", err)
 
 // Health Check
 app.get("/", (req, res) => {
-    res.json({ success: true, message: "Baileys WhatsApp API Running", status: connectionStatus });
+    res.json({ success: true, message: "Pavitra WhatsApp API Running", status: connectionStatus });
 });
 
 // Get QR
@@ -134,12 +134,12 @@ app.post("/api/send", async (req, res) => {
         // Sanitize number
         let sanitized = number.toString().replace(/\D/g, "");
         if (sanitized.length === 10) sanitized = "91" + sanitized;
-        
+
         const jid = `${sanitized}@s.whatsapp.net`;
-        
+
         await sock.sendMessage(jid, { text: message });
         console.log(`📩 Sent message to ${jid}`);
-        
+
         res.json({ success: true, message: "Message sent" });
     } catch (err) {
         console.error("❌ Send Error:", err);
@@ -162,10 +162,10 @@ app.post("/api/send-group", async (req, res) => {
         }
 
         console.log(`🚀 Sending to group invite code: ${inviteCode}`);
-        
+
         // Join/Get group ID from invite code
         const groupId = await sock.groupAcceptInvite(inviteCode);
-        
+
         await sock.sendMessage(groupId, { text: message });
         res.json({ success: true, message: "Message sent to group" });
     } catch (err) {
@@ -181,21 +181,21 @@ app.post("/api/reset-session", async (req, res) => {
     try {
         console.log("🧨 Resetting Session...");
         const authPath = path.join(__dirname, "baileys_auth");
-        
+
         if (sock) {
-            try { await sock.logout(); } catch (e) {}
+            try { await sock.logout(); } catch (e) { }
         }
-        
+
         if (fs.existsSync(authPath)) {
             fs.rmSync(authPath, { recursive: true, force: true });
         }
-        
+
         isReady = false;
         qrCode = null;
-        
+
         // Wait 1s and restart
         setTimeout(connectToWhatsApp, 1000);
-        
+
         res.json({ success: true, message: "Session reset successfully" });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });

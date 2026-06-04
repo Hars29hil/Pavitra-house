@@ -209,7 +209,7 @@ const AddStudent = () => {
           description: `${formData.name} has been updated successfully.`,
         });
         setIsDirty(false); // Important: Clear flag before nav
-        // navigate('/dashboard'); 
+        navigate(-1); 
       } else {
         // New Student
         await addStudent({
