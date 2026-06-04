@@ -134,7 +134,7 @@ export default function Whatsapp() {
 
             try {
                 // Use the configured api instance for consistency
-                const res = await api.get('/api/qr');
+                const res = await api.get('/api/get-qr');
                 const qrData = res.data;
 
                 if (qrData.success && qrData.message === "Already connected") {
