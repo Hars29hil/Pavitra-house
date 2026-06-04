@@ -247,6 +247,7 @@ const AddStudent = () => {
     { name: 'college', label: 'College', type: 'text', placeholder: 'XYZ University' },
     { name: 'degree', label: 'Degree', type: 'text', placeholder: 'B.Tech' },
     { name: 'year', label: 'Year', type: 'text', placeholder: '2nd Year' },
+    { name: 'result', label: 'Result/CGPA', type: 'text', placeholder: '8.5 CGPA' },
     { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music' },
     { name: 'job', label: 'Job / Work (Alumni)', type: 'text', placeholder: 'Software Engineer @ Google' },
   ];

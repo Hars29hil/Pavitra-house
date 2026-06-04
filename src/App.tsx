@@ -10,6 +10,7 @@ import Students from "./pages/Students";
 import Birthdays from "./pages/Birthdays";
 import StudentDetails from "./pages/StudentDetails";
 import AddStudent from "./pages/AddStudent";
+import StudentResults from "./pages/StudentResults";
 import Update from "./pages/Update";
 import Categories from "./pages/Categories";
 import Education from "./pages/Education";
@@ -52,6 +53,7 @@ const router = createBrowserRouter(
       <Route path="/students/add" element={<ProtectedRoute><AddStudent /></ProtectedRoute>} />
       <Route path="/students/:id" element={<ProtectedRoute><StudentDetails /></ProtectedRoute>} />
       <Route path="/students/:id/edit" element={<ProtectedRoute><AddStudent /></ProtectedRoute>} />
+      <Route path="/students/:id/results" element={<ProtectedRoute><StudentResults /></ProtectedRoute>} />
       <Route path="/update" element={<ProtectedRoute><Update /></ProtectedRoute>} />
       <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
       <Route path="/education" element={<ProtectedRoute><Education /></ProtectedRoute>} />

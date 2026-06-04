@@ -104,6 +104,7 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
                 { label: 'College', value: student.college, icon: School },
                 { label: 'Degree', value: student.degree, icon: BookOpen },
                 { label: 'Year', value: student.year, icon: GraduationCap },
+                { label: 'Result/CGPA', value: student.result, icon: Award },
                 { label: 'Interests', value: student.interest, icon: Heart },
             ]
         },
@@ -193,7 +194,8 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
                                 return (
                                     <div
                                         key={item.label}
-                                        className={`flex items-center gap-4 px-4 py-3 sm:px-6 sm:py-4 transition-colors hover:bg-primary/[0.02]`}
+                                        className={`flex items-center gap-4 px-4 py-3 sm:px-6 sm:py-4 transition-colors ${item.label === 'Result/CGPA' ? 'cursor-pointer hover:bg-primary/10' : 'hover:bg-primary/[0.02]'}`}
+                                        onClick={() => item.label === 'Result/CGPA' && navigate(`/students/${student.id}/results`)}
                                     >
                                         <div className="w-10 h-10 rounded-xl bg-muted/30 flex items-center justify-center shrink-0">
                                             {Icon && <Icon className="w-5 h-5 text-muted-foreground" />}
