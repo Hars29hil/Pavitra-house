@@ -58,6 +58,10 @@ const Students = () => {
     const matchesFilter = showAlumni ? student.isAlumni : !student.isAlumni;
 
     return matchesSearch && matchesFilter;
+  }).sort((a, b) => {
+    const roomA = a.roomNo || '';
+    const roomB = b.roomNo || '';
+    return roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' });
   });
 
   return (
