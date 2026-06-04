@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getStudents, getStudentResults, addStudentResult, deleteStudentResult, StudentResult } from '@/lib/store';
+import { getStudents, getStudentResults, addStudentResult, deleteStudentResult, updateStudent, StudentResult } from '@/lib/store';
 import { Student } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -53,6 +53,23 @@ const StudentResults = () => {
         if (!student?.id) return;
         setResultsLoading(true);
         const data = await getStudentResults(student.id);
+        
+        if (student.result) {
+            const hasExisting = data.some(d => d.cgpa === student.result || d.sgpa === student.result);
+            if (!hasExisting) {
+                data.push({
+                    id: 'legacy-result',
+                    studentId: student.id,
+                    semester: 'Overall',
+                    sgpa: '-',
+                    cgpa: student.result,
+                    backlogs: 0,
+                    examMonthYear: '-',
+                    createdAt: student.createdAt || new Date().toISOString()
+                });
+            }
+        }
+        
         setResults(data);
         setResultsLoading(false);
     };
@@ -75,6 +92,12 @@ const StudentResults = () => {
                 examMonthYear: newResult.examMonthYear || new Date().toLocaleString('default', { month: 'short', year: 'numeric' })
             });
 
+            const newCgpa = newResult.cgpa || newResult.sgpa;
+            if (student.id && newCgpa) {
+                await updateStudent(student.id, { result: newCgpa });
+                setStudent(prev => prev ? { ...prev, result: newCgpa } : prev);
+            }
+
             toast({ title: "Success", description: "Result added successfully" });
             setNewResult({ semester: '', sgpa: '', cgpa: '', backlogs: '0', examMonthYear: '' });
             loadResults();
@@ -85,7 +108,14 @@ const StudentResults = () => {
 
     const handleDelete = async (resultId: string) => {
         try {
-            await deleteStudentResult(resultId);
+            if (resultId === 'legacy-result') {
+                if (student?.id) {
+                    await updateStudent(student.id, { result: '' });
+                    setStudent(prev => prev ? { ...prev, result: '' } : prev);
+                }
+            } else {
+                await deleteStudentResult(resultId);
+            }
             toast({ title: "Success", description: "Result deleted" });
             loadResults();
         } catch (error) {

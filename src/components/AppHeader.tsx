@@ -33,7 +33,7 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
   ];
 
   const filteredMenuItems = menuItems.filter(item => item.path !== location.pathname);
-  const isDashboard = location.pathname === '/dashboard';
+  const isMainRoute = menuItems.some(item => item.path === location.pathname);
 
   const handleBack = () => {
     const path = location.pathname;
@@ -60,7 +60,7 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
     <header className="sticky top-0 z-40 glass-header shadow-soft">
       <div className="flex items-center justify-between h-16 px-4 max-w-7xl mx-auto relative">
         <div className="flex items-center">
-          {isDashboard ? (
+          {isMainRoute ? (
             <Sheet>
               <SheetTrigger asChild>
                 <Button
