@@ -233,11 +233,13 @@ export default function Whatsapp() {
             }
 
             try {
+                const formLink = student.mobile ? `https://pavitra-house.vercel.app/self-update/${student.mobile.trim()}` : "";
                 const personalizedMessage = message
                     .replace(/{name}/g, student.name || "")
                     .replace(/{room}/g, student.roomNo || "")
                     .replace(/{mobile}/g, student.mobile || "")
-                    .replace(/{dob}/g, student.dob || "");
+                    .replace(/{dob}/g, student.dob || "")
+                    .replace(/{form_link}/g, formLink);
 
                 const res = await api.post('/api/send', {
                     number: student.mobile,
@@ -275,11 +277,13 @@ export default function Whatsapp() {
             if (selectedIds.size === 1) {
                 const student = students.find(s => selectedIds.has(s.id));
                 if (student) {
+                    const formLink = student.mobile ? `https://pavitra-house.vercel.app/self-update/${student.mobile.trim()}` : "";
                     finalMessage = message
                         .replace(/{name}/g, student.name || "")
                         .replace(/{room}/g, student.roomNo || "")
                         .replace(/{mobile}/g, student.mobile || "")
-                        .replace(/{dob}/g, student.dob || "");
+                        .replace(/{dob}/g, student.dob || "")
+                        .replace(/{form_link}/g, formLink);
                 }
             }
 
@@ -514,6 +518,7 @@ export default function Whatsapp() {
                                 { label: "Room", value: "{room}" },
                                 { label: "Mobile", value: "{mobile}" },
                                 { label: "DOB", value: "{dob}" },
+                                { label: "Form Link", value: "{form_link}" },
                             ].map((tag) => (
                                 <Button
                                     key={tag.value}

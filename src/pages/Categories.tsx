@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Tags, Plus, Users, Search, CheckCircle2, X, Trash2, ChevronRight, ChevronDown, Loader2, Eye } from 'lucide-react';
+import { Users, Loader2, Plus, UserCircle2, Trash2, Edit } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Command,
   CommandEmpty,
@@ -22,31 +15,43 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Check, ChevronsUpDown } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
+} from "@/components/ui/select"
+import { ChevronsUpDown } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import { getStudents, getCategories, addCategory, deleteCategory, updateCategory, Karyakarta } from '@/lib/store';
 import { Student } from '@/types';
 import { toast } from 'sonner';
 
 const Categories = () => {
-  const [karyakartas, setKaryakartas] = useState<Karyakarta[]>([]);
   const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [karyakartas, setKaryakartas] = useState<Karyakarta[]>([]);
 
-  const [newKaryakartaName, setNewKaryakartaName] = useState('');
-  const [newKaryakartaType, setNewKaryakartaType] = useState<'main' | 'sub'>('main');
+  // State for Main Karyakarta form
+  const [selectedMainStudent, setSelectedMainStudent] = useState<Student | null>(null);
+  const [openMainSearch, setOpenMainSearch] = useState(false);
+
+  // State for Sub-Karyakarta form
+  const [selectedSubStudent, setSelectedSubStudent] = useState<Student | null>(null);
+  const [openSubSearch, setOpenSubSearch] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState<string>('');
 
-  const [students, setStudents] = useState<Student[]>([]);
-  const [selectedKaryakartaId, setSelectedKaryakartaId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  // Edit State
+  const [editingKaryakarta, setEditingKaryakarta] = useState<Karyakarta | null>(null);
+  const [editName, setEditName] = useState("");
 
   // Fetch Data on mount
   useEffect(() => {
@@ -57,12 +62,10 @@ const Categories = () => {
           getStudents(),
           getCategories()
         ]);
-
         setStudents(studentsData || []);
         setKaryakartas(categoriesData || []);
       } catch (error) {
-        console.error("Error initializing Categories:", error);
-        setStudents([]);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
@@ -70,371 +73,172 @@ const Categories = () => {
     init();
   }, []);
 
-  const handleAddKaryakarta = async () => {
-    if (!newKaryakartaName.trim()) return;
-
-    if (newKaryakartaType === 'sub' && !selectedParentId) {
-      toast.error('Please select a Main Karyakarta');
+  const handleAddMain = async () => {
+    if (!selectedMainStudent) {
+      toast.error("Please select a student");
       return;
     }
 
     const newKaryakarta: Karyakarta = {
-      id: crypto.randomUUID(), // Temporarily generate ID, but DB will likely ignore or overwrite if using serial, but UUID is fine if DB expects text id.
-      // Usually supbase auto-generates ID. Let's see if we can omit ID.
-      // The store.ts `addCategory` takes `Karyakarta` which has `id`. 
-      // Ideally we shouldn't pass ID if it's auto-generated.
-      // Let's assume for now we generate it or the types need adjustment.
-      // `addCategory` implementation: `insert([dbPayload])`.
-
-      name: newKaryakartaName.trim(),
+      id: crypto.randomUUID(),
+      name: selectedMainStudent.name,
       studentIds: [],
-      type: newKaryakartaType,
-      parentId: newKaryakartaType === 'sub' ? selectedParentId : undefined
+      type: 'main'
     };
 
     try {
-      // If DB generates ID, we should let it. But `Karyakarta` interface requires ID.
-      // Let's check `addCategory` implementation in store.ts. It calls `toDbCategory`.
-      // `toDbCategory` doesn't remove ID. So we can pass a UUID or let DB handle it.
-      // If DB is UUID primary key, we can generate it here or let DB do it.
-      // Let's assume we can generate client side or just omit and cast.
-
-      // Actually, let's just generate a UUID here to be safe and update UI optimistically or wait.
-      // Wait for DB response is better.
-
       const saved = await addCategory(newKaryakarta);
       if (saved) {
         setKaryakartas([...karyakartas, saved]);
-        setNewKaryakartaName('');
-        setNewKaryakartaType('main');
-        setSelectedParentId('');
-        toast.success(`${newKaryakartaType === 'main' ? 'Main' : 'Sub'} Karyakarta added`);
+        setSelectedMainStudent(null);
+        toast.success(`${selectedMainStudent.name} added as Karyakarta!`);
       }
-    } catch (e) {
-      toast.error("Failed to add category");
+    } catch (error) {
+      toast.error('Failed to add Karyakarta');
     }
   };
 
-  const handleDeleteKaryakarta = async (id: string, e: React.MouseEvent) => {
+  const handleAddSub = async () => {
+    if (!selectedParentId) {
+      toast.error("Please select a Main Karyakarta first");
+      return;
+    }
+    if (!selectedSubStudent) {
+      toast.error("Please select a student");
+      return;
+    }
+
+    const newKaryakarta: Karyakarta = {
+      id: crypto.randomUUID(),
+      name: selectedSubStudent.name,
+      studentIds: [],
+      type: 'sub',
+      parentId: selectedParentId
+    };
+
+    try {
+      const saved = await addCategory(newKaryakarta);
+      if (saved) {
+        setKaryakartas([...karyakartas, saved]);
+        setSelectedSubStudent(null);
+        // We do NOT clear the selected parent id so they can quickly add multiple subs
+        toast.success(`${selectedSubStudent.name} added as Sub-Karyakarta!`);
+      }
+    } catch (error) {
+      toast.error('Failed to add Sub-Karyakarta');
+    }
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
 
-    // Check if it has subs
     const hasSubs = karyakartas.some(k => k.parentId === id);
     if (hasSubs) {
       if (!confirm('This Karyakarta has Sub-Karyakartas. Deleting it will also delete them. Continue?')) return;
+    } else {
+      if (!confirm('Are you sure you want to delete this Karyakarta?')) return;
     }
 
     try {
       await deleteCategory(id);
-      setKaryakartas(prev => prev.filter(k => k.id !== id && k.parentId !== id));
-      toast.success('Karyakarta deleted');
-    } catch (e) {
-      toast.error("Failed to delete category");
+      // Delete the karyakarta and any of its subs
+      setKaryakartas(karyakartas.filter(k => k.id !== id && k.parentId !== id));
+      toast.success('Karyakarta deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete Karyakarta');
     }
   };
 
-  const toggleStudentAssignment = async (karyakartaId: string, studentId: string) => {
-    const karyakarta = karyakartas.find(k => k.id === karyakartaId);
-    if (!karyakarta) return;
+  const openEdit = (karyakarta: Karyakarta, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingKaryakarta(karyakarta);
+    setEditName(karyakarta.name);
+  };
 
-    const isAssigned = karyakarta.studentIds.includes(studentId);
-    const newStudentIds = isAssigned
-      ? karyakarta.studentIds.filter(id => id !== studentId)
-      : [...karyakarta.studentIds, studentId];
-
-    // Optimistic Update
-    setKaryakartas(prev => prev.map(k =>
-      k.id === karyakartaId ? { ...k, studentIds: newStudentIds } : k
-    ));
+  const handleSaveEdit = async () => {
+    if (!editingKaryakarta || !editName.trim()) return;
 
     try {
-      await updateCategory(karyakartaId, { studentIds: newStudentIds });
-    } catch (e) {
-      // Revert
-      setKaryakartas(prev => prev.map(k =>
-        k.id === karyakartaId ? { ...k, studentIds: karyakarta.studentIds } : k
-      ));
-      toast.error("Failed to update assignment");
+      await updateCategory(editingKaryakarta.id, { name: editName });
+      setKaryakartas(karyakartas.map(k => k.id === editingKaryakarta.id ? { ...k, name: editName } : k));
+      setEditingKaryakarta(null);
+      toast.success('Karyakarta updated successfully');
+    } catch (error) {
+      toast.error('Failed to update Karyakarta');
     }
   };
 
-  const selectedKaryakarta = karyakartas.find(k => k.id === selectedKaryakartaId);
   const mainKaryakartas = karyakartas.filter(k => k.type === 'main');
-
-
 
   return (
     <div className="min-h-screen bg-background pb-20 relative animate-fade-in">
       <AppHeader title="Hari-Saurabh Hostel" />
 
-      <main className="p-4 md:p-6 space-y-8 max-w-7xl mx-auto">
+      <main className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="space-y-1">
           <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
             <Users className="w-8 h-8 text-primary" />
-            Karyakarta
+            Karyakartas
           </h2>
-          <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs">Manage groups and sub-groups</p>
+          <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs pl-1 mt-1">
+            Manage your team Yuvaks
+          </p>
         </div>
 
-        {/* Add Karyakarta Section */}
-        <div className="bg-white p-5 rounded-3xl shadow-soft border border-border/50 space-y-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="w-full md:w-48 shrink-0">
-              <Select
-                value={newKaryakartaType}
-                onValueChange={(val: 'main' | 'sub') => setNewKaryakartaType(val)}
-              >
-                <SelectTrigger className="h-12 rounded-xl text-base font-medium">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="main">Main Group</SelectItem>
-                  <SelectItem value="sub">Sub Group</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {newKaryakartaType === 'sub' && (
-              <div className="w-full md:w-64 shrink-0 animate-in fade-in slide-in-from-left-4">
-                <Select
-                  value={selectedParentId}
-                  onValueChange={setSelectedParentId}
-                >
-                  <SelectTrigger className="h-12 rounded-xl text-base font-medium">
-                    <SelectValue placeholder="Select Parent Group" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mainKaryakartas.map(k => (
-                      <SelectItem key={k.id} value={k.id}>{k.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="flex-1 flex gap-2">
-              <Input
-                placeholder={newKaryakartaType === 'main' ? "Karyakarta Name" : "Sub-Karyakarta Name"}
-                value={newKaryakartaName}
-                onChange={(e) => setNewKaryakartaName(e.target.value)}
-                className="h-12 text-lg rounded-xl"
-                onKeyDown={(e) => e.key === 'Enter' && handleAddKaryakarta()}
-              />
-              <Button onClick={handleAddKaryakarta} size="lg" className="h-12 px-6 rounded-xl">
-                <Plus className="w-5 h-5" />
-              </Button>
-            </div>
+        {loading ? (
+          <div className="flex items-center justify-center p-10">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        </div>
+        ) : (
+          <div className="space-y-10">
+            {/* Forms Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        {/* Hierarchical List */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {loading ? (
-            <div className="py-20 text-center text-muted-foreground flex flex-col items-center col-span-full">
-              <Loader2 className="w-10 h-10 animate-spin mb-2" />
-              <p>Loading Karyakartas...</p>
-            </div>
-          ) : (
-            <>
-              {mainKaryakartas.map((main) => {
-                const subKaryakartas = karyakartas.filter(k => k.parentId === main.id);
-
-                return (
-                  <div key={main.id} className="bg-white border border-border/50 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                    {/* Main Karyakarta Header */}
-                    <div className="p-6 bg-gray-50/50 flex items-center justify-between group cursor-pointer" onClick={() => setSelectedKaryakartaId(main.id)}>
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                          <Users className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-foreground">{main.name}</h3>
-                          <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <Users className="w-3.5 h-3.5" />
-                            {main.studentIds.length} Direct Students
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedKaryakartaId(main.id);
-                          }}
-                          title="View Students"
-                        >
-                          <Eye className="w-5 h-5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedKaryakartaId(main.id);
-                          }}
-                          title="Add Student"
-                        >
-                          <Plus className="w-5 h-5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={(e) => handleDeleteKaryakarta(main.id, e)}
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Sub Karyakartas List */}
-                    {subKaryakartas.length > 0 && (
-                      <div className="border-t border-border/50">
-                        <div className="px-6 py-3 bg-gray-50 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                          Sub Groups
-                        </div>
-                        <div className="divide-y divide-border/50">
-                          {subKaryakartas.map(sub => (
-                            <div
-                              key={sub.id}
-                              className="p-4 pl-12 hover:bg-gray-50 cursor-pointer flex items-center justify-between group/sub transition-colors"
-                              onClick={() => setSelectedKaryakartaId(sub.id)}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-2 h-2 rounded-full bg-primary/40" />
-                                <span className="font-semibold text-foreground">{sub.name}</span>
-                                <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-200 ml-2">
-                                  {sub.studentIds.length} Students
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-1 transition-opacity">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedKaryakartaId(sub.id);
-                                  }}
-                                  title="View Students"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedKaryakartaId(sub.id);
-                                  }}
-                                >
-                                  <Plus className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                  onClick={(e) => handleDeleteKaryakarta(sub.id, e)}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {subKaryakartas.length === 0 && (
-                      <div className="px-6 py-4 text-sm text-muted-foreground italic border-t border-border/50 pl-20">
-                        No sub-groups added.
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {mainKaryakartas.length === 0 && (
-                <div className="py-20 text-center text-muted-foreground border-2 border-dashed border-border/50 rounded-3xl col-span-full">
-                  <p>No Karyakarta hierarchies created yet.</p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Assignment Dialog (Reused for both Main and Sub) */}
-        <Dialog open={!!selectedKaryakartaId} onOpenChange={(open) => !open && setSelectedKaryakartaId(null)}>
-          <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="flex items-center gap-2">
-                    {selectedKaryakarta?.type === 'sub' && (
-                      <span className="text-muted-foreground font-normal text-lg">
-                        {karyakartas.find(k => k.id === selectedKaryakarta?.parentId)?.name} /
-                      </span>
-                    )}
-                    {selectedKaryakarta?.name}
-                  </span>
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest mt-1">
-                    {selectedKaryakarta?.type === 'main' ? 'Main Group' : 'Sub Group'}
-                  </span>
-                </div>
-                <Badge variant="secondary" className="text-lg px-3">
-                  {selectedKaryakarta?.studentIds.length} Students
-                </Badge>
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="flex flex-col gap-6 mt-4 flex-1 overflow-hidden">
-
-              {/* Add Student Dropdown Section */}
-              <div className="space-y-2 shrink-0">
-                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Add Student</h4>
-                <Popover>
+              {/* Add Main Karyakarta Form */}
+              <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 space-y-4">
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                  <UserCircle2 className="w-5 h-5 text-primary" />
+                  Add Main Karyakarta
+                </h3>
+                <p className="text-xs text-muted-foreground">Select a student to designate as a lead Karyakarta.</p>
+                <Popover open={openMainSearch} onOpenChange={setOpenMainSearch}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       role="combobox"
-                      className="w-full justify-between h-12 rounded-xl text-left font-normal"
+                      aria-expanded={openMainSearch}
+                      className="w-full justify-between h-14 text-base rounded-xl font-normal"
                     >
-                      <span className="text-muted-foreground">Select student to add...</span>
+                      <span className="truncate">
+                        {selectedMainStudent ? selectedMainStudent.name : "Search Yuvak..."}
+                      </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[400px] p-0" align="start">
+                  <PopoverContent className="w-[300px] sm:w-[400px] p-0" align="start">
                     <Command>
-                      <CommandInput placeholder="Search student..." />
+                      <CommandInput placeholder="Search student by name..." />
                       <CommandList>
                         <CommandEmpty>No student found.</CommandEmpty>
                         <CommandGroup>
-                          {students.filter(s => !selectedKaryakarta?.studentIds.includes(s.id)).map((student) => (
+                          {students.map((student) => (
                             <CommandItem
                               key={student.id}
                               value={student.name}
                               onSelect={() => {
-                                if (selectedKaryakartaId) {
-                                  toggleStudentAssignment(selectedKaryakartaId, student.id);
-                                  toast.success(`${student.name} added to group`);
-                                }
+                                setSelectedMainStudent(student);
+                                setOpenMainSearch(false);
                               }}
-                              className="cursor-pointer"
+                              className="cursor-pointer py-3"
                             >
-                              <div className="flex items-center gap-2 w-full">
-                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                              <div className="flex items-center gap-3 w-full">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
                                   {student.name.charAt(0)}
                                 </div>
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{student.name}</span>
-                                  <span className="text-[10px] text-muted-foreground">Room: {student.roomNo || 'N/A'}</span>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-medium text-base truncate">{student.name}</span>
+                                  <span className="text-xs text-muted-foreground truncate">Room: {student.roomNo || 'N/A'}</span>
                                 </div>
                               </div>
                             </CommandItem>
@@ -444,59 +248,188 @@ const Categories = () => {
                     </Command>
                   </PopoverContent>
                 </Popover>
+
+                <Button onClick={handleAddMain} className="w-full h-14 rounded-xl text-md font-bold gap-2">
+                  <Plus className="w-5 h-5" />
+                  Add Karyakarta
+                </Button>
               </div>
 
-              {/* Assigned Students List */}
-              <div className="flex-1 flex flex-col min-h-0">
-                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center justify-between">
-                  Assigned Students
-                  <Badge variant="secondary">{selectedKaryakarta?.studentIds.length || 0}</Badge>
-                </h4>
+              {/* Add Sub-Karyakarta Form */}
+              <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 space-y-4">
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  Add Sub-Karyakarta
+                </h3>
+                <p className="text-xs text-muted-foreground">Assign a Yuvak under an existing Karyakarta.</p>
 
-                <div className="relative flex-1">
-                  <div className="absolute inset-0">
-                    <ScrollArea className="h-full pr-4">
-                      <div className="space-y-2">
-                        {students
-                          .filter(s => selectedKaryakarta?.studentIds.includes(s.id))
-                          .map(student => (
-                            <div
+                <Select value={selectedParentId} onValueChange={setSelectedParentId}>
+                  <SelectTrigger className="w-full h-14 text-base rounded-xl font-normal bg-gray-50/50">
+                    <SelectValue placeholder="Select Main Karyakarta..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mainKaryakartas.map(k => (
+                      <SelectItem key={k.id} value={k.id}>{k.name}</SelectItem>
+                    ))}
+                    {mainKaryakartas.length === 0 && (
+                      <SelectItem value="none" disabled>No main karyakartas added yet</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+
+                <Popover open={openSubSearch} onOpenChange={setOpenSubSearch}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openSubSearch}
+                      className="w-full justify-between h-14 text-base rounded-xl font-normal"
+                      disabled={!selectedParentId || selectedParentId === 'none'}
+                    >
+                      <span className="truncate">
+                        {selectedSubStudent ? selectedSubStudent.name : "Search Yuvak..."}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] sm:w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search student by name..." />
+                      <CommandList>
+                        <CommandEmpty>No student found.</CommandEmpty>
+                        <CommandGroup>
+                          {students.map((student) => (
+                            <CommandItem
                               key={student.id}
-                              className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-white"
+                              value={student.name}
+                              onSelect={() => {
+                                setSelectedSubStudent(student);
+                                setOpenSubSearch(false);
+                              }}
+                              className="cursor-pointer py-3"
                             >
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                              <div className="flex items-center gap-3 w-full">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
                                   {student.name.charAt(0)}
                                 </div>
-                                <div>
-                                  <p className="font-bold text-foreground">{student.name}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {student.roomNo ? `Room: ${student.roomNo}` : 'No Room'} • {student.mobile || 'No Mobile'}
-                                  </p>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-medium text-base truncate">{student.name}</span>
+                                  <span className="text-xs text-muted-foreground truncate">Room: {student.roomNo || 'N/A'}</span>
                                 </div>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => selectedKaryakartaId && toggleStudentAssignment(selectedKaryakartaId, student.id)}
-                                className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 px-3 rounded-lg"
-                              >
-                                Remove
-                              </Button>
-                            </div>
+                            </CommandItem>
                           ))}
-                        {selectedKaryakarta?.studentIds.length === 0 && (
-                          <div className="text-center py-10 text-muted-foreground text-sm italic">
-                            No students assigned yet.
-                          </div>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </div>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                <Button onClick={handleAddSub} className="w-full h-14 rounded-xl text-md font-bold gap-2" variant="secondary" disabled={!selectedParentId || selectedParentId === 'none'}>
+                  <Plus className="w-5 h-5" />
+                  Add Sub-Karyakarta
+                </Button>
               </div>
 
             </div>
+
+            {/* Display Hierarchy Below */}
+            {mainKaryakartas.length > 0 && (
+              <div className="space-y-6">
+                <h3 className="font-bold text-2xl text-foreground mt-8 mb-4 border-b pb-2">Karyakartas</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {mainKaryakartas.map((main) => {
+                    const subs = karyakartas.filter(k => k.parentId === main.id);
+
+                    return (
+                      <div key={main.id} className="bg-white rounded-3xl shadow-sm border border-border/50 overflow-hidden relative group/main">
+                        {/* Main Karyakarta Header */}
+                        <div className="p-6 bg-gray-50/50 flex items-center justify-between border-b border-border/50">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                              <UserCircle2 className="w-7 h-7" />
+                            </div>
+                            <div>
+                              <h4 className="text-xl font-bold text-foreground">{main.name}</h4>
+                              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mt-1">Main Karyakarta</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-white hover:text-primary" onClick={(e) => openEdit(main, e)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-red-50 hover:text-destructive" onClick={(e) => handleDelete(main.id, e)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Sub Karyakartas List */}
+                        <div className="p-0">
+                          {subs.length === 0 ? (
+                            <div className="p-6 text-center text-sm text-muted-foreground italic">
+                              No Sub-Karyakartas assigned yet.
+                            </div>
+                          ) : (
+                            <div className="divide-y divide-border/50">
+                              {subs.map(sub => (
+                                <div key={sub.id} className="p-4 pl-8 flex items-center justify-between hover:bg-gray-50 transition-colors group/sub">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-2 h-2 rounded-full bg-primary/40" />
+                                    <div>
+                                      <h5 className="font-bold text-foreground">{sub.name}</h5>
+                                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Sub Karyakarta</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-primary" onClick={(e) => openEdit(sub, e)}>
+                                      <Edit className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive hover:bg-red-50" onClick={(e) => handleDelete(sub.id, e)}>
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {mainKaryakartas.length === 0 && (
+              <div className="py-12 text-center text-muted-foreground border-2 border-dashed border-border/50 rounded-3xl mt-10">
+                <p>No Karyakartas added yet.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Edit Dialog */}
+        <Dialog open={!!editingKaryakarta} onOpenChange={(open) => !open && setEditingKaryakarta(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Name</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Name</label>
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Karyakarta Name"
+                  className="h-12 rounded-xl"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingKaryakarta(null)} className="rounded-xl h-12">Cancel</Button>
+              <Button onClick={handleSaveEdit} className="rounded-xl h-12">Save Changes</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -506,5 +439,3 @@ const Categories = () => {
 };
 
 export default Categories;
-
-

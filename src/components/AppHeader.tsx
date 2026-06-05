@@ -27,7 +27,7 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
     { path: '/birthdays', label: 'Birthdays', icon: Cake },
     { path: '/update', label: 'Update', icon: RefreshCw },
     { path: '/tasks', label: 'Tasks', icon: CheckSquare },
-    { path: '/categories', label: 'Categories', icon: Users },
+    { path: '/categories', label: 'Karyakartas', icon: Users },
     { path: '/education', label: 'Education', icon: BookOpen },
     { path: '/whatsapp', label: 'Message', icon: MessageCircle },
   ];
