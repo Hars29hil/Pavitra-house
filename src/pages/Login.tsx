@@ -25,7 +25,7 @@ const Login = () => {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    const success = login(email, password);
+    const success = await login(email, password);
 
     if (success) {
       navigate('/dashboard');

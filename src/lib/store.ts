@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import api, { API_BASE_URL } from '@/lib/api';
 import { Student, Task } from '@/types';
 
 // --- Types ---
@@ -43,6 +43,29 @@ const formatDateForDb = (dateStr: string | undefined | null) => {
 };
 
 
+const resolveProfileImageUrl = (url: string | null | undefined): string => {
+    if (!url) return '';
+    
+    // If it's a relative path, prefix it with the API base URL
+    if (url.startsWith('/api/uploads/') || url.startsWith('api/uploads/')) {
+        const cleanPath = url.startsWith('/') ? url : '/' + url;
+        return `${API_BASE_URL}${cleanPath}`;
+    }
+    
+    // If it's an absolute URL pointing to localhost, redirect it to the production API URL
+    if (url.includes('localhost:') && (url.includes('/api/uploads/') || url.includes('/uploads/'))) {
+        const pathStart = url.indexOf('/api/uploads/');
+        if (pathStart !== -1) {
+            return `${API_BASE_URL}${url.substring(pathStart)}`;
+        }
+        const uploadsStart = url.indexOf('/uploads/');
+        if (uploadsStart !== -1) {
+            return `${API_BASE_URL}/api${url.substring(uploadsStart)}`;
+        }
+    }
+    return url;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fromDbStudent = (db: any): Student => ({
     id: db.id,
@@ -58,7 +81,7 @@ const fromDbStudent = (db: any): Student => ({
     interest: db.interest,
     isAlumni: db.is_alumni,
     createdAt: db.created_at,
-    profileImage: db.profile_image,
+    profileImage: resolveProfileImageUrl(db.profile_image),
     job: db.job,
     college: db.college,
     linkedin: db.linkedin,
@@ -144,16 +167,8 @@ const toDbCategory = (cat: Partial<Karyakarta>) => {
 
 export const getStudents = async (): Promise<Student[]> => {
     try {
-        const { data, error } = await supabase
-            .from('students')
-            .select('*');
-
-        if (error) {
-            console.error('Error fetching students:', error);
-            return [];
-        }
-
-        return (data || []).map(fromDbStudent);
+        const res = await api.get<any[]>('/api/students');
+        return (res.data || []).map(fromDbStudent);
     } catch (error) {
         console.error('Unexpected error fetching students:', error);
         return [];
@@ -163,14 +178,8 @@ export const getStudents = async (): Promise<Student[]> => {
 export const addStudent = async (student: Omit<Student, 'id' | 'createdAt'>) => {
     try {
         const dbPayload = toDbStudent(student);
-        const { data, error } = await supabase
-            .from('students')
-            .insert([dbPayload])
-            .select()
-            .single();
-
-        if (error) throw error;
-        return fromDbStudent(data);
+        const res = await api.post<any>('/api/students', dbPayload);
+        return fromDbStudent(res.data);
     } catch (error) {
         console.error('Error adding student:', error);
         throw error;
@@ -180,15 +189,8 @@ export const addStudent = async (student: Omit<Student, 'id' | 'createdAt'>) => 
 export const updateStudent = async (id: string, updates: Partial<Student>) => {
     try {
         const dbPayload = toDbStudent(updates);
-        const { data, error } = await supabase
-            .from('students')
-            .update(dbPayload)
-            .eq('id', id)
-            .select()
-            .single();
-
-        if (error) throw error;
-        return fromDbStudent(data);
+        const res = await api.put<any>(`/api/students/${id}`, dbPayload);
+        return fromDbStudent(res.data);
     } catch (error) {
         console.error('Error updating student:', error);
         throw error;
@@ -197,12 +199,7 @@ export const updateStudent = async (id: string, updates: Partial<Student>) => {
 
 export const deleteStudent = async (id: string) => {
     try {
-        const { error } = await supabase
-            .from('students')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
+        await api.delete(`/api/students/${id}`);
         return true;
     } catch (error) {
         console.error('Error deleting student:', error);
@@ -213,13 +210,8 @@ export const deleteStudent = async (id: string) => {
 export const upsertStudents = async (students: Student[]) => {
     try {
         const dbPayloads = students.map(toDbStudent);
-        const { data, error } = await supabase
-            .from('students')
-            .upsert(dbPayloads)
-            .select();
-
-        if (error) throw error;
-        return (data || []).map(fromDbStudent);
+        const res = await api.post<any[]>('/api/students/upsert', dbPayloads);
+        return (res.data || []).map(fromDbStudent);
     } catch (error) {
         console.error('Error upserting students:', error);
         throw error;
@@ -230,9 +222,8 @@ export const upsertStudents = async (students: Student[]) => {
 
 export const getTasks = async (): Promise<Task[]> => {
     try {
-        const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
-        return (data || []).map(fromDbTask);
+        const res = await api.get<any[]>('/api/tasks');
+        return (res.data || []).map(fromDbTask);
     } catch (error) {
         console.error('Error fetching tasks:', error);
         return [];
@@ -242,9 +233,8 @@ export const getTasks = async (): Promise<Task[]> => {
 export const addTask = async (task: Task) => {
     try {
         const dbPayload = toDbTask(task);
-        const { data, error } = await supabase.from('tasks').insert([dbPayload]).select().single();
-        if (error) throw error;
-        return fromDbTask(data);
+        const res = await api.post<any>('/api/tasks', dbPayload);
+        return fromDbTask(res.data);
     } catch (error) {
         console.error('Error adding task:', error);
         throw error;
@@ -254,9 +244,8 @@ export const addTask = async (task: Task) => {
 export const updateTask = async (id: string, updates: Partial<Task>) => {
     try {
         const dbPayload = toDbTask(updates);
-        const { data, error } = await supabase.from('tasks').update(dbPayload).eq('id', id).select().single();
-        if (error) throw error;
-        return fromDbTask(data);
+        const res = await api.put<any>(`/api/tasks/${id}`, dbPayload);
+        return fromDbTask(res.data);
     } catch (error) {
         console.error('Error updating task:', error);
         throw error;
@@ -265,8 +254,7 @@ export const updateTask = async (id: string, updates: Partial<Task>) => {
 
 export const deleteTask = async (id: string) => {
     try {
-        const { error } = await supabase.from('tasks').delete().eq('id', id);
-        if (error) throw error;
+        await api.delete(`/api/tasks/${id}`);
         return true;
     } catch (error) {
         console.error('Error deleting task:', error);
@@ -278,13 +266,8 @@ export const deleteTask = async (id: string) => {
 
 export const getCategories = async (): Promise<Karyakarta[]> => {
     try {
-        const { data, error } = await supabase.from('categories').select('*');
-        if (error) {
-            // It might be possible the table doesn't exist yet, return empty to prevent crash
-            console.warn('Error fetching categories (might check table exists):', error);
-            return [];
-        }
-        return (data || []).map(fromDbCategory);
+        const res = await api.get<any[]>('/api/categories');
+        return (res.data || []).map(fromDbCategory);
     } catch (error) {
         console.error('Unexpected error fetching categories:', error);
         return [];
@@ -294,9 +277,8 @@ export const getCategories = async (): Promise<Karyakarta[]> => {
 export const addCategory = async (cat: Karyakarta) => {
     try {
         const dbPayload = toDbCategory(cat);
-        const { data, error } = await supabase.from('categories').insert([dbPayload]).select().single();
-        if (error) throw error;
-        return fromDbCategory(data);
+        const res = await api.post<any>('/api/categories', dbPayload);
+        return fromDbCategory(res.data);
     } catch (error) {
         console.error('Error adding category:', error);
         throw error;
@@ -306,9 +288,8 @@ export const addCategory = async (cat: Karyakarta) => {
 export const updateCategory = async (id: string, updates: Partial<Karyakarta>) => {
     try {
         const dbPayload = toDbCategory(updates);
-        const { data, error } = await supabase.from('categories').update(dbPayload).eq('id', id).select().single();
-        if (error) throw error;
-        return fromDbCategory(data);
+        const res = await api.put<any>(`/api/categories/${id}`, dbPayload);
+        return fromDbCategory(res.data);
     } catch (error) {
         console.error('Error updating category:', error);
         throw error;
@@ -317,8 +298,7 @@ export const updateCategory = async (id: string, updates: Partial<Karyakarta>) =
 
 export const deleteCategory = async (id: string) => {
     try {
-        const { error } = await supabase.from('categories').delete().eq('id', id);
-        if (error) throw error;
+        await api.delete(`/api/categories/${id}`);
         return true;
     } catch (error) {
         console.error('Error deleting category:', error);
@@ -329,13 +309,8 @@ export const deleteCategory = async (id: string) => {
 // Education Resources
 export const getEducationResources = async () => {
     try {
-        const { data, error } = await supabase
-            .from('education_resources')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        return data as EducationResource[];
+        const res = await api.get<EducationResource[]>('/api/education_resources');
+        return res.data || [];
     } catch (error) {
         console.error('Error fetching resources:', error);
         return [];
@@ -344,14 +319,8 @@ export const getEducationResources = async () => {
 
 export const addEducationResource = async (resource: Omit<EducationResource, 'id' | 'created_at'>) => {
     try {
-        const { data, error } = await supabase
-            .from('education_resources')
-            .insert([resource])
-            .select()
-            .single();
-
-        if (error) throw error;
-        return data as EducationResource;
+        const res = await api.post<EducationResource>('/api/education_resources', resource);
+        return res.data;
     } catch (error) {
         console.error('Error adding resource:', error);
         throw error;
@@ -360,12 +329,7 @@ export const addEducationResource = async (resource: Omit<EducationResource, 'id
 
 export const deleteEducationResource = async (id: string) => {
     try {
-        const { error } = await supabase
-            .from('education_resources')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
+        await api.delete(`/api/education_resources/${id}`);
         return true;
     } catch (error) {
         console.error('Error deleting resource:', error);
@@ -410,19 +374,11 @@ const toDbResult = (result: Partial<StudentResult>) => {
     return db;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const getStudentResults = async (studentId: string): Promise<StudentResult[]> => {
     try {
-        const { data, error } = await supabase
-            .from('student_results')
-            .select('*')
-            .eq('student_id', studentId)
-            .order('created_at', { ascending: false }); // Latest first
-
-        if (error) {
-            console.warn('Error fetching results (check table):', error);
-            return [];
-        }
-        return (data || []).map(fromDbResult);
+        const res = await api.get<any[]>(`/api/student_results?student_id=${studentId}`);
+        return (res.data || []).map(fromDbResult);
     } catch (error) {
         console.error('Unexpected error fetching results:', error);
         return [];
@@ -432,14 +388,8 @@ export const getStudentResults = async (studentId: string): Promise<StudentResul
 export const addStudentResult = async (result: Omit<StudentResult, 'id' | 'createdAt'>) => {
     try {
         const dbPayload = toDbResult(result);
-        const { data, error } = await supabase
-            .from('student_results')
-            .insert([dbPayload])
-            .select()
-            .single();
-
-        if (error) throw error;
-        return fromDbResult(data);
+        const res = await api.post<any>('/api/student_results', dbPayload);
+        return fromDbResult(res.data);
     } catch (error) {
         console.error('Error adding result:', error);
         throw error;
@@ -448,8 +398,7 @@ export const addStudentResult = async (result: Omit<StudentResult, 'id' | 'creat
 
 export const deleteStudentResult = async (id: string) => {
     try {
-        const { error } = await supabase.from('student_results').delete().eq('id', id);
-        if (error) throw error;
+        await api.delete(`/api/student_results/${id}`);
         return true;
     } catch (error) {
         console.error('Error deleting result:', error);
@@ -458,22 +407,23 @@ export const deleteStudentResult = async (id: string) => {
 };
 
 // Settings
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const getSetting = async (key: string) => {
-    const { data, error } = await supabase
-        .from('settings')
-        .select('value')
-        .eq('key', key);
-
-    if (error || !data || data.length === 0) return null;
-    return data[0]?.value;
+    try {
+        const res = await api.get<any>(`/api/settings?key=${key}`);
+        return res.data && res.data.success ? res.data.value : null;
+    } catch (error) {
+        console.error('Error getting setting:', error);
+        return null;
+    }
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const updateSetting = async (key: string, value: any) => {
-    const { error } = await supabase
-        .from('settings')
-        .upsert({ key, value });
-
-    if (error) throw error;
+    try {
+        await api.post('/api/settings', { key, value });
+    } catch (error) {
+        console.error('Error updating setting:', error);
+        throw error;
+    }
 };
+

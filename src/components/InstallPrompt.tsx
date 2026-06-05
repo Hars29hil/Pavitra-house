@@ -21,6 +21,18 @@ export const InstallPrompt = () => {
             e.preventDefault();
             // Stash the event so it can be triggered later.
             setDeferredPrompt(e);
+            
+            // Check if dismissed recently
+            const dismissedAt = localStorage.getItem('pwa_install_prompt_dismissed_at');
+            if (dismissedAt) {
+                const dismissedTime = parseInt(dismissedAt, 10);
+                const fiveDaysInMs = 5 * 24 * 60 * 60 * 1000; // 5 days interval
+                if (Date.now() - dismissedTime < fiveDaysInMs) {
+                    // Dismissed less than 5 days ago, do not prompt
+                    return;
+                }
+            }
+
             // Update UI notify the user they can install the PWA
             setIsOpen(true);
         };
@@ -43,19 +55,21 @@ export const InstallPrompt = () => {
 
         if (outcome === 'accepted') {
             toast.success("Thank you for installing!");
+            localStorage.removeItem('pwa_install_prompt_dismissed_at'); // Clean up on success
             setDeferredPrompt(null);
             setIsOpen(false);
         }
     };
 
     const handleDismiss = () => {
+        localStorage.setItem('pwa_install_prompt_dismissed_at', Date.now().toString());
         setIsOpen(false);
     };
 
     if (!isOpen) return null;
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && setIsOpen(false)}>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && handleDismiss()}>
             <DialogContent className="sm:max-w-md w-[90vw] rounded-3xl border-0 shadow-2xl bg-white/95 backdrop-blur-xl p-0 overflow-hidden">
                 <div className="relative p-6 pt-12 flex flex-col items-center text-center">
                     {/* Close button absolute top right */}

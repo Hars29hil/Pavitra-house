@@ -452,79 +452,22 @@ export default function Whatsapp() {
                 {/* Right Column: Connection & Message */}
                 <div className="space-y-6">
                     {/* Connection Status Card */}
-                    <div className="p-6 glass-card rounded-3xl shadow-soft border-white/40">
+                    <div className="p-6 glass-card rounded-3xl shadow-soft border-white/40 bg-gradient-to-br from-amber-500/5 to-orange-500/5">
                         <h3 className="font-bold text-lg mb-4">Connection Status</h3>
-                        {loading ? (
-                            <div className="flex items-center gap-2 text-primary">
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                <span>Processing...</span>
+                        <div className="flex flex-col items-center justify-center text-center p-6 bg-white/40 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm space-y-4">
+                            <div className="w-12 h-12 bg-amber-500/10 text-amber-600 rounded-full flex items-center justify-center animate-pulse">
+                                <Users className="w-6 h-6" />
                             </div>
-                        ) : connected ? (
-                            <div className="space-y-4">
-                                <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-600 font-bold">
-                                    <CheckCircle2 className="w-6 h-6" />
-                                    <span>System Online & Ready</span>
-                                </div>
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="w-full text-destructive border-destructive/20 hover:bg-destructive/10"
-                                    onClick={handleLogout}
-                                >
-                                    Logout / Disconnect
-                                </Button>
+                            <div className="space-y-1">
+                                <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-bold border-none px-3 py-1">
+                                    Coming Soon
+                                </Badge>
+                                <h4 className="font-bold text-slate-800 text-base mt-2">WhatsApp Notification Center</h4>
+                                <p className="text-xs text-slate-500 max-w-xs leading-relaxed mx-auto">
+                                    Automated check-ins, announcement notifications, and birthday greetings are being transitioned to a new high-speed delivery node.
+                                </p>
                             </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-600 font-medium text-sm text-center">
-                                    Scan QR Code to Connect
-                                </div>
-                                {qr ? (
-                                    <div className="space-y-4">
-                                        <img src={qr} alt="QR Code" className="w-48 h-48 mx-auto object-contain rounded-xl border-4 border-white shadow-md bg-white" />
-                                        <div className="flex flex-col gap-2 w-full">
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                className="w-full"
-                                                onClick={handleReconnect}
-                                            >
-                                                Refresh QR / Reconnect
-                                            </Button>
-                                            <button 
-                                                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors underline"
-                                                onClick={handleResetSession}
-                                            >
-                                                Stuck? Hard Reset Session
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4 text-center">
-                                        <div className="w-48 h-48 mx-auto flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
-                                            <Loader2 className="w-8 h-8 animate-spin text-slate-400 mb-2" />
-                                            <span className="text-xs text-slate-400">Loading QR...</span>
-                                        </div>
-                                        <div className="flex flex-col gap-2 w-full">
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                className="w-full"
-                                                onClick={handleReconnect}
-                                            >
-                                                Force Re-initialize
-                                            </Button>
-                                            <button 
-                                                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors underline"
-                                                onClick={handleResetSession}
-                                            >
-                                                Still stuck? Reset Session
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        </div>
                     </div>
 
                     {/* Group Settings Card */}
@@ -618,7 +561,7 @@ export default function Whatsapp() {
                             </Button>
                         </div>
                         {!connected && (
-                            <p className="text-xs text-center text-destructive">Connect WhatsApp to send messages</p>
+                            <p className="text-xs text-center text-amber-600 font-medium">WhatsApp notification feature is coming soon!</p>
                         )}
                     </div>
                 </div>
