@@ -1,0 +1,42 @@
+RewriteEngine On
+
+# Ensure CORS Preflight is handled correctly
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ - [R=200,L]
+
+# Serve uploaded static files directly under /api/uploads
+RewriteRule ^api/uploads/(.*)$ uploads/$1 [L]
+
+# API Route Rewrites
+RewriteRule ^api/students$ api/students.php [L,QSA]
+RewriteRule ^api/students/social-info$ api/students.php?action=social-info [L,QSA]
+RewriteRule ^api/students-social$ api/students.php?action=social-info [L,QSA]
+RewriteRule ^api/students/upsert$ api/students.php?action=upsert [L,QSA]
+RewriteRule ^api/students/([^/]+)$ api/students.php?id=$1 [L,QSA]
+
+RewriteRule ^api/student_results$ api/student_results.php [L,QSA]
+RewriteRule ^api/student_results/([^/]+)$ api/student_results.php?id=$1 [L,QSA]
+
+RewriteRule ^api/categories$ api/categories.php [L,QSA]
+RewriteRule ^api/categories/([^/]+)$ api/categories.php?id=$1 [L,QSA]
+
+RewriteRule ^api/tasks$ api/tasks.php [L,QSA]
+RewriteRule ^api/tasks/([^/]+)$ api/tasks.php?id=$1 [L,QSA]
+
+RewriteRule ^api/education_resources$ api/education_resources.php [L,QSA]
+RewriteRule ^api/education_resources/([^/]+)$ api/education_resources.php?id=$1 [L,QSA]
+
+RewriteRule ^api/settings$ api/settings.php [L,QSA]
+RewriteRule ^api/login$ api/login.php [L,QSA]
+RewriteRule ^api/upload$ api/upload.php [L,QSA]
+RewriteRule ^api/upload-by-mobile$ api/upload-by-mobile.php [L,QSA]
+
+# WhatsApp Route Rewrites
+RewriteRule ^api/send$ api/send.php [L,QSA]
+RewriteRule ^api/send-group$ api/send-group.php [L,QSA]
+RewriteRule ^api/status$ api/status.php [L,QSA]
+RewriteRule ^api/get-qr$ api/get-qr.php [L,QSA]
+RewriteRule ^api/qr-image$ api/qr-image.php [L,QSA]
+RewriteRule ^api/reset-session$ api/reset-session.php [L,QSA]
+RewriteRule ^api/logout$ api/logout.php [L,QSA]
+RewriteRule ^api/reconnect$ api/reconnect.php [L,QSA]

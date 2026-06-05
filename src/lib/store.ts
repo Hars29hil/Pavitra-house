@@ -175,6 +175,19 @@ export const getStudents = async (): Promise<Student[]> => {
     }
 };
 
+export const getStudentByMobile = async (mobile: string): Promise<Student | null> => {
+    try {
+        const res = await api.get<any>(`/api/students?mobile=${mobile}`);
+        if (res.data && !res.data.error) {
+            return fromDbStudent(res.data);
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching student by mobile:', error);
+        return null;
+    }
+};
+
 export const addStudent = async (student: Omit<Student, 'id' | 'createdAt'>) => {
     try {
         const dbPayload = toDbStudent(student);

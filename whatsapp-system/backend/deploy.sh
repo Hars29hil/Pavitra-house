@@ -1,53 +1,88 @@
 #!/bin/bash
 
-set -e
+# ==========================================
+# Deployment Script for Laravel (SFTP/SSH)
+# ==========================================
 
-echo "🚀 Starting fast deployment..."
+USER="u914595671"
+PASS="DasnaDas@1723"
+HOST="145.79.210.77"
+PORT="65002"
 
-SERVER_USER="u914595671"
-SERVER_IP="145.79.210.77"
-SERVER_PORT="65002"
-SERVER_PASS='Semcom$2026'
-REMOTE_DIR="domains/mediumspringgreen-elk-765003.hostingersite.com/nodejs"
-    
-echo "📦 Creating compressed build..."
+# IMPORTANT: Set your remote directory path!
+# If your FTP account opens directly into your public_html, keep it as "./"
+# If your FTP account opens at the root of your hosting, it might be "domains/semcomattendent.com/public_html/"
+REMOTE_DIR="./domains/lightgoldenrodyellow-stingray-297524.hostingersite.com/public_html/"
 
-tar --exclude='node_modules' \
-    --exclude='.git' \
-    --exclude='logs' \
-    --exclude='wa_sessions' \
-    --exclude='database' \
-    --exclude='deploy.sh' \
-    --exclude='deploy.tar.gz' \
-    -czf deploy.tar.gz .
+# Folders to sync
+FOLDERS=("api")
 
-echo "📂 Uploading (fast)..."
+echo "Starting deployment to $HOST on port $PORT..."
+echo "Target remote directory: $REMOTE_DIR"
+echo "------------------------------------------------"
 
-sshpass -p "$SERVER_PASS" scp -P $SERVER_PORT deploy.tar.gz \
-$SERVER_USER@$SERVER_IP:$REMOTE_DIR
+export SSHPASS="$PASS"
 
-echo "📤 Extracting on server..."
+for DIR in "${FOLDERS[@]}"; do
+    if [ -d "./$DIR" ]; then
+        echo "Syncing local ./$DIR/ to remote $REMOTE_DIR$DIR/"
+        sshpass -e rsync -avz -e "ssh -p $PORT -o StrictHostKeyChecking=no" "./$DIR/" "$USER@$HOST:$REMOTE_DIR$DIR/"
+        
+        if [ $? -eq 0 ]; then
+            echo "[SUCCESS] $DIR synced successfully!"
+        else
+            echo "[ERROR] Failed to sync $DIR. Please check your credentials or remote path."
+        fi
+    else
+        echo "[WARNING] Local folder ./$DIR/ does not exist. Skipping..."
+    fi
+    echo "------------------------------------------------"
+done
 
-sshpass -p "$SERVER_PASS" ssh -p $SERVER_PORT $SERVER_USER@$SERVER_IP "
-cd $REMOTE_DIR &&
-tar -xzf deploy.tar.gz &&
-rm deploy.tar.gz
-"
+# Sync .htaccess rewrite rules
+if [ -f "./.htaccess" ]; then
+    echo "Syncing local .htaccess to remote $REMOTE_DIR.htaccess"
+    sshpass -e rsync -avz -e "ssh -p $PORT -o StrictHostKeyChecking=no" "./.htaccess" "$USER@$HOST:$REMOTE_DIR.htaccess"
+    if [ $? -eq 0 ]; then
+        echo "[SUCCESS] .htaccess synced successfully!"
+    else
+        echo "[ERROR] Failed to sync .htaccess."
+    fi
+    echo "------------------------------------------------"
+fi
 
-echo "📦 Installing dependencies..."
+# Sync .env configuration file
+if [ -f "./.env" ]; then
+    echo "Syncing local .env to remote $REMOTE_DIR.env"
+    sshpass -e rsync -avz -e "ssh -p $PORT -o StrictHostKeyChecking=no" "./.env" "$USER@$HOST:$REMOTE_DIR.env"
+    if [ $? -eq 0 ]; then
+        echo "[SUCCESS] .env synced successfully!"
+    else
+        echo "[ERROR] Failed to sync .env."
+    fi
+    echo "------------------------------------------------"
+fi
 
-sshpass -p "$SERVER_PASS" ssh -p $SERVER_PORT $SERVER_USER@$SERVER_IP "
-cd $REMOTE_DIR &&
-export PATH=/opt/alt/alt-nodejs20/root/usr/bin:\$PATH &&
-npm install --omit=dev
-"
+# Sync index.php status page
+if [ -f "./index.php" ]; then
+    echo "Syncing local index.php to remote ${REMOTE_DIR}index.php"
+    sshpass -e rsync -avz -e "ssh -p $PORT -o StrictHostKeyChecking=no" "./index.php" "$USER@$HOST:${REMOTE_DIR}index.php"
+    if [ $? -eq 0 ]; then
+        echo "[SUCCESS] index.php synced successfully!"
+    else
+        echo "[ERROR] Failed to sync index.php."
+    fi
+    echo "------------------------------------------------"
+fi
 
-echo "🔄 Restarting app..."
+echo "Cleaning up default Hostinger placeholder files..."
+# Remove default.php, default.html, or other hosting-start welcome pages Hostinger creates
+sshpass -e ssh -p $PORT -o StrictHostKeyChecking=no "$USER@$HOST" "rm -f ${REMOTE_DIR}default.php ${REMOTE_DIR}default.html ${REMOTE_DIR}hosting-start.html"
+if [ $? -eq 0 ]; then
+    echo "[SUCCESS] Hostinger default pages removed successfully!"
+else
+    echo "[WARNING] Could not remove default pages. They might not exist."
+fi
+echo "------------------------------------------------"
 
-sshpass -p "$SERVER_PASS" ssh -p $SERVER_PORT $SERVER_USER@$SERVER_IP \
-"mkdir -p $REMOTE_DIR/tmp && touch $REMOTE_DIR/tmp/restart.txt"
-
-echo "🧹 Cleaning local file..."
-rm deploy.tar.gz
-
-echo "✅ FAST Deployment complete 🚀"
+echo "Deployment finished!"

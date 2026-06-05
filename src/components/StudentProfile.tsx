@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Mail, Calendar, BookOpen, GraduationCap, Heart, Edit, UserMinus, User, Hash, Award, UserCheck, Briefcase, School, Linkedin, Globe } from 'lucide-react';
+import { Phone, Mail, Calendar, BookOpen, GraduationCap, Heart, Edit, UserMinus, User, Hash, Award, UserCheck, Briefcase, School, Linkedin, Globe, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Student } from '@/types';
 import { updateStudent } from '@/lib/store';
@@ -16,6 +16,24 @@ interface StudentProfileProps {
 export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = false }: StudentProfileProps) => {
     const navigate = useNavigate();
     const { toast } = useToast();
+
+    const handleCopyUrl = () => {
+        if (!student.mobile) {
+            toast({
+                title: 'No Mobile Number',
+                description: 'Student does not have a mobile number saved.',
+                variant: 'destructive',
+            });
+            return;
+        }
+        const url = `https://${student.mobile}.pavitra-house.vercel.app`;
+        navigator.clipboard.writeText(url);
+        toast({
+            title: 'URL Copied',
+            description: 'The student form URL has been copied to your clipboard.',
+            duration: 3000,
+        });
+    };
 
     const handleMoveToAlumni = async () => {
         try {
@@ -129,6 +147,16 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
         <div className="space-y-6">
             {/* Profile Card */}
             <div className={`bg-white border border-border/50 rounded-3xl shadow-soft text-center relative overflow-hidden ${isCompact ? 'p-4 sm:p-6' : 'p-6 sm:p-8'}`}>
+                {/* Copy URL Button */}
+                <button 
+                    onClick={handleCopyUrl}
+                    className="absolute top-4 right-4 p-2.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 group"
+                    title="Copy Form URL"
+                >
+                    <Copy className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider hidden sm:block">Copy Link</span>
+                </button>
+
                 <div className={`${isCompact ? 'w-24 h-24 mb-4' : 'w-32 h-32 mb-6'} mx-auto rounded-3xl overflow-hidden shadow-soft-lg bg-muted/20 border-4 border-white`}>
                     {student.profileImage ? (
                         <img src={student.profileImage} alt={student.name} className="w-full h-full object-cover" />
