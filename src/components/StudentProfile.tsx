@@ -26,7 +26,9 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
             });
             return;
         }
-        const url = `https://${student.mobile}.pavitra-house.vercel.app`;
+        // Use path-based URL instead of subdomain
+        const baseUrl = window.location.origin;
+        const url = `${baseUrl}/self-update/${student.mobile.trim()}`;
         navigator.clipboard.writeText(url);
         toast({
             title: 'URL Copied',

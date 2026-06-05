@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { Save, User, Loader2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,11 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { getStudentByMobile, updateStudent } from '@/lib/store';
 import { uploadToImgBB } from '@/lib/imgbb';
 
-interface StudentSelfUpdateProps {
-  mobile: string;
-}
-
-const StudentSelfUpdate = ({ mobile }: StudentSelfUpdateProps) => {
+const StudentSelfUpdate = () => {
+  const { mobile } = useParams<{ mobile: string }>();
   const { toast } = useToast();
   const [studentId, setStudentId] = useState<string | null>(null);
   

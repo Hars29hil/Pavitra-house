@@ -177,9 +177,14 @@ export const getStudents = async (): Promise<Student[]> => {
 
 export const getStudentByMobile = async (mobile: string): Promise<Student | null> => {
     try {
-        const res = await api.get<any>(`/api/students?mobile=${mobile}`);
-        if (res.data && !res.data.error) {
-            return fromDbStudent(res.data);
+        // Fallback: Fetch all students and filter locally since the Hostinger backend
+        // might not have the updated `students.php` with the mobile filter yet.
+        const res = await api.get<any[]>('/api/students');
+        if (res.data && Array.isArray(res.data)) {
+            const allStudents = res.data.map(fromDbStudent);
+            // Trim the mobile numbers because some database entries have leading spaces (e.g., " 9725714912")
+            const student = allStudents.find(s => s.mobile?.trim() === mobile.trim());
+            return student || null;
         }
         return null;
     } catch (error) {

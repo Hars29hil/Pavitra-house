@@ -28,6 +28,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
+import StudentSelfUpdate from "./pages/StudentSelfUpdate";
+
 // Layout component to wrap Auth and Global context components
 const AuthLayout = () => {
   return (
@@ -44,6 +46,7 @@ const router = createBrowserRouter(
     <Route element={<AuthLayout />}>
       {/* Public Routes - Wrapped in AuthLayout to access auth context for redirecting if already logged in */}
       <Route path="/login" element={<LoginWrapper />} />
+      <Route path="/self-update/:mobile" element={<StudentSelfUpdate />} />
       <Route path="/" element={<RootRedirect />} />
 
       {/* Protected Routes */}
