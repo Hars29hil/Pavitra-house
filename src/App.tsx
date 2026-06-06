@@ -24,8 +24,31 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  const { isAuthenticated, adminRole, logout } = useAuth();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (adminRole !== 'admin') {
+    // Show a blank/placeholder page for Karyakartas for now
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+        <h1 className="text-2xl font-bold text-foreground">Welcome!</h1>
+        <p className="text-muted-foreground mt-2 max-w-md">
+          You are logged in as a <strong>{adminRole}</strong>. The Karyakarta dashboard features are coming soon!
+        </p>
+        <button 
+          onClick={logout}
+          className="mt-8 px-6 py-2 bg-primary text-primary-foreground rounded-xl font-medium shadow-sm hover:bg-primary/90 transition-colors"
+        >
+          Sign Out
+        </button>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 };
 
 import StudentSelfUpdate from "./pages/StudentSelfUpdate";

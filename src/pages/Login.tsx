@@ -70,7 +70,7 @@ const Login = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@hostel.com"
+                  placeholder="user@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-14 pl-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-2xl transition-all"
@@ -81,7 +81,7 @@ const Login = () => {
 
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-semibold text-foreground/80 ml-1">
-                Password
+                Password / Mobile Number
               </Label>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
@@ -121,8 +121,8 @@ const Login = () => {
           {/* Footer */}
           <div className="mt-10 flex flex-col items-center gap-2">
             <div className="h-px w-12 bg-border/50" />
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">
-              Secure admin access only
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter text-center">
+              Admin & Karyakarta Access
             </p>
           </div>
         </div>

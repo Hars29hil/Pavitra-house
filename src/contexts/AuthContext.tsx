@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import api from '@/lib/api';
+import { getStudents, getCategories } from '@/lib/store';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -23,23 +24,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   });
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      const response = await api.post('/api/login', { email, password });
-      if (response.data && response.data.success) {
-        const admin = response.data.admin;
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('adminName', admin.name);
-        localStorage.setItem('adminRole', admin.role || 'admin');
-        setIsAuthenticated(true);
-        setAdminName(admin.name);
-        setAdminRole(admin.role || 'admin');
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Login request failed:', error);
-      return false;
+    // 1. Hardcoded Admin Check (Overrides Backend)
+    if (email.trim().toLowerCase() === 'admin@pavitra.in' && password === 'Dasnadas') {
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('adminName', 'Admin User');
+      localStorage.setItem('adminRole', 'admin');
+      setIsAuthenticated(true);
+      setAdminName('Admin User');
+      setAdminRole('admin');
+      return true;
     }
+
+    try {
+      // 2. Try Karyakarta / Sub-Karyakarta Login
+      const students = await getStudents();
+      
+      const cleanMobile = (m: string | undefined) => {
+        if (!m) return '';
+        return m.replace(/\D/g, '').slice(-10);
+      };
+
+      const student = students.find(s => 
+        s.email?.trim().toLowerCase() === email.trim().toLowerCase() && 
+        cleanMobile(s.mobile) === cleanMobile(password)
+      );
+
+      if (student) {
+        const categories = await getCategories();
+        // Check if this student is assigned as a Karyakarta
+        const karyakarta = categories.find(k => k.name === student.name);
+
+        if (karyakarta) {
+          const role = karyakarta.type === 'main' ? 'Karyakarta' : 'Sub-Karyakarta';
+          localStorage.setItem('isAuthenticated', 'true');
+          localStorage.setItem('adminName', student.name);
+          localStorage.setItem('adminRole', role);
+          setIsAuthenticated(true);
+          setAdminName(student.name);
+          setAdminRole(role);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error('Karyakarta login check failed:', error);
+    }
+
+    return false;
   };
 
   const logout = () => {

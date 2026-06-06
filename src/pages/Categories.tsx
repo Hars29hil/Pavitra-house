@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Users, Loader2, Plus, UserCircle2, Trash2, Edit } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Users, Loader2, Plus, UserCircle2, Trash2, Edit, ArrowLeft, UserPlus, UserMinus, Check, Filter } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,11 +40,10 @@ const Categories = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [karyakartas, setKaryakartas] = useState<Karyakarta[]>([]);
 
-  // State for Main Karyakarta form
+  // Overview State
   const [selectedMainStudent, setSelectedMainStudent] = useState<Student | null>(null);
   const [openMainSearch, setOpenMainSearch] = useState(false);
 
-  // State for Sub-Karyakarta form
   const [selectedSubStudent, setSelectedSubStudent] = useState<Student | null>(null);
   const [openSubSearch, setOpenSubSearch] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState<string>('');
@@ -52,6 +51,77 @@ const Categories = () => {
   // Edit State
   const [editingKaryakarta, setEditingKaryakarta] = useState<Karyakarta | null>(null);
   const [editName, setEditName] = useState("");
+
+  // Detail View State
+  const [viewMode, setViewMode] = useState<'overview' | 'detail'>('overview');
+  const [selectedKaryakartaForDetail, setSelectedKaryakartaForDetail] = useState<Karyakarta | null>(null);
+  const [selectedStudentsToAdd, setSelectedStudentsToAdd] = useState<Student[]>([]);
+  const [openStudentSearch, setOpenStudentSearch] = useState(false);
+  const [selectedRoomRange, setSelectedRoomRange] = useState<{ label: string, rooms: number[] } | null>(null);
+
+  // Dynamic Room Ranges
+  const generatedRanges = useMemo(() => {
+    const normalRooms = students
+      .map(s => parseInt(s.roomNo || ''))
+      .filter(r => !isNaN(r) && r % 1000 !== 0);
+    const x000Rooms = students
+      .map(s => parseInt(s.roomNo || ''))
+      .filter(r => !isNaN(r) && r % 1000 === 0 && r > 0);
+
+    const rangeMap = new Map<string, number[]>();
+    normalRooms.forEach(r => {
+      const floor = Math.floor(r / 100);
+      const numberOnFloor = r % 100;
+
+      if (numberOnFloor === 0) return;
+
+      const chunkIndex = Math.floor((numberOnFloor - 1) / 9);
+
+      const expectedMin = floor * 100 + (chunkIndex * 9) + 1;
+      const expectedMax = floor * 100 + (chunkIndex * 9) + 9;
+      const label = `${expectedMin}-${expectedMax}`;
+
+      if (!rangeMap.has(label)) {
+        rangeMap.set(label, []);
+      }
+      if (!rangeMap.get(label)!.includes(r)) {
+        rangeMap.get(label)!.push(r);
+      }
+    });
+
+    const ranges = Array.from(rangeMap.entries())
+      .sort(([labelA], [labelB]) => {
+        const minA = parseInt(labelA.split('-')[0]);
+        const minB = parseInt(labelB.split('-')[0]);
+        return minA - minB;
+      })
+      .map(([label, rooms]) => ({ label, rooms }));
+
+    const x000Unique = [...new Set(x000Rooms)].sort((a, b) => a - b);
+    if (x000Unique.length > 0) {
+      ranges.push({
+        label: x000Unique.join(', '),
+        rooms: x000Unique
+      });
+    }
+
+    return ranges;
+  }, [students]);
+
+  const filteredStudentsForSearch = useMemo(() => {
+    return students.filter(student => {
+      if (!selectedRoomRange) return true;
+      const room = parseInt(student.roomNo || '');
+      if (isNaN(room)) return false;
+
+      if (selectedRoomRange.label.includes('-')) {
+        const [min, max] = selectedRoomRange.label.split('-').map(Number);
+        return room >= min && room <= max;
+      } else {
+        return selectedRoomRange.rooms.includes(room);
+      }
+    });
+  }, [students, selectedRoomRange]);
 
   // Fetch Data on mount
   useEffect(() => {
@@ -121,7 +191,6 @@ const Categories = () => {
       if (saved) {
         setKaryakartas([...karyakartas, saved]);
         setSelectedSubStudent(null);
-        // We do NOT clear the selected parent id so they can quickly add multiple subs
         toast.success(`${selectedSubStudent.name} added as Sub-Karyakarta!`);
       }
     } catch (error) {
@@ -141,7 +210,6 @@ const Categories = () => {
 
     try {
       await deleteCategory(id);
-      // Delete the karyakarta and any of its subs
       setKaryakartas(karyakartas.filter(k => k.id !== id && k.parentId !== id));
       toast.success('Karyakarta deleted successfully');
     } catch (error) {
@@ -161,11 +229,74 @@ const Categories = () => {
     try {
       await updateCategory(editingKaryakarta.id, { name: editName });
       setKaryakartas(karyakartas.map(k => k.id === editingKaryakarta.id ? { ...k, name: editName } : k));
+
+      if (selectedKaryakartaForDetail?.id === editingKaryakarta.id) {
+        setSelectedKaryakartaForDetail({ ...selectedKaryakartaForDetail, name: editName });
+      }
+
       setEditingKaryakarta(null);
       toast.success('Karyakarta updated successfully');
     } catch (error) {
       toast.error('Failed to update Karyakarta');
     }
+  };
+
+  // Assigning students to a Karyakarta
+  const handleAssignStudent = async () => {
+    if (!selectedKaryakartaForDetail) return;
+
+    const studentsToAdd = selectedRoomRange ? filteredStudentsForSearch : selectedStudentsToAdd;
+    if (studentsToAdd.length === 0) return;
+
+    const updatedStudentIds = [...(selectedKaryakartaForDetail.studentIds || [])];
+    let addedCount = 0;
+
+    for (const student of studentsToAdd) {
+      if (!updatedStudentIds.includes(student.id)) {
+        updatedStudentIds.push(student.id);
+        addedCount++;
+      }
+    }
+
+    if (addedCount === 0) {
+      toast.error('Selected students are already assigned to this Karyakarta');
+      return;
+    }
+
+    try {
+      await updateCategory(selectedKaryakartaForDetail.id, { studentIds: updatedStudentIds });
+      const updatedKaryakarta = { ...selectedKaryakartaForDetail, studentIds: updatedStudentIds };
+      setKaryakartas(karyakartas.map(k => k.id === updatedKaryakarta.id ? updatedKaryakarta : k));
+      setSelectedKaryakartaForDetail(updatedKaryakarta);
+      setSelectedStudentsToAdd([]);
+      setOpenStudentSearch(false);
+      toast.success(`${addedCount} student(s) assigned successfully!`);
+    } catch (e) {
+      toast.error('Failed to assign students');
+    }
+  };
+
+  const handleRemoveStudent = async (studentId: string) => {
+    if (!selectedKaryakartaForDetail) return;
+
+    const updatedStudentIds = (selectedKaryakartaForDetail.studentIds || []).filter(id => id !== studentId);
+
+    try {
+      await updateCategory(selectedKaryakartaForDetail.id, { studentIds: updatedStudentIds });
+      const updatedKaryakarta = { ...selectedKaryakartaForDetail, studentIds: updatedStudentIds };
+      setKaryakartas(karyakartas.map(k => k.id === updatedKaryakarta.id ? updatedKaryakarta : k));
+      setSelectedKaryakartaForDetail(updatedKaryakarta);
+      toast.success('Student removed from Karyakarta');
+    } catch (e) {
+      toast.error('Failed to remove student');
+    }
+  };
+
+  const openDetailView = (karyakarta: Karyakarta) => {
+    setSelectedKaryakartaForDetail(karyakarta);
+    setSelectedStudentsToAdd([]);
+    setSelectedRoomRange(null);
+    setViewMode('detail');
   };
 
   const mainKaryakartas = karyakartas.filter(k => k.type === 'main');
@@ -175,237 +306,420 @@ const Categories = () => {
       <AppHeader title="Hari-Saurabh Hostel" />
 
       <main className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
-        {/* Header Section */}
-        <div className="space-y-1">
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
-            <Users className="w-8 h-8 text-primary" />
-            Karyakartas
-          </h2>
-          <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs pl-1 mt-1">
-            Manage your team Yuvaks
-          </p>
-        </div>
-
         {loading ? (
           <div className="flex items-center justify-center p-10">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : (
-          <div className="space-y-10">
-            {/* Forms Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-              {/* Add Main Karyakarta Form */}
-              <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 space-y-4">
-                <h3 className="font-bold text-lg flex items-center gap-2">
-                  <UserCircle2 className="w-5 h-5 text-primary" />
-                  Add Main Karyakarta
-                </h3>
-                <p className="text-xs text-muted-foreground">Select a student to designate as a lead Karyakarta.</p>
-                <Popover open={openMainSearch} onOpenChange={setOpenMainSearch}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={openMainSearch}
-                      className="w-full justify-between h-14 text-base rounded-xl font-normal"
-                    >
-                      <span className="truncate">
-                        {selectedMainStudent ? selectedMainStudent.name : "Search Yuvak..."}
-                      </span>
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] sm:w-[400px] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Search student by name..." />
-                      <CommandList>
-                        <CommandEmpty>No student found.</CommandEmpty>
-                        <CommandGroup>
-                          {students.map((student) => (
-                            <CommandItem
-                              key={student.id}
-                              value={student.name}
-                              onSelect={() => {
-                                setSelectedMainStudent(student);
-                                setOpenMainSearch(false);
-                              }}
-                              className="cursor-pointer py-3"
-                            >
-                              <div className="flex items-center gap-3 w-full">
-                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                                  {student.name.charAt(0)}
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="font-medium text-base truncate">{student.name}</span>
-                                  <span className="text-xs text-muted-foreground truncate">Room: {student.roomNo || 'N/A'}</span>
-                                </div>
-                              </div>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-
-                <Button onClick={handleAddMain} className="w-full h-14 rounded-xl text-md font-bold gap-2">
-                  <Plus className="w-5 h-5" />
-                  Add Karyakarta
-                </Button>
-              </div>
-
-              {/* Add Sub-Karyakarta Form */}
-              <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 space-y-4">
-                <h3 className="font-bold text-lg flex items-center gap-2">
-                  <Users className="w-5 h-5 text-primary" />
-                  Add Sub-Karyakarta
-                </h3>
-                <p className="text-xs text-muted-foreground">Assign a Yuvak under an existing Karyakarta.</p>
-
-                <Select value={selectedParentId} onValueChange={setSelectedParentId}>
-                  <SelectTrigger className="w-full h-14 text-base rounded-xl font-normal bg-gray-50/50">
-                    <SelectValue placeholder="Select Main Karyakarta..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mainKaryakartas.map(k => (
-                      <SelectItem key={k.id} value={k.id}>{k.name}</SelectItem>
-                    ))}
-                    {mainKaryakartas.length === 0 && (
-                      <SelectItem value="none" disabled>No main karyakartas added yet</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-
-                <Popover open={openSubSearch} onOpenChange={setOpenSubSearch}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={openSubSearch}
-                      className="w-full justify-between h-14 text-base rounded-xl font-normal"
-                      disabled={!selectedParentId || selectedParentId === 'none'}
-                    >
-                      <span className="truncate">
-                        {selectedSubStudent ? selectedSubStudent.name : "Search Yuvak..."}
-                      </span>
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] sm:w-[400px] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Search student by name..." />
-                      <CommandList>
-                        <CommandEmpty>No student found.</CommandEmpty>
-                        <CommandGroup>
-                          {students.map((student) => (
-                            <CommandItem
-                              key={student.id}
-                              value={student.name}
-                              onSelect={() => {
-                                setSelectedSubStudent(student);
-                                setOpenSubSearch(false);
-                              }}
-                              className="cursor-pointer py-3"
-                            >
-                              <div className="flex items-center gap-3 w-full">
-                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                                  {student.name.charAt(0)}
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="font-medium text-base truncate">{student.name}</span>
-                                  <span className="text-xs text-muted-foreground truncate">Room: {student.roomNo || 'N/A'}</span>
-                                </div>
-                              </div>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-
-                <Button onClick={handleAddSub} className="w-full h-14 rounded-xl text-md font-bold gap-2" variant="secondary" disabled={!selectedParentId || selectedParentId === 'none'}>
-                  <Plus className="w-5 h-5" />
-                  Add Sub-Karyakarta
-                </Button>
-              </div>
-
+        ) : viewMode === 'overview' ? (
+          <>
+            {/* Overview Section */}
+            <div className="space-y-1">
+              <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
+                <Users className="w-8 h-8 text-primary" />
+                Karyakartas
+              </h2>
+              <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs pl-1 mt-1">
+                Manage your team Students
+              </p>
             </div>
 
-            {/* Display Hierarchy Below */}
-            {mainKaryakartas.length > 0 && (
-              <div className="space-y-6">
-                <h3 className="font-bold text-2xl text-foreground mt-8 mb-4 border-b pb-2">Karyakartas</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {mainKaryakartas.map((main) => {
-                    const subs = karyakartas.filter(k => k.parentId === main.id);
+            <div className="space-y-10">
+              {/* Forms Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                    return (
-                      <div key={main.id} className="bg-white rounded-3xl shadow-sm border border-border/50 overflow-hidden relative group/main">
-                        {/* Main Karyakarta Header */}
-                        <div className="p-6 bg-gray-50/50 flex items-center justify-between border-b border-border/50">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                              <UserCircle2 className="w-7 h-7" />
-                            </div>
-                            <div>
-                              <h4 className="text-xl font-bold text-foreground">{main.name}</h4>
-                              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mt-1">Main Karyakarta</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-white hover:text-primary" onClick={(e) => openEdit(main, e)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-red-50 hover:text-destructive" onClick={(e) => handleDelete(main.id, e)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Sub Karyakartas List */}
-                        <div className="p-0">
-                          {subs.length === 0 ? (
-                            <div className="p-6 text-center text-sm text-muted-foreground italic">
-                              No Sub-Karyakartas assigned yet.
-                            </div>
-                          ) : (
-                            <div className="divide-y divide-border/50">
-                              {subs.map(sub => (
-                                <div key={sub.id} className="p-4 pl-8 flex items-center justify-between hover:bg-gray-50 transition-colors group/sub">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-2 h-2 rounded-full bg-primary/40" />
-                                    <div>
-                                      <h5 className="font-bold text-foreground">{sub.name}</h5>
-                                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Sub Karyakarta</p>
-                                    </div>
+                {/* Add Main Karyakarta Form */}
+                <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 space-y-4">
+                  <h3 className="font-bold text-lg flex items-center gap-2">
+                    <UserCircle2 className="w-5 h-5 text-primary" />
+                    Add Main Karyakarta
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Select a student to designate as a lead Karyakarta.</p>
+                  <Popover open={openMainSearch} onOpenChange={setOpenMainSearch}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={openMainSearch}
+                        className="w-full justify-between h-14 text-base rounded-xl font-normal"
+                      >
+                        <span className="truncate">
+                          {selectedMainStudent ? selectedMainStudent.name : "Search Student..."}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] sm:w-[400px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search student by name..." />
+                        <CommandList>
+                          <CommandEmpty>No student found.</CommandEmpty>
+                          <CommandGroup>
+                            {students.map((student) => (
+                              <CommandItem
+                                key={student.id}
+                                value={student.name}
+                                onSelect={() => {
+                                  setSelectedMainStudent(student);
+                                  setOpenMainSearch(false);
+                                }}
+                                className="cursor-pointer py-3"
+                              >
+                                <div className="flex items-center gap-3 w-full">
+                                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                                    {student.name.charAt(0)}
                                   </div>
-                                  <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-primary" onClick={(e) => openEdit(sub, e)}>
-                                      <Edit className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive hover:bg-red-50" onClick={(e) => handleDelete(sub.id, e)}>
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="font-medium text-base truncate">{student.name}</span>
+                                    <span className="text-xs text-muted-foreground truncate">Room: {student.roomNo || 'N/A'}</span>
                                   </div>
                                 </div>
-                              ))}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+
+                  <Button onClick={handleAddMain} className="w-full h-14 rounded-xl text-md font-bold gap-2">
+                    <Plus className="w-5 h-5" />
+                    Add Karyakarta
+                  </Button>
+                </div>
+
+                {/* Add Sub-Karyakarta Form */}
+                <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 space-y-4">
+                  <h3 className="font-bold text-lg flex items-center gap-2">
+                    <Users className="w-5 h-5 text-primary" />
+                    Add Sub-Karyakarta
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Assign a Student under an existing Karyakarta.</p>
+
+                  <Select value={selectedParentId} onValueChange={setSelectedParentId}>
+                    <SelectTrigger className="w-full h-14 text-base rounded-xl font-normal bg-gray-50/50">
+                      <SelectValue placeholder="Select Main Karyakarta..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mainKaryakartas.map(k => (
+                        <SelectItem key={k.id} value={k.id}>{k.name}</SelectItem>
+                      ))}
+                      {mainKaryakartas.length === 0 && (
+                        <SelectItem value="none" disabled>No main karyakartas added yet</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  <Popover open={openSubSearch} onOpenChange={setOpenSubSearch}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={openSubSearch}
+                        className="w-full justify-between h-14 text-base rounded-xl font-normal"
+                        disabled={!selectedParentId || selectedParentId === 'none'}
+                      >
+                        <span className="truncate">
+                          {selectedSubStudent ? selectedSubStudent.name : "Search Student..."}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] sm:w-[400px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search student by name..." />
+                        <CommandList>
+                          <CommandEmpty>No student found.</CommandEmpty>
+                          <CommandGroup>
+                            {students.map((student) => (
+                              <CommandItem
+                                key={student.id}
+                                value={student.name}
+                                onSelect={() => {
+                                  setSelectedSubStudent(student);
+                                  setOpenSubSearch(false);
+                                }}
+                                className="cursor-pointer py-3"
+                              >
+                                <div className="flex items-center gap-3 w-full">
+                                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                                    {student.name.charAt(0)}
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="font-medium text-base truncate">{student.name}</span>
+                                    <span className="text-xs text-muted-foreground truncate">Room: {student.roomNo || 'N/A'}</span>
+                                  </div>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+
+                  <Button onClick={handleAddSub} className="w-full h-14 rounded-xl text-md font-bold gap-2" variant="secondary" disabled={!selectedParentId || selectedParentId === 'none'}>
+                    <Plus className="w-5 h-5" />
+                    Add Sub-Karyakarta
+                  </Button>
+                </div>
+
+              </div>
+
+              {/* Display Hierarchy Below */}
+              {mainKaryakartas.length > 0 && (
+                <div className="space-y-6">
+                  <h3 className="font-bold text-2xl text-foreground mt-8 mb-4 border-b pb-2">Karyakartas</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {mainKaryakartas.map((main) => {
+                      const subs = karyakartas.filter(k => k.parentId === main.id);
+
+                      return (
+                        <div
+                          key={main.id}
+                          className="bg-white rounded-3xl shadow-sm border border-border/50 overflow-hidden relative group/main cursor-pointer hover:shadow-md transition-shadow"
+                          onClick={() => openDetailView(main)}
+                        >
+                          {/* Main Karyakarta Header */}
+                          <div className="p-6 bg-gray-50/50 flex items-center justify-between border-b border-border/50">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                                <UserCircle2 className="w-7 h-7" />
+                              </div>
+                              <div>
+                                <h4 className="text-xl font-bold text-foreground group-hover/main:text-primary transition-colors">{main.name}</h4>
+                                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mt-1">Main Karyakarta</p>
+                              </div>
                             </div>
-                          )}
+                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-white hover:text-primary" onClick={(e) => openEdit(main, e)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-red-50 hover:text-destructive" onClick={(e) => handleDelete(main.id, e)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Sub Karyakartas List */}
+                          <div className="p-0">
+                            {subs.length === 0 ? (
+                              <div className="p-6 text-center text-sm text-muted-foreground italic">
+                                No Sub-Karyakartas assigned yet.
+                              </div>
+                            ) : (
+                              <div className="divide-y divide-border/50">
+                                {subs.map(sub => (
+                                  <div
+                                    key={sub.id}
+                                    className="p-4 pl-8 flex items-center justify-between hover:bg-gray-50 transition-colors group/sub cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openDetailView(sub);
+                                    }}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-2 h-2 rounded-full bg-primary/40" />
+                                      <div>
+                                        <h5 className="font-bold text-foreground group-hover/sub:text-primary transition-colors">{sub.name}</h5>
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Sub Karyakarta</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-primary" onClick={(e) => openEdit(sub, e)}>
+                                        <Edit className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive hover:bg-red-50" onClick={(e) => handleDelete(sub.id, e)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {mainKaryakartas.length === 0 && (
+                <div className="py-12 text-center text-muted-foreground border-2 border-dashed border-border/50 rounded-3xl mt-10">
+                  <p>No Karyakartas added yet.</p>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          /* Detail View Section */
+          <div className="space-y-6 animate-fade-in">
+            {/* Header / Back Button */}
+            <div className="flex items-center gap-4 border-b border-border/50 pb-6">
+              <Button variant="outline" size="icon" className="rounded-full" onClick={() => setViewMode('overview')}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div>
+                <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
+                  {selectedKaryakartaForDetail?.name}
+                </h2>
+                <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs mt-1">
+                  Assign Yuvak to this {selectedKaryakartaForDetail?.type === 'main' ? 'Main' : 'Sub'} Karyakarta
+                </p>
+              </div>
+            </div>
+
+            {/* Assign Student Form */}
+            <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 flex flex-col md:flex-row gap-4 items-end">
+              <div className="w-full md:flex-1 space-y-2">
+                <label className="text-sm font-semibold text-foreground/80 ml-1">Search Student to Assign</label>
+                <Popover open={openStudentSearch} onOpenChange={setOpenStudentSearch}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openStudentSearch}
+                      className="w-full justify-between h-14 text-base rounded-xl font-normal"
+                    >
+                      <span className="truncate">
+                        {selectedStudentsToAdd.length > 0
+                          ? `${selectedStudentsToAdd.length} student(s) selected`
+                          : "Search from all students..."}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] sm:w-[500px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search student by name..." />
+                      <CommandList>
+                        <CommandEmpty>No student found.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredStudentsForSearch.map((student) => {
+                            const isSelected = selectedStudentsToAdd.some(s => s.id === student.id);
+                            return (
+                              <CommandItem
+                                key={student.id}
+                                value={student.name}
+                                onSelect={() => {
+                                  setSelectedStudentsToAdd(prev => {
+                                    if (prev.some(s => s.id === student.id)) {
+                                      return prev.filter(s => s.id !== student.id);
+                                    } else {
+                                      return [...prev, student];
+                                    }
+                                  });
+                                }}
+                                className={`cursor-pointer py-3 ${isSelected ? 'bg-primary/5' : ''}`}
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}`}>
+                                      {student.name.charAt(0)}
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="font-medium text-base truncate">{student.name}</span>
+                                      <span className="text-xs text-muted-foreground truncate">Room: {student.roomNo || 'N/A'}</span>
+                                    </div>
+                                  </div>
+                                  {isSelected && <Check className="w-5 h-5 text-primary shrink-0 ml-3" />}
+                                </div>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                {selectedKaryakartaForDetail?.type === 'main' && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={`h-14 px-4 rounded-xl font-bold ${selectedRoomRange ? 'bg-primary/10 text-primary border-primary' : ''}`}>
+                        <Filter className="w-5 h-5 mr-2" />
+                        {selectedRoomRange ? selectedRoomRange.label : 'Filter Range'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-0" align="end">
+                      <Command>
+                        <CommandList>
+                          <CommandGroup>
+                            <CommandItem
+                              onSelect={() => { setSelectedRoomRange(null); setOpenStudentSearch(false); }}
+                              className="cursor-pointer font-medium"
+                            >
+                              All Rooms
+                            </CommandItem>
+                            {generatedRanges.map(range => (
+                              <CommandItem
+                                key={range.label}
+                                onSelect={() => { setSelectedRoomRange(range); setOpenStudentSearch(false); }}
+                                className="cursor-pointer"
+                              >
+                                {range.label}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                )}
+
+                <Button
+                  onClick={handleAssignStudent}
+                  className="h-14 px-8 rounded-xl text-md font-bold gap-2"
+                  disabled={selectedRoomRange ? filteredStudentsForSearch.length === 0 : selectedStudentsToAdd.length === 0}
+                >
+                  <UserPlus className="w-5 h-5" />
+                  {selectedRoomRange
+                    ? `Add ${filteredStudentsForSearch.length} Filtered Students`
+                    : `Add Student${selectedStudentsToAdd.length > 1 ? 's' : ''}`}
+                </Button>
+              </div>
+            </div>
+
+            {/* List of Assigned Students */}
+            <div className="bg-white rounded-3xl shadow-sm border border-border/50 overflow-hidden">
+              <div className="p-6 border-b border-border/50 bg-gray-50/50">
+                <h3 className="font-bold text-lg text-foreground">Currently Assigned Students</h3>
+              </div>
+              <div className="p-0 divide-y divide-border/50">
+                {(() => {
+                  const assignedIds = selectedKaryakartaForDetail?.studentIds || [];
+                  const assignedStudents = students.filter(s => assignedIds.includes(s.id));
+
+                  if (assignedStudents.length === 0) {
+                    return (
+                      <div className="p-10 text-center text-muted-foreground italic">
+                        No students are currently assigned to this Karyakarta.
                       </div>
                     );
-                  })}
-                </div>
-              </div>
-            )}
+                  }
 
-            {mainKaryakartas.length === 0 && (
-              <div className="py-12 text-center text-muted-foreground border-2 border-dashed border-border/50 rounded-3xl mt-10">
-                <p>No Karyakartas added yet.</p>
+                  return assignedStudents.map(student => (
+                    <div key={student.id} className="p-4 px-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-sm">
+                          {student.name.charAt(0)}
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-foreground text-sm">{student.name}</h5>
+                          <p className="text-xs text-muted-foreground font-medium">Room: {student.roomNo || 'N/A'} • Mobile: {student.mobile || 'N/A'}</p>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="icon" className="hover:text-destructive hover:bg-red-50 text-muted-foreground" onClick={() => handleRemoveStudent(student.id)}>
+                        <UserMinus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ));
+                })()}
               </div>
-            )}
+            </div>
+
           </div>
         )}
 
