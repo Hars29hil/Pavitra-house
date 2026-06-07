@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { addStudent, getStudents } from '@/lib/store';
-import api from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { countryCodes } from '@/lib/countryCodes';
+
 
 const StudentSelfRegister = () => {
   const { toast } = useToast();
@@ -280,18 +281,13 @@ const StudentSelfRegister = () => {
                   name="countryCode"
                   value={formData.countryCode}
                   onChange={(e) => setFormData(prev => ({ ...prev, countryCode: e.target.value }))}
-                  className="w-24 h-11 sm:h-12 px-3 bg-background/50 border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm outline-none cursor-pointer"
+                  className="w-28 h-11 sm:h-12 px-3 bg-background/50 border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm outline-none cursor-pointer"
                 >
-                  <option value="+91">+91 (IN)</option>
-                  <option value="+1">+1 (US)</option>
-                  <option value="+44">+44 (UK)</option>
-                  <option value="+61">+61 (AU)</option>
-                  <option value="+971">+971 (AE)</option>
-                  <option value="+1">+1 (CA)</option>
-                  <option value="+81">+81 (JP)</option>
-                  <option value="+49">+49 (DE)</option>
-                  <option value="+33">+33 (FR)</option>
-                  <option value="+65">+65 (SG)</option>
+                  {countryCodes.map((c) => (
+                    <option key={`${c.code}-${c.dial_code}`} value={c.dial_code}>
+                      {c.dial_code} ({c.code}) - {c.name}
+                    </option>
+                  ))}
                 </select>
                 <Input
                   id="mobile"
