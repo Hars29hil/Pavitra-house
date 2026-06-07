@@ -18,6 +18,9 @@ export interface Student {
   linkedin?: string;
   socialLink?: string;
   countryCode?: string;
+  designation?: string;
+  jobPlace?: string;
+  livingPlace?: string;
 }
 
 export interface Task {

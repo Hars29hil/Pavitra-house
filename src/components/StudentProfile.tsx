@@ -136,12 +136,12 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
                 { label: 'Age', value: `${student.age} Years`, icon: User },
             ]
         },
-        {
+        ...(!student.isAlumni ? [{
             title: "Hostel Details",
             items: [
                 { label: 'Room Number', value: student.roomNo, icon: Hash },
             ]
-        },
+        }] : []),
         {
             title: "Contact Details",
             items: [
@@ -152,10 +152,12 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
         {
             title: "Academic Information",
             items: [
-                { label: 'College', value: student.college, icon: School },
-                { label: 'Degree', value: student.degree, icon: BookOpen },
-                { label: 'Year', value: student.year, icon: GraduationCap },
-                { label: 'Result/CGPA', value: student.result, icon: Award },
+                { label: student.isAlumni ? 'Last College Completed' : 'College', value: student.college, icon: School },
+                { label: student.isAlumni ? 'Last Degree Completed' : 'Degree', value: student.degree, icon: BookOpen },
+                ...(!student.isAlumni ? [
+                    { label: 'Year', value: student.year, icon: GraduationCap },
+                    { label: 'Result/CGPA', value: student.result, icon: Award }
+                ] : []),
                 { label: 'Interests', value: student.interest, icon: Heart },
             ]
         },
@@ -169,7 +171,10 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
         ...(student.isAlumni ? [{
             title: "Professional Information",
             items: [
-                { label: 'Job / Current Status', value: student.job, icon: Briefcase }
+                { label: 'Current Job', value: student.job, icon: Briefcase },
+                { label: 'Designation', value: student.designation, icon: Briefcase },
+                { label: 'Job Place', value: student.jobPlace, icon: Briefcase },
+                { label: 'Current Living Place', value: student.livingPlace, icon: Briefcase }
             ]
         }] : [])
     ];
@@ -214,7 +219,9 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
 
                 <div className="space-y-1">
                     <h2 className={`${isCompact ? 'text-lg sm:text-2xl' : 'text-xl sm:text-3xl'} font-extrabold text-foreground tracking-tight truncate px-2`}>{student.name}</h2>
-                    <p className="text-primary font-bold uppercase tracking-[0.2em] text-[10px] sm:text-xs">Room {student.roomNo}</p>
+                    {!student.isAlumni && student.roomNo && (
+                        <p className="text-primary font-bold uppercase tracking-[0.2em] text-[10px] sm:text-xs">Room {student.roomNo}</p>
+                    )}
                 </div>
 
                 <div className={`${isCompact ? 'mt-4' : 'mt-8'} flex flex-col sm:flex-row justify-center gap-3`}>

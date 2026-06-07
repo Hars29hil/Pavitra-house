@@ -29,6 +29,10 @@ const StudentSelfUpdate = () => {
     college: '',
     linkedin: '',
     socialLink: '',
+    isAlumni: false,
+    designation: '',
+    jobPlace: '',
+    livingPlace: '',
   });
 
   const [initialData, setInitialData] = useState<Record<string, string>>({});
@@ -59,6 +63,10 @@ const StudentSelfUpdate = () => {
             college: student.college || '',
             linkedin: student.linkedin || '',
             socialLink: student.socialLink || '',
+            isAlumni: Boolean(student.isAlumni),
+            designation: student.designation || '',
+            jobPlace: student.jobPlace || '',
+            livingPlace: student.livingPlace || '',
           };
           setFormData(data);
           
@@ -172,19 +180,36 @@ const StudentSelfUpdate = () => {
 
   const fields = [
     { name: 'name', label: 'Full Name', type: 'text', placeholder: 'Enter name' },
-    { name: 'roomNo', label: 'Room Number', type: 'text', placeholder: '101' },
+    ...(!formData.isAlumni ? [{ name: 'roomNo', label: 'Room Number', type: 'text', placeholder: '101' }] : []),
     { name: 'mobile', label: 'Mobile Number', type: 'tel', placeholder: '+91 9876543210' },
     { name: 'email', label: 'Email Address', type: 'email', placeholder: 'email@example.com' },
     { name: 'dob', label: 'Date of Birth (YYYY-MM-DD)', type: 'date', placeholder: '' },
     { name: 'age', label: 'Age', type: 'number', placeholder: '20' },
-    { name: 'college', label: 'College', type: 'text', placeholder: 'XYZ University' },
-    { name: 'degree', label: 'Degree', type: 'text', placeholder: 'B.Tech' },
-    { name: 'year', label: 'Year', type: 'number', placeholder: '2' },
-    { name: 'result', label: 'Result/CGPA', type: 'text', placeholder: '8.5 CGPA' },
+    { 
+      name: 'college', 
+      label: formData.isAlumni ? 'Last College Completed' : 'College', 
+      type: 'text', 
+      placeholder: formData.isAlumni ? 'Enter last college completed' : 'XYZ University' 
+    },
+    { 
+      name: 'degree', 
+      label: formData.isAlumni ? 'Last Degree Completed *' : 'Degree *', 
+      type: 'text', 
+      placeholder: formData.isAlumni ? 'Enter last degree completed' : 'B.Tech' 
+    },
+    ...(!formData.isAlumni ? [
+      { name: 'year', label: 'Year', type: 'number', placeholder: '2' },
+      { name: 'result', label: 'Result/CGPA', type: 'text', placeholder: '8.5 CGPA' }
+    ] : []),
     { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music' },
     { name: 'linkedin', label: 'LinkedIn URL', type: 'text', placeholder: 'https://linkedin.com/in/username' },
     { name: 'socialLink', label: 'Social Media URL (Instagram, Facebook, X, etc.)', type: 'text', placeholder: 'https://instagram.com/username' },
-    { name: 'job', label: 'Job / Work (Alumni)', type: 'text', placeholder: 'Software Engineer @ Google' },
+    ...(formData.isAlumni ? [
+      { name: 'job', label: 'Current Job', type: 'text', placeholder: 'e.g. Software Engineer / Google' },
+      { name: 'designation', label: 'Designation', type: 'text', placeholder: 'e.g. Senior Developer' },
+      { name: 'jobPlace', label: 'Job Place', type: 'text', placeholder: 'e.g. Bangalore' },
+      { name: 'livingPlace', label: 'Current Living Place', type: 'text', placeholder: 'e.g. Anand' }
+    ] : []),
   ];
 
   if (loading) {
