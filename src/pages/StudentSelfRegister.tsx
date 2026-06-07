@@ -317,7 +317,7 @@ const StudentSelfRegister = () => {
             {/* Degree * */}
             <div className="space-y-1 sm:space-y-2">
               <Label htmlFor="degree" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">
-                Last or pursuing Degree Completed *
+                Last or Pursuing Degree Completed *
               </Label>
               <Input
                 id="degree"
