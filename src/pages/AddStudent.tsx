@@ -129,9 +129,18 @@ const AddStudent = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setIsDirty(true);
+    const { name, value } = e.target;
+    if (name === 'year') {
+      const numericVal = value.replace(/\D/g, '');
+      setFormData(prev => ({
+        ...prev,
+        year: numericVal,
+      }));
+      return;
+    }
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
   };
 
@@ -263,7 +272,7 @@ const AddStudent = () => {
     { name: 'email', label: 'Email Address', type: 'email', placeholder: 'email@example.com' },
     { name: 'college', label: 'College', type: 'text', placeholder: 'XYZ University' },
     { name: 'degree', label: 'Degree', type: 'text', placeholder: 'B.Tech' },
-    { name: 'year', label: 'Year', type: 'text', placeholder: '2nd Year' },
+    { name: 'year', label: 'Year', type: 'number', placeholder: '2' },
     { name: 'result', label: 'Result/CGPA', type: 'text', placeholder: '8.5 CGPA' },
     { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music' },
     { name: 'linkedin', label: 'LinkedIn URL', type: 'text', placeholder: 'https://linkedin.com/in/username' },

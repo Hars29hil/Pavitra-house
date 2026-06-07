@@ -1,9 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Mail, Calendar, BookOpen, GraduationCap, Heart, Edit, UserMinus, User, Hash, Award, UserCheck, Briefcase, School, Linkedin, Globe, Copy } from 'lucide-react';
+import { Phone, Mail, Calendar, BookOpen, GraduationCap, Heart, Edit, UserMinus, User, Hash, Award, UserCheck, Briefcase, School, Linkedin, Globe, Copy, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Student } from '@/types';
-import { updateStudent } from '@/lib/store';
+import { updateStudent, deleteStudent } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 
 interface StudentProfileProps {
@@ -35,6 +35,37 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
             description: 'The student form URL has been copied to your clipboard.',
             duration: 3000,
         });
+    };
+
+    const handleDeleteStudent = async () => {
+        const confirmed = window.confirm(`Are you sure you want to delete ${student.name}? This action cannot be undone.`);
+        if (!confirmed) return;
+
+        try {
+            await deleteStudent(student.id);
+
+            toast({
+                title: 'Student Deleted',
+                description: `${student.name} has been successfully deleted.`,
+                duration: 2000,
+            });
+
+            if (onUpdate) {
+                await onUpdate();
+            }
+
+            if (onClose) {
+                onClose();
+            } else {
+                navigate(-1);
+            }
+        } catch (error) {
+            toast({
+                title: 'Error',
+                description: 'Failed to delete student.',
+                variant: 'destructive',
+            });
+        }
     };
 
     const handleMoveToAlumni = async () => {
@@ -159,6 +190,16 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
                     <span className="text-xs font-bold uppercase tracking-wider hidden sm:block">Copy Link</span>
                 </button>
 
+                {!hideEditAction && (
+                    <Button
+                        size="icon"
+                        variant="destructive"
+                        className="absolute top-4 left-4 rounded-xl h-9 w-9 bg-destructive/10 text-destructive hover:bg-destructive hover:text-white border border-destructive/20 shadow-sm transition-all"
+                        onClick={handleDeleteStudent}
+                    >
+                        <Trash2 className="w-4.5 h-4.5" />
+                    </Button>
+                )}
                 <div className={`${isCompact ? 'w-24 h-24 mb-4' : 'w-32 h-32 mb-6'} mx-auto rounded-3xl overflow-hidden shadow-soft-lg bg-muted/20 border-4 border-white`}>
                     {student.profileImage ? (
                         <img src={student.profileImage} alt={student.name} className="w-full h-full object-cover" />

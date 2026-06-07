@@ -5,18 +5,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { addStudent, getStudents } from '@/lib/store';
-import { uploadToImgBB } from '@/lib/imgbb';
+import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const StudentSelfRegister = () => {
   const { toast } = useToast();
-  
+
   const [formData, setFormData] = useState({
     roomNo: '',
     name: '',
     age: '',
     dob: '',
     mobile: '',
+    countryCode: '+91',
     email: '',
     degree: '',
     year: '',
@@ -31,56 +32,59 @@ const StudentSelfRegister = () => {
   });
 
   const [saving, setSaving] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [mobileError, setMobileError] = useState('');
+  const [checkingMobile, setCheckingMobile] = useState(false);
+
+  useEffect(() => {
+    if (!formData.mobile || formData.mobile.length < 8) {
+      setMobileError('');
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setCheckingMobile(true);
+      try {
+        const res = await api.get<{ registered: boolean; student?: { id: string; name: string } }>(
+          `/api/students/check-mobile?mobile=${formData.mobile}`
+        );
+        if (res.data?.registered) {
+          setMobileError(`Mobile number is already registered by ${res.data.student?.name || 'another student'}`);
+        } else {
+          setMobileError('');
+        }
+      } catch (err) {
+        console.error('Error checking mobile registration:', err);
+      } finally {
+        setCheckingMobile(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [formData.mobile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    if (name === 'mobile') {
+      const cleaned = value.replace(/\D/g, '');
+      setFormData(prev => ({
+        ...prev,
+        mobile: cleaned,
+      }));
+      return;
+    }
+    if (name === 'year') {
+      const numericVal = value.replace(/\D/g, '');
+      setFormData(prev => ({
+        ...prev,
+        year: numericVal,
+      }));
+      return;
+    }
     setFormData(prev => ({
       ...prev,
       [name]: value,
     }));
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload an image file",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Image size should be less than 5MB",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      setUploadingImage(true);
-      const url = await uploadToImgBB(file);
-      setFormData(prev => ({ ...prev, profileImage: url }));
-      toast({
-        title: "Upload Successful",
-        description: "Image uploaded successfully!",
-      });
-    } catch (error) {
-      toast({
-        title: "Upload Failed",
-        description: "Failed to upload image. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setUploadingImage(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,7 +96,7 @@ const StudentSelfRegister = () => {
       if (!formData.isAlumni && formData.roomNo) {
         const students = await getStudents();
         const roommates = students.filter(s => s.roomNo === formData.roomNo && !s.isAlumni);
-        
+
         const isLargeRoom = formData.roomNo.endsWith('000');
         const maxStudents = isLargeRoom ? 6 : 2;
 
@@ -107,9 +111,21 @@ const StudentSelfRegister = () => {
         }
       }
 
+      if (mobileError) {
+        toast({
+          title: "Validation Error",
+          description: mobileError,
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+
       await addStudent({
         ...formData,
+        mobile: formData.mobile.replace(/\D/g, ''),
         age: formData.age ? Number(formData.age) : undefined,
+        countryCode: formData.countryCode,
       });
 
       toast({
@@ -174,39 +190,21 @@ const StudentSelfRegister = () => {
           <p>Please enter your information to register yourself in the Pavitra House directory.</p>
         </div>
 
-        {/* Profile Picture Upload */}
+        {/* Default Profile Picture View (Static) */}
         <div className="flex flex-col items-center justify-center mb-8 animate-fade-in">
-          <div className="relative group">
-            <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-3xl overflow-hidden bg-muted flex items-center justify-center border-2 border-dashed border-border group-hover:border-primary transition-colors shadow-soft">
-              {formData.profileImage ? (
-                <img src={formData.profileImage} alt="Preview" className="w-full h-full object-cover" />
-              ) : (
-                <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                  {uploadingImage ? (
-                    <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                  ) : (
-                    <>
-                      <User className="w-10 h-10" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-center px-4">Upload Photo</span>
-                    </>
-                  )}
-                </div>
-              )}
+          <div className="relative">
+            <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-3xl overflow-hidden bg-primary/10 flex items-center justify-center border-2 border-primary/20 shadow-soft">
+              <div className="w-full h-full bg-gradient-to-tr from-primary/20 to-primary/5 flex items-center justify-center">
+                {formData.name ? (
+                  <span className="text-4xl sm:text-5xl font-extrabold text-primary">
+                    {formData.name.trim().charAt(0).toUpperCase()}
+                  </span>
+                ) : (
+                  <User className="w-12 h-12 sm:w-16 sm:h-16 text-primary" />
+                )}
+              </div>
             </div>
-            <label className="absolute inset-0 cursor-pointer">
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
-            </label>
-            {formData.profileImage && (
-              <button
-                type="button"
-                onClick={() => setFormData(prev => ({ ...prev, profileImage: '' }))}
-                className="absolute -top-2 -right-2 p-1.5 bg-destructive text-white rounded-full shadow-md"
-              >
-                ✕
-              </button>
-            )}
           </div>
-          <p className="mt-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">Profile Picture</p>
         </div>
 
         {/* Alumni Status Toggle Card */}
@@ -277,16 +275,48 @@ const StudentSelfRegister = () => {
             {/* Mobile Number */}
             <div className="space-y-1 sm:space-y-2">
               <Label htmlFor="mobile" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Mobile Number *</Label>
-              <Input
-                id="mobile"
-                name="mobile"
-                type="tel"
-                placeholder="+91 9876543210"
-                value={formData.mobile}
-                onChange={handleChange}
-                required
-                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-              />
+              <div className="flex gap-2">
+                <select
+                  name="countryCode"
+                  value={formData.countryCode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, countryCode: e.target.value }))}
+                  className="w-24 h-11 sm:h-12 px-3 bg-background/50 border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm outline-none cursor-pointer"
+                >
+                  <option value="+91">+91 (IN)</option>
+                  <option value="+1">+1 (US)</option>
+                  <option value="+44">+44 (UK)</option>
+                  <option value="+61">+61 (AU)</option>
+                  <option value="+971">+971 (AE)</option>
+                  <option value="+1">+1 (CA)</option>
+                  <option value="+81">+81 (JP)</option>
+                  <option value="+49">+49 (DE)</option>
+                  <option value="+33">+33 (FR)</option>
+                  <option value="+65">+65 (SG)</option>
+                </select>
+                <Input
+                  id="mobile"
+                  name="mobile"
+                  type="tel"
+                  placeholder="9876543210"
+                  value={formData.mobile}
+                  onChange={handleChange}
+                  required
+                  className={cn(
+                    "flex-1 h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm",
+                    mobileError && "border-destructive focus:border-destructive focus:ring-destructive/20"
+                  )}
+                />
+              </div>
+              {checkingMobile && (
+                <p className="text-[11px] text-muted-foreground ml-1 flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Checking registration status...
+                </p>
+              )}
+              {mobileError && (
+                <p className="text-[11px] text-destructive font-medium ml-1">
+                  {mobileError}
+                </p>
+              )}
             </div>
 
             {/* Email Address */}
@@ -332,7 +362,6 @@ const StudentSelfRegister = () => {
                 className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
               />
             </div>
-
             {/* College */}
             <div className="space-y-1 sm:space-y-2">
               <Label htmlFor="college" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">College</Label>
@@ -347,7 +376,7 @@ const StudentSelfRegister = () => {
               />
             </div>
 
-            {/* Degree */}
+            {/* Degree * */}
             <div className="space-y-1 sm:space-y-2">
               <Label htmlFor="degree" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Degree *</Label>
               <Input
@@ -370,8 +399,8 @@ const StudentSelfRegister = () => {
                   <Input
                     id="year"
                     name="year"
-                    type="text"
-                    placeholder="2nd Year"
+                    type="number"
+                    placeholder="2"
                     value={formData.year}
                     onChange={handleChange}
                     className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
@@ -454,7 +483,7 @@ const StudentSelfRegister = () => {
           <Button
             type="submit"
             size="lg"
-            disabled={saving || uploadingImage}
+            disabled={saving}
             className="w-full h-14 rounded-2xl text-lg font-bold shadow-soft hover:shadow-soft-lg hover:scale-[1.01] active:scale-[0.99] transition-all bg-primary hover:bg-primary/90 flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}

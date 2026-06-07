@@ -17,6 +17,7 @@ export interface Student {
   college?: string;
   linkedin?: string;
   socialLink?: string;
+  countryCode?: string;
 }
 
 export interface Task {
