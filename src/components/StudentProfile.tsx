@@ -152,8 +152,8 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
         {
             title: "Academic Information",
             items: [
-                { label: student.isAlumni ? 'Last College Completed' : 'College', value: student.college, icon: School },
-                { label: student.isAlumni ? 'Last Degree Completed' : 'Degree', value: student.degree, icon: BookOpen },
+                { label: student.isAlumni ? 'College Name' : 'College', value: student.college, icon: School },
+                { label: student.isAlumni ? 'Last or pursuing Degree Completed' : 'Degree', value: student.degree, icon: BookOpen },
                 ...(!student.isAlumni ? [
                     { label: 'Year', value: student.year, icon: GraduationCap },
                     { label: 'Result/CGPA', value: student.result, icon: Award }
@@ -171,10 +171,10 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
         ...(student.isAlumni ? [{
             title: "Professional Information",
             items: [
-                { label: 'Current Job', value: student.job, icon: Briefcase },
+                { label: 'Company Name', value: student.job, icon: Briefcase },
                 { label: 'Designation', value: student.designation, icon: Briefcase },
-                { label: 'Job Place', value: student.jobPlace, icon: Briefcase },
-                { label: 'Current Living Place', value: student.livingPlace, icon: Briefcase }
+                { label: 'Job Place or City', value: student.jobPlace, icon: Briefcase },
+                { label: 'Living Place or City', value: student.livingPlace, icon: Briefcase }
             ]
         }] : [])
     ];

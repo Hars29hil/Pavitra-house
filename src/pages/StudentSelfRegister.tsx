@@ -27,7 +27,7 @@ const StudentSelfRegister = () => {
     profileImage: '',
     job: '',
     college: '',
-    isAlumni: false,
+    isAlumni: true,
     linkedin: '',
     socialLink: '',
     designation: '',
@@ -211,39 +211,6 @@ const StudentSelfRegister = () => {
           </div>
         </div>
 
-        {/* Alumni Status Toggle Card */}
-        <div className="bg-white border border-border/50 rounded-3xl shadow-soft p-6 space-y-4">
-          <Label className="text-sm font-bold text-foreground/80">Alumni Status</Label>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => setFormData(prev => ({ ...prev, isAlumni: false }))}
-              className={cn(
-                "h-16 rounded-2xl border flex items-center justify-center gap-3 font-bold text-sm transition-all",
-                !formData.isAlumni
-                  ? "bg-primary/10 border-primary text-primary shadow-sm"
-                  : "bg-background border-border hover:border-foreground/20 text-muted-foreground"
-              )}
-            >
-              <BookOpen className="w-5 h-5" />
-              Current Student
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormData(prev => ({ ...prev, isAlumni: true }))}
-              className={cn(
-                "h-16 rounded-2xl border flex items-center justify-center gap-3 font-bold text-sm transition-all",
-                formData.isAlumni
-                  ? "bg-primary/10 border-primary text-primary shadow-sm"
-                  : "bg-background border-border hover:border-foreground/20 text-muted-foreground"
-              )}
-            >
-              <Award className="w-5 h-5" />
-              Alumni
-            </button>
-          </div>
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="bg-white border border-border/50 rounded-3xl shadow-soft p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 sm:gap-y-6">
             {/* Full Name */}
@@ -261,22 +228,6 @@ const StudentSelfRegister = () => {
               />
             </div>
 
-            {/* Room Number */}
-            {!formData.isAlumni && (
-              <div className="space-y-1 sm:space-y-2">
-                <Label htmlFor="roomNo" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Room Number *</Label>
-                <Input
-                  id="roomNo"
-                  name="roomNo"
-                  type="text"
-                  placeholder="101"
-                  value={formData.roomNo}
-                  onChange={handleChange}
-                  required={!formData.isAlumni}
-                  className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-                />
-              </div>
-            )}
 
             {/* Mobile Number */}
             <div className="space-y-1 sm:space-y-2">
@@ -363,32 +314,16 @@ const StudentSelfRegister = () => {
                 className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
               />
             </div>
-            {/* College */}
-            <div className="space-y-1 sm:space-y-2">
-              <Label htmlFor="college" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">
-                {formData.isAlumni ? "Last College Completed" : "College"}
-              </Label>
-              <Input
-                id="college"
-                name="college"
-                type="text"
-                placeholder={formData.isAlumni ? "Enter last college completed" : "XYZ University"}
-                value={formData.college}
-                onChange={handleChange}
-                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-              />
-            </div>
-
             {/* Degree * */}
             <div className="space-y-1 sm:space-y-2">
               <Label htmlFor="degree" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">
-                {formData.isAlumni ? "Last Degree Completed *" : "Degree *"}
+                Last or pursuing Degree Completed *
               </Label>
               <Input
                 id="degree"
                 name="degree"
                 type="text"
-                placeholder={formData.isAlumni ? "Enter last degree completed" : "B.Tech"}
+                placeholder="e.g. BBA"
                 value={formData.degree}
                 onChange={handleChange}
                 required
@@ -396,89 +331,71 @@ const StudentSelfRegister = () => {
               />
             </div>
 
-            {/* If Current Student: Year and Result */}
-            {!formData.isAlumni && (
-              <>
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="year" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Year</Label>
-                  <Input
-                    id="year"
-                    name="year"
-                    type="number"
-                    placeholder="2"
-                    value={formData.year}
-                    onChange={handleChange}
-                    className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-                  />
-                </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="result" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Result/CGPA</Label>
-                  <Input
-                    id="result"
-                    name="result"
-                    type="text"
-                    placeholder="8.5 CGPA"
-                    value={formData.result}
-                    onChange={handleChange}
-                    className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-                  />
-                </div>
-              </>
-            )}
+            {/* College */}
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="college" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">
+                College Name
+              </Label>
+              <Input
+                id="college"
+                name="college"
+                type="text"
+                placeholder="e.g. SEMCOM College"
+                value={formData.college}
+                onChange={handleChange}
+                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
+              />
+            </div>
 
-            {/* If Alumni: Job / Work & Location Details */}
-            {formData.isAlumni && (
-              <>
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="job" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Current Job</Label>
-                  <Input
-                    id="job"
-                    name="job"
-                    type="text"
-                    placeholder="e.g. Software Engineer / Google"
-                    value={formData.job}
-                    onChange={handleChange}
-                    className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-                  />
-                </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="designation" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Designation</Label>
-                  <Input
-                    id="designation"
-                    name="designation"
-                    type="text"
-                    placeholder="e.g. Senior Developer"
-                    value={formData.designation}
-                    onChange={handleChange}
-                    className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-                  />
-                </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="jobPlace" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Job Place</Label>
-                  <Input
-                    id="jobPlace"
-                    name="jobPlace"
-                    type="text"
-                    placeholder="e.g. Bangalore"
-                    value={formData.jobPlace}
-                    onChange={handleChange}
-                    className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-                  />
-                </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="livingPlace" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Current Living Place</Label>
-                  <Input
-                    id="livingPlace"
-                    name="livingPlace"
-                    type="text"
-                    placeholder="e.g. Anand"
-                    value={formData.livingPlace}
-                    onChange={handleChange}
-                    className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-                  />
-                </div>
-              </>
-            )}
+            {/* Professional Details */}
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="job" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Company Name</Label>
+              <Input
+                id="job"
+                name="job"
+                type="text"
+                placeholder="e.g. Google"
+                value={formData.job}
+                onChange={handleChange}
+                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
+              />
+            </div>
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="designation" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Designation</Label>
+              <Input
+                id="designation"
+                name="designation"
+                type="text"
+                placeholder="e.g. Senior Developer"
+                value={formData.designation}
+                onChange={handleChange}
+                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
+              />
+            </div>
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="jobPlace" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Job Place or City</Label>
+              <Input
+                id="jobPlace"
+                name="jobPlace"
+                type="text"
+                placeholder="e.g. Bangalore"
+                value={formData.jobPlace}
+                onChange={handleChange}
+                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
+              />
+            </div>
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="livingPlace" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Living Place or City</Label>
+              <Input
+                id="livingPlace"
+                name="livingPlace"
+                type="text"
+                placeholder="e.g. Anand"
+                value={formData.livingPlace}
+                onChange={handleChange}
+                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
+              />
+            </div>
 
             {/* Interests */}
             <div className="space-y-1 sm:space-y-2">

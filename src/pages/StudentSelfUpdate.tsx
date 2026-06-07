@@ -180,36 +180,29 @@ const StudentSelfUpdate = () => {
 
   const fields = [
     { name: 'name', label: 'Full Name', type: 'text', placeholder: 'Enter name' },
-    ...(!formData.isAlumni ? [{ name: 'roomNo', label: 'Room Number', type: 'text', placeholder: '101' }] : []),
     { name: 'mobile', label: 'Mobile Number', type: 'tel', placeholder: '+91 9876543210' },
     { name: 'email', label: 'Email Address', type: 'email', placeholder: 'email@example.com' },
     { name: 'dob', label: 'Date of Birth (YYYY-MM-DD)', type: 'date', placeholder: '' },
     { name: 'age', label: 'Age', type: 'number', placeholder: '20' },
     { 
-      name: 'college', 
-      label: formData.isAlumni ? 'Last College Completed' : 'College', 
+      name: 'degree', 
+      label: 'Last or pursuing Degree Completed *', 
       type: 'text', 
-      placeholder: formData.isAlumni ? 'Enter last college completed' : 'XYZ University' 
+      placeholder: 'e.g. BBA' 
     },
     { 
-      name: 'degree', 
-      label: formData.isAlumni ? 'Last Degree Completed *' : 'Degree *', 
+      name: 'college', 
+      label: 'College Name', 
       type: 'text', 
-      placeholder: formData.isAlumni ? 'Enter last degree completed' : 'B.Tech' 
+      placeholder: 'e.g. SEMCOM College' 
     },
-    ...(!formData.isAlumni ? [
-      { name: 'year', label: 'Year', type: 'number', placeholder: '2' },
-      { name: 'result', label: 'Result/CGPA', type: 'text', placeholder: '8.5 CGPA' }
-    ] : []),
+    { name: 'job', label: 'Company Name', type: 'text', placeholder: 'e.g. Google' },
+    { name: 'designation', label: 'Designation', type: 'text', placeholder: 'e.g. Senior Developer' },
+    { name: 'jobPlace', label: 'Job Place or City', type: 'text', placeholder: 'e.g. Bangalore' },
+    { name: 'livingPlace', label: 'Living Place or City', type: 'text', placeholder: 'e.g. Anand' },
     { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music' },
     { name: 'linkedin', label: 'LinkedIn URL', type: 'text', placeholder: 'https://linkedin.com/in/username' },
     { name: 'socialLink', label: 'Social Media URL (Instagram, Facebook, X, etc.)', type: 'text', placeholder: 'https://instagram.com/username' },
-    ...(formData.isAlumni ? [
-      { name: 'job', label: 'Current Job', type: 'text', placeholder: 'e.g. Software Engineer / Google' },
-      { name: 'designation', label: 'Designation', type: 'text', placeholder: 'e.g. Senior Developer' },
-      { name: 'jobPlace', label: 'Job Place', type: 'text', placeholder: 'e.g. Bangalore' },
-      { name: 'livingPlace', label: 'Current Living Place', type: 'text', placeholder: 'e.g. Anand' }
-    ] : []),
   ];
 
   if (loading) {

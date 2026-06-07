@@ -57,7 +57,7 @@ const AddStudent = () => {
     profileImage: '',
     job: '',
     college: '',
-    isAlumni: false,
+    isAlumni: true,
     linkedin: '',
     socialLink: '',
     designation: '',
@@ -270,37 +270,30 @@ const AddStudent = () => {
   };
 
   const fields = [
-    ...(!formData.isAlumni ? [{ name: 'roomNo', label: 'Room Number', type: 'text', placeholder: '101' }] : []),
     { name: 'name', label: 'Full Name', type: 'text', placeholder: 'Enter name' },
     { name: 'age', label: 'Age', type: 'number', placeholder: '20' },
     { name: 'dob', label: 'Date of Birth', type: 'date', placeholder: '' },
     { name: 'mobile', label: 'Mobile Number', type: 'tel', placeholder: '+91 9876543210' },
     { name: 'email', label: 'Email Address', type: 'email', placeholder: 'email@example.com' },
     { 
-      name: 'college', 
-      label: formData.isAlumni ? 'Last College Completed' : 'College', 
+      name: 'degree', 
+      label: 'Last or pursuing Degree Completed', 
       type: 'text', 
-      placeholder: formData.isAlumni ? 'Enter last college completed' : 'XYZ University' 
+      placeholder: 'e.g. BBA' 
     },
     { 
-      name: 'degree', 
-      label: formData.isAlumni ? 'Last Degree Completed' : 'Degree', 
+      name: 'college', 
+      label: 'College Name', 
       type: 'text', 
-      placeholder: formData.isAlumni ? 'Enter last degree completed' : 'B.Tech' 
+      placeholder: 'e.g. SEMCOM College' 
     },
-    ...(!formData.isAlumni ? [
-      { name: 'year', label: 'Year', type: 'number', placeholder: '2' },
-      { name: 'result', label: 'Result/CGPA', type: 'text', placeholder: '8.5 CGPA' }
-    ] : []),
+    { name: 'job', label: 'Company Name', type: 'text', placeholder: 'e.g. Google' },
+    { name: 'designation', label: 'Designation', type: 'text', placeholder: 'e.g. Senior Developer' },
+    { name: 'jobPlace', label: 'Job Place or City', type: 'text', placeholder: 'e.g. Bangalore' },
+    { name: 'livingPlace', label: 'Living Place or City', type: 'text', placeholder: 'e.g. Anand' },
     { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music' },
     { name: 'linkedin', label: 'LinkedIn URL', type: 'text', placeholder: 'https://linkedin.com/in/username' },
     { name: 'socialLink', label: 'Social Media URL (Instagram, Facebook, X, etc.)', type: 'text', placeholder: 'https://instagram.com/username' },
-    ...(formData.isAlumni ? [
-      { name: 'job', label: 'Current Job', type: 'text', placeholder: 'e.g. Software Engineer / Google' },
-      { name: 'designation', label: 'Designation', type: 'text', placeholder: 'e.g. Senior Developer' },
-      { name: 'jobPlace', label: 'Job Place', type: 'text', placeholder: 'e.g. Bangalore' },
-      { name: 'livingPlace', label: 'Current Living Place', type: 'text', placeholder: 'e.g. Anand' }
-    ] : []),
   ];
 
   return (
@@ -383,45 +376,6 @@ const AddStudent = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Alumni Status Toggle Card */}
-          <div className="bg-white border border-border/50 rounded-3xl shadow-soft p-6 space-y-4">
-            <Label className="text-sm font-bold text-foreground/80">Alumni Status</Label>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsDirty(true);
-                  setFormData(prev => ({ ...prev, isAlumni: false }));
-                }}
-                className={cn(
-                  "h-14 rounded-2xl border flex items-center justify-center gap-3 font-bold text-sm transition-all",
-                  !formData.isAlumni
-                    ? "bg-primary/10 border-primary text-primary shadow-sm"
-                    : "bg-background border-border hover:border-foreground/20 text-muted-foreground"
-                )}
-              >
-                <BookOpen className="w-5 h-5" />
-                Current Student
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsDirty(true);
-                  setFormData(prev => ({ ...prev, isAlumni: true }));
-                }}
-                className={cn(
-                  "h-14 rounded-2xl border flex items-center justify-center gap-3 font-bold text-sm transition-all",
-                  formData.isAlumni
-                    ? "bg-primary/10 border-primary text-primary shadow-sm"
-                    : "bg-background border-border hover:border-foreground/20 text-muted-foreground"
-                )}
-              >
-                <Award className="w-5 h-5" />
-                Alumni
-              </button>
-            </div>
-          </div>
-
           <div className="bg-white border border-border/50 rounded-3xl shadow-soft p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 sm:gap-y-6">
             {fields
               .map((field, index) => (
