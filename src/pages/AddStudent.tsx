@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useBlocker } from 'react-router-dom';
-import { ArrowLeft, UserPlus, Save, Calendar as CalendarIcon, X, User, Loader2 } from 'lucide-react';
+import { ArrowLeft, UserPlus, Save, Calendar as CalendarIcon, X, User, Loader2, Copy } from 'lucide-react';
 import { format } from "date-fns";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -184,6 +184,16 @@ const AddStudent = () => {
     setFormData(prev => ({ ...prev, profileImage: '' }));
   };
 
+  const handleCopyRegisterLink = () => {
+    const registerUrl = `${window.location.origin}/register`;
+    navigator.clipboard.writeText(registerUrl);
+    toast({
+      title: 'Link Copied',
+      description: 'Registration form link copied to clipboard.',
+      duration: 3000,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -278,6 +288,25 @@ const AddStudent = () => {
       </header>
 
       <main className="p-4 md:p-6 max-w-5xl mx-auto space-y-8 mt-4">
+        {/* Banner to Copy Form Link for Self Registration */}
+        {!isEditing && (
+          <div className="bg-primary/5 border border-primary/20 rounded-3xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in shadow-soft">
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-foreground">Self-Registration</h3>
+              <p className="text-muted-foreground text-sm">Share this link with students so they can fill out this form themselves.</p>
+            </div>
+            <Button
+              type="button"
+              onClick={handleCopyRegisterLink}
+              variant="outline"
+              className="h-12 px-6 bg-white hover:bg-primary/5 border-primary/20 hover:border-primary/50 text-primary rounded-xl flex items-center gap-2 font-bold transition-all shrink-0 shadow-sm"
+            >
+              <Copy className="w-4 h-4" />
+              Copy Form Link
+            </Button>
+          </div>
+        )}
+
         <div className="space-y-1">
           <h2 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
             <UserPlus className="w-6 h-6 text-primary" />
