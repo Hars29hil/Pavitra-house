@@ -73,8 +73,8 @@ const StudentSelfUpdate = () => {
           // Store which fields had data initially to disable them
           const initialDataMap: Record<string, string> = {};
           Object.entries(data).forEach(([key, val]) => {
-            if (val && val.toString().trim() !== '') {
-              initialDataMap[key] = val;
+            if (val !== undefined && val !== null && val.toString().trim() !== '') {
+              initialDataMap[key] = String(val);
             }
           });
           setInitialData(initialDataMap);

@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addStudent, getStudents } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { countryCodes } from '@/lib/countryCodes';
+import api from '@/lib/api';
 
 
 const StudentSelfRegister = () => {
