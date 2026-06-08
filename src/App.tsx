@@ -17,6 +17,7 @@ import Education from "./pages/Education";
 import Tasks from "./pages/Tasks";
 import NotFound from "./pages/NotFound";
 import Whatsapp from "./pages/Whatsapp";
+import Tags from "./pages/Tags";
 
 import { TaskNotificationManager } from "@/components/TaskNotificationManager";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -87,6 +88,7 @@ const router = createBrowserRouter(
       <Route path="/education" element={<ProtectedRoute><Education /></ProtectedRoute>} />
       <Route path="/whatsapp" element={<ProtectedRoute><Whatsapp /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+      <Route path="/tags" element={<ProtectedRoute><Tags /></ProtectedRoute>} />
 
       {/* 404 */}
       <Route path="*" element={<NotFound />} />

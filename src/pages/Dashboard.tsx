@@ -7,7 +7,7 @@ import { StudentListItem } from '@/components/StudentListItem';
 import { StudentProfileSheet } from '@/components/StudentProfileSheet';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { getStudents } from '@/lib/store';
+import { getStudents, getSetting } from '@/lib/store';
 import { Student } from '@/types';
 import { cn } from '@/lib/utils';
 import { LayoutDashboard, Clock, ArrowRight } from 'lucide-react';
@@ -19,6 +19,7 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [tagsData, setTagsData] = useState<{ tags: any[], assignments: Record<string, string> }>({ tags: [], assignments: {} });
 
   useEffect(() => {
     fetchStudents();
@@ -28,10 +29,28 @@ const Dashboard = () => {
     try {
       const data = await getStudents();
       setStudents(data || []);
+      
+      const tagsSetting = await getSetting('student_tags');
+      if (tagsSetting) {
+        try {
+          setTagsData(JSON.parse(tagsSetting));
+        } catch (e) {
+          console.error('Error parsing student_tags setting:', e);
+        }
+      }
     } catch (error) {
       console.error(error);
       setStudents([]);
     }
+  };
+
+  const getStudentTags = (studentId: string) => {
+    const val = tagsData.assignments[studentId];
+    if (!val) return [];
+    const ids = val.split(',').filter(Boolean);
+    return ids
+      .map(id => tagsData.tags.find(t => t.id === id))
+      .filter((t): t is any => !!t);
   };
 
   // Filter students based on state
@@ -122,6 +141,7 @@ const Dashboard = () => {
               >
                 <StudentListItem
                   student={student}
+                  tags={getStudentTags(student.id)}
                   onClick={() => {
                     setSelectedStudent(student);
                     setIsProfileOpen(true);

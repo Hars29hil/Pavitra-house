@@ -11,10 +11,18 @@ interface StudentListItemProps {
   student: Student;
   onClick: () => void;
   hideContactActions?: boolean;
+  tag?: { id?: string; name: string; color: string } | null;
+  tags?: Array<{ id: string; name: string; color: string }> | null;
 }
 
-export const StudentListItem = ({ student, onClick, hideContactActions = false }: StudentListItemProps) => {
-  const [tags, setTags] = useState<Karyakarta[]>([]);
+export const StudentListItem = ({ 
+  student, 
+  onClick, 
+  hideContactActions = false, 
+  tag = null,
+  tags = null
+}: StudentListItemProps) => {
+  const [karyakartaCats, setKaryakartaCats] = useState<Karyakarta[]>([]);
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
@@ -24,7 +32,7 @@ export const StudentListItem = ({ student, onClick, hideContactActions = false }
   useEffect(() => {
     getCategories().then(cats => {
       const studentTags = cats.filter(c => c.studentIds.includes(student.id));
-      setTags(studentTags);
+      setKaryakartaCats(studentTags);
     });
   }, [student.id]);
 
@@ -44,11 +52,42 @@ export const StudentListItem = ({ student, onClick, hideContactActions = false }
 
 
 
+  const activeTags = tags && tags.length > 0 
+    ? tags 
+    : tag 
+      ? [{ id: tag.id || '', name: tag.name, color: tag.color }] 
+      : [];
+
+  const borderLeftColor = activeTags.length === 1 
+    ? activeTags[0].color 
+    : activeTags.length > 1
+      ? `linear-gradient(to bottom, ${activeTags.map(t => t.color).join(', ')})`
+      : undefined;
+
+  const bgStyle = activeTags.length > 0
+    ? activeTags.length === 1
+      ? { backgroundColor: `${activeTags[0].color}08`, borderColor: `${activeTags[0].color}40` }
+      : {
+          backgroundImage: `linear-gradient(135deg, ${activeTags.map(t => t.color + '05').join(', ')})`,
+          borderColor: `${activeTags[0].color}35`,
+        }
+    : {};
+
   return (
     <div
       onClick={onClick}
-      className="w-full flex items-center gap-2 sm:gap-4 p-2.5 sm:p-5 glass-card rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg hover:scale-[1.01] active:scale-[0.99] animate-fade-in text-left cursor-pointer group"
+      className="w-full flex items-center gap-2 sm:gap-4 p-2.5 sm:p-5 pl-4 sm:pl-6 glass-card rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg hover:scale-[1.01] active:scale-[0.99] animate-fade-in text-left cursor-pointer group relative overflow-hidden"
+      style={bgStyle}
     >
+      {/* Left border gradient indicator */}
+      {activeTags.length > 0 && (
+        <div 
+          className="absolute left-0 top-0 bottom-0 w-[6px]" 
+          style={{ 
+            background: borderLeftColor 
+          }}
+        />
+      )}
       <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden shadow-soft group-hover:shadow-soft-lg transition-all shrink-0 bg-primary/10 flex items-center justify-center">
         {student.profileImage && !imgError ? (
           <img
@@ -65,8 +104,17 @@ export const StudentListItem = ({ student, onClick, hideContactActions = false }
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5 sm:mb-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5 sm:mb-1 min-w-0 flex-wrap">
           <h3 className="font-bold text-base sm:text-lg text-foreground truncate tracking-tight flex-1">{student.name}</h3>
+          {activeTags && activeTags.map(t => (
+            <span 
+              key={t.id || t.name}
+              className="inline-flex shrink-0 items-center px-2 py-0.5 text-[8px] sm:text-[10px] font-bold rounded-full uppercase tracking-wider text-white shadow-sm animate-fade-in"
+              style={{ backgroundColor: t.color }}
+            >
+              {t.name}
+            </span>
+          ))}
           {student.isAlumni && (
             <span className="inline-flex shrink-0 items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-accent/30 to-accent/20 text-accent-foreground text-[8px] sm:text-[10px] font-bold rounded-full uppercase tracking-wider border border-accent/20">
               <GraduationCap className="w-2.5 h-2.5 sm:w-3 h-3" />
