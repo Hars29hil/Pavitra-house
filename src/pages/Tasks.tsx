@@ -1,18 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, ClipboardList, Search } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { TaskItem } from '@/components/TaskItem';
 import { Button } from '@/components/ui/button';
-import { Task } from '@/types';
+import { Task, Student } from '@/types';
 import { Input } from '@/components/ui/input';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { cn } from '@/lib/utils';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
-import { getTasks, addTask, updateTask, deleteTask } from '@/lib/store';
+import { getTasks, addTask, updateTask, deleteTask, getStudents, getCategories, Karyakarta } from '@/lib/store';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Tasks = () => {
+  const { adminName, adminRole } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [categories, setCategories] = useState<Karyakarta[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -23,17 +27,45 @@ const Tasks = () => {
     const fetchTasks = async () => {
       setLoading(true);
       try {
-        const data = await getTasks();
-        setTasks(data || []);
+        const [tasksData, studentsData, categoriesData] = await Promise.all([
+          getTasks(),
+          getStudents(),
+          getCategories()
+        ]);
+        setTasks(tasksData || []);
+        setStudents(studentsData || []);
+        setCategories(categoriesData || []);
       } catch (error) {
         console.error("Error fetching tasks:", error);
         setTasks([]);
+        setStudents([]);
+        setCategories([]);
       } finally {
         setLoading(false);
       }
     };
     fetchTasks();
   }, []);
+
+  const myCategory = useMemo(() => {
+    return categories.find(
+      c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
+    );
+  }, [categories, adminName]);
+
+  const assignedStudentIds = useMemo(() => {
+    if (adminRole === 'admin') return null;
+    if (!myCategory) return [];
+
+    let assignedIds = new Set<string>(myCategory.studentIds || []);
+    if (myCategory.type === 'main') {
+      const subs = categories.filter(c => c.parentId === myCategory.id);
+      subs.forEach(sub => {
+        (sub.studentIds || []).forEach(id => assignedIds.add(id));
+      });
+    }
+    return Array.from(assignedIds);
+  }, [categories, myCategory, adminRole]);
 
   // Notifications for Deadlines
   useTaskNotifications(tasks);
@@ -65,6 +97,12 @@ const Tasks = () => {
   const filteredTasks = tasks.filter(task => {
     const matchesFilter = filter === 'all' ? true : task.status === filter;
     const matchesSearch = (task.title || '').toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (adminRole !== 'admin') {
+      if (!task.assignedTo || !assignedStudentIds) return false;
+      if (!assignedStudentIds.includes(task.assignedTo)) return false;
+    }
+
     return matchesFilter && matchesSearch;
   });
 

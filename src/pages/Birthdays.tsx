@@ -1,19 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Cake, Sparkles, Send, Settings, Clock, Power, Users, ChevronDown } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
-import { getStudents, getSetting, updateSetting } from '@/lib/store';
+import { getStudents, getSetting, updateSetting, getCategories, Karyakarta } from '@/lib/store';
 import { Student } from '@/types';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Birthdays = () => {
     const navigate = useNavigate();
+    const { adminName, adminRole } = useAuth();
     const [students, setStudents] = useState<Student[]>([]);
+    const [categories, setCategories] = useState<Karyakarta[]>([]);
     const [messageTemplate, setMessageTemplate] = useState("Happy Birthday, {name}! 🎉🎂 Wishing you a fantastic day filled with joy and happiness!");
     const [isEditingTemplate, setIsEditingTemplate] = useState(false);
     const [tempTemplate, setTempTemplate] = useState("");
@@ -40,16 +43,42 @@ const Birthdays = () => {
     };
 
     useEffect(() => {
-        const fetchStudents = async () => {
+        const fetchData = async () => {
             try {
-                const data = await getStudents();
-                setStudents(data || []);
+                const [studentsData, categoriesData] = await Promise.all([
+                    getStudents(),
+                    getCategories()
+                ]);
+                setStudents(studentsData || []);
+                setCategories(categoriesData || []);
             } catch (error) {
                 setStudents([]);
+                setCategories([]);
             }
         };
-        fetchStudents();
+        fetchData();
     }, []);
+
+    const myCategory = useMemo(() => {
+        return categories.find(
+            c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
+        );
+    }, [categories, adminName]);
+
+    const myAssignedStudents = useMemo(() => {
+        if (adminRole === 'admin') return students;
+        if (!myCategory) return [];
+
+        let assignedIds = new Set<string>(myCategory.studentIds || []);
+        if (myCategory.type === 'main') {
+            const subs = categories.filter(c => c.parentId === myCategory.id);
+            subs.forEach(sub => {
+                (sub.studentIds || []).forEach(id => assignedIds.add(id));
+            });
+        }
+        const ids = Array.from(assignedIds);
+        return students.filter(s => ids.includes(s.id));
+    }, [students, categories, myCategory, adminRole]);
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -89,10 +118,10 @@ const Birthdays = () => {
         checkAndSend(); // Check immediately
 
         return () => clearInterval(interval);
-    }, [autoSendEnabled, autoSendTime, lastSentDate, students, messageTemplate, groupLink]);
+    }, [autoSendEnabled, autoSendTime, lastSentDate, myAssignedStudents, messageTemplate, groupLink]);
 
     // Filter students whose birthday is TODAY
-    const birthdayStudents = students.filter(student => {
+    const birthdayStudents = myAssignedStudents.filter(student => {
         if (!student.dob) return false;
 
         const today = new Date();

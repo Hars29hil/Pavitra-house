@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { getStudents } from '@/lib/store';
+import { getStudents, getCategories, Karyakarta } from '@/lib/store';
 import { Student } from '@/types';
 import { Search, User2, Calendar, ClipboardList, HelpCircle, Send, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import api from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CreateTaskDialogProps {
     open: boolean;
@@ -19,9 +20,11 @@ interface CreateTaskDialogProps {
 }
 
 export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTaskDialogProps) => {
+    const { adminName, adminRole } = useAuth();
     const [step, setStep] = useState(1);
     const [showAlumni, setShowAlumni] = useState(false);
     const [students, setStudents] = useState<Student[]>([]);
+    const [categories, setCategories] = useState<Karyakarta[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
 
@@ -32,17 +35,41 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
         dueDate: '',
     });
 
-    // Fetch students when dialog opens
+    // Fetch students and categories when dialog opens
     useEffect(() => {
         if (open) {
-            getStudents().then(setStudents);
+            Promise.all([getStudents(), getCategories()]).then(([studentsData, categoriesData]) => {
+                setStudents(studentsData || []);
+                setCategories(categoriesData || []);
+            });
             setStep(1);
             setSelectedStudents([]);
             setTaskData({ title: '', isPracticeQuestion: false, questionContent: '', dueDate: '' });
         }
     }, [open]);
 
-    const filteredStudents = students.filter(s =>
+    const myCategory = useMemo(() => {
+        return categories.find(
+            c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
+        );
+    }, [categories, adminName]);
+
+    const myAssignedStudents = useMemo(() => {
+        if (adminRole === 'admin') return students;
+        if (!myCategory) return [];
+
+        let assignedIds = new Set<string>(myCategory.studentIds || []);
+        if (myCategory.type === 'main') {
+            const subs = categories.filter(c => c.parentId === myCategory.id);
+            subs.forEach(sub => {
+                (sub.studentIds || []).forEach(id => assignedIds.add(id));
+            });
+        }
+        const ids = Array.from(assignedIds);
+        return students.filter(s => ids.includes(s.id));
+    }, [students, categories, myCategory, adminRole]);
+
+    const filteredStudents = myAssignedStudents.filter(s =>
         (showAlumni ? s.isAlumni : !s.isAlumni) && (
             (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
             (s.roomNo || '').toString().toLowerCase().includes(searchQuery.toLowerCase()) ||

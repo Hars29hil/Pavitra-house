@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,11 @@ import { toast } from 'sonner';
 import { getEducationResources, addEducationResource, deleteEducationResource, getStudents, getCategories, EducationResource, Karyakarta } from '@/lib/store';
 import { Student } from '@/types';
 import api from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Education() {
+    const { adminName, adminRole } = useAuth();
+    
     // Data State
     const [resources, setResources] = useState<EducationResource[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
@@ -97,7 +100,28 @@ export default function Education() {
         }
     };
 
-    const filteredStudents = students.filter(s => {
+    const myCategory = useMemo(() => {
+        return karyakartas.find(
+            c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
+        );
+    }, [karyakartas, adminName]);
+
+    const myAssignedStudents = useMemo(() => {
+        if (adminRole === 'admin') return students;
+        if (!myCategory) return [];
+
+        let assignedIds = new Set<string>(myCategory.studentIds || []);
+        if (myCategory.type === 'main') {
+            const subs = karyakartas.filter(c => c.parentId === myCategory.id);
+            subs.forEach(sub => {
+                (sub.studentIds || []).forEach(id => assignedIds.add(id));
+            });
+        }
+        const ids = Array.from(assignedIds);
+        return students.filter(s => ids.includes(s.id));
+    }, [students, karyakartas, myCategory, adminRole]);
+
+    const filteredStudents = myAssignedStudents.filter(s => {
         const matchesSearch = !s.isAlumni && (
             s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.roomNo?.toString().includes(searchQuery) ||
@@ -332,17 +356,32 @@ export default function Education() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 <Input placeholder="Search students..." className="pl-9 h-9" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                             </div>
-                            <Select value={selectedGroupId || "all"} onValueChange={v => setSelectedGroupId(v === "all" ? null : v)}>
-                                <SelectTrigger className="w-[180px] h-9">
-                                    <SelectValue placeholder="Filter Group" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Students</SelectItem>
-                                    {karyakartas.filter(k => k.type === 'main').map(g => (
-                                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            {adminRole === 'admin' && (
+                                <Select value={selectedGroupId || "all"} onValueChange={v => setSelectedGroupId(v === "all" ? null : v)}>
+                                    <SelectTrigger className="w-[180px] h-9">
+                                        <SelectValue placeholder="Filter Group" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Students</SelectItem>
+                                        {karyakartas.filter(k => k.type === 'main').map(g => (
+                                            <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                            {adminRole === 'Karyakarta' && myCategory && (
+                                <Select value={selectedGroupId || "all"} onValueChange={v => setSelectedGroupId(v === "all" ? null : v)}>
+                                    <SelectTrigger className="w-[180px] h-9">
+                                        <SelectValue placeholder="Filter Group" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Assigned Yuvaks</SelectItem>
+                                        {karyakartas.filter(k => k.parentId === myCategory.id).map(g => (
+                                            <SelectItem key={g.id} value={g.id}>{g.name}'s Group</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
                             <Button variant="outline" size="sm" onClick={toggleSelectAll} className="h-9">
                                 {selectedStudentIds.size === filteredStudents.length ? "Deselect All" : "Select All"}
                             </Button>

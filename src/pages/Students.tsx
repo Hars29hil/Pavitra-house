@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Users2, RefreshCw } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
@@ -16,17 +16,20 @@ import {
   SelectLabel,
   SelectSeparator,
 } from "@/components/ui/select"
-import { getStudents, updateStudent } from '@/lib/store';
+import { getStudents, updateStudent, getCategories, Karyakarta } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import { Student } from '@/types';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Students = () => {
   const navigate = useNavigate();
+  const { adminName, adminRole } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [showAlumni, setShowAlumni] = useState(false);
   const { toast } = useToast();
   const [students, setStudents] = useState<Student[]>([]);
+  const [categories, setCategories] = useState<Karyakarta[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -38,17 +41,43 @@ const Students = () => {
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      const data = await getStudents();
-      setStudents(data || []);
+      const [studentsData, categoriesData] = await Promise.all([
+        getStudents(),
+        getCategories()
+      ]);
+      setStudents(studentsData || []);
+      setCategories(categoriesData || []);
     } catch (error) {
       console.error('Failed to fetch students', error);
       setStudents([]);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredStudents = students.filter(student => {
+  const myCategory = useMemo(() => {
+    return categories.find(
+      c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
+    );
+  }, [categories, adminName]);
+
+  const myAssignedStudents = useMemo(() => {
+    if (adminRole === 'admin') return students;
+    if (!myCategory) return [];
+
+    let assignedIds = new Set<string>(myCategory.studentIds || []);
+    if (myCategory.type === 'main') {
+      const subs = categories.filter(c => c.parentId === myCategory.id);
+      subs.forEach(sub => {
+        (sub.studentIds || []).forEach(id => assignedIds.add(id));
+      });
+    }
+    const ids = Array.from(assignedIds);
+    return students.filter(s => ids.includes(s.id));
+  }, [students, categories, myCategory, adminRole]);
+
+  const filteredStudents = myAssignedStudents.filter(student => {
     const matchesSearch =
       student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.roomNo?.includes(searchQuery) ||
@@ -103,7 +132,7 @@ const Students = () => {
                     : "text-muted-foreground hover:text-foreground hover:bg-white/50"
                 )}
               >
-                Current ({students.filter(s => !s.isAlumni).length})
+                Current ({myAssignedStudents.filter(s => !s.isAlumni).length})
               </button>
               <button
                 onClick={() => setShowAlumni(true)}
@@ -114,7 +143,7 @@ const Students = () => {
                     : "text-muted-foreground hover:text-foreground hover:bg-white/50"
                 )}
               >
-                Alumni ({students.filter(s => s.isAlumni).length})
+                Alumni ({myAssignedStudents.filter(s => s.isAlumni).length})
               </button>
             </div>
 
