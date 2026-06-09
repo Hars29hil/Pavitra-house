@@ -1,9 +1,0 @@
-node_modules
-.env
-
-render.yaml
-.wwebjs_auth/
-.wwebjs_cache/
-deploy.tar.gz
-backend_deploy.zip
-baileys_auth/

@@ -141,7 +141,7 @@ const StudentResults = () => {
                     <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mx-auto text-destructive">
                         <GraduationCap className="w-10 h-10" />
                     </div>
-                    <h1 className="text-2xl font-bold">Student not found</h1>
+                    <h1 className="text-2xl font-bold">Yuvak not found</h1>
                     <Button onClick={() => navigate(-1)}>Go Back</Button>
                 </div>
             </div>

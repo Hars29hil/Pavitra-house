@@ -73,7 +73,7 @@ const Students = () => {
         <div className="space-y-1">
           <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
             <Users2 className="w-8 h-8 text-primary" />
-            Student Directory
+            Yuvak Directory
           </h2>
           <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs">Browse and search for any resident</p>
         </div>

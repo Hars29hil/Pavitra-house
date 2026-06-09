@@ -53,7 +53,7 @@ export const StudentProfileSheet = ({
                 onTouchEnd={handleTouchEnd}
             >
                 <SheetHeader className="p-6 pb-0 sticky top-0 bg-transparent z-10">
-                    <SheetTitle className="sr-only">Student Profile - {student.name}</SheetTitle>
+                    <SheetTitle className="sr-only">Yuvak Profile - {student.name}</SheetTitle>
                     <SheetDescription className="sr-only">Detailed profile view for {student.name}</SheetDescription>
                 </SheetHeader>
 

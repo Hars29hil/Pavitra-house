@@ -13,8 +13,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useToast } from '@/hooks/use-toast';
-import { getStudents, addStudent, updateStudent, upsertStudents } from '@/lib/store';
+import { getStudents, addStudent, updateStudent, upsertStudents, getCategories, updateCategory } from '@/lib/store';
 import { Student } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 import { BulkUpdate } from '@/components/BulkUpdate';
 import { uploadToImgBB } from '@/lib/imgbb';
 import { cn } from '@/lib/utils';
@@ -41,6 +42,7 @@ const AddStudent = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { toast } = useToast();
+  const { adminRole, adminName } = useAuth();
   const isEditing = !!id;
 
   const [formData, setFormData] = useState({
@@ -122,7 +124,7 @@ const AddStudent = () => {
             // Reset dirty after loading initial data
             setIsDirty(false);
           } else {
-            toast({ title: "Error", description: "Student not found", variant: "destructive" });
+            toast({ title: "Error", description: "Yuvak not found", variant: "destructive" });
             navigate('/dashboard');
           }
         }
@@ -224,7 +226,7 @@ const AddStudent = () => {
       if (roommates.length >= maxStudents) {
         toast({
           title: "Validation Error",
-          description: `Room ${formData.roomNo} already has ${maxStudents} students.`,
+          description: `Room ${formData.roomNo} already has ${maxStudents} Yuvaks.`,
           variant: "destructive",
         });
         setLoading(false);
@@ -237,18 +239,35 @@ const AddStudent = () => {
           age: Number(formData.age),
         });
         toast({
-          title: 'Student Updated',
+          title: 'Yuvak Updated',
           description: `${formData.name} has been updated successfully.`,
         });
         setIsDirty(false); // Important: Clear flag before nav
         navigate(-1); 
       } else {
         // New Student
-        await addStudent({
+        const newStudent = await addStudent({
           ...formData,
           age: Number(formData.age),
           isAlumni: formData.isAlumni,
         });
+
+        // Auto-assign newly created student to active Karyakarta/Sub-Karyakarta
+        if (adminRole === 'Karyakarta' || adminRole === 'Sub-Karyakarta') {
+          try {
+            const categoriesData = await getCategories();
+            const myCat = categoriesData.find(
+              c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
+            );
+            if (myCat) {
+              const updatedStudentIds = [...(myCat.studentIds || []), newStudent.id];
+              await updateCategory(myCat.id, { studentIds: updatedStudentIds });
+            }
+          } catch (linkError) {
+            console.error('Failed to auto-link Yuvak to Karyakarta:', linkError);
+          }
+        }
+
         toast({
           title: 'Registration Successful',
           description: `${formData.name} has been added to the system.`,
@@ -260,7 +279,7 @@ const AddStudent = () => {
       console.error(error);
       const message = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
-        title: isEditing ? 'Error Updating Student' : 'Error Saving Student',
+        title: isEditing ? 'Error Updating Yuvak' : 'Error Saving Yuvak',
         description: message,
         variant: 'destructive',
       });
@@ -308,7 +327,7 @@ const AddStudent = () => {
           >
             <ArrowLeft className="w-6 h-6" />
           </Button>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">{isEditing ? 'Edit Student Details' : 'Registration'}</h1> {/* Changed from isEditing to isEditing */}
+          <h1 className="text-xl font-bold tracking-tight text-foreground">{isEditing ? 'Edit Yuvak Details' : 'Registration'}</h1> {/* Changed from isEditing to isEditing */}
         </div>
       </header>
 
@@ -318,7 +337,7 @@ const AddStudent = () => {
           <div className="bg-primary/5 border border-primary/20 rounded-3xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in shadow-soft">
             <div className="space-y-1">
               <h3 className="text-lg font-bold text-foreground">Self-Registration</h3>
-              <p className="text-muted-foreground text-sm">Share this link with students so they can fill out this form themselves.</p>
+              <p className="text-muted-foreground text-sm">Share this link with Yuvaks so they can fill out this form themselves.</p>
             </div>
             <Button
               type="button"
@@ -463,7 +482,7 @@ const AddStudent = () => {
             <div className="mt-12 pt-8 border-t border-border/50">
               <div className="mb-6">
                 <h3 className="text-xl font-bold mb-2">Bulk Registration</h3>
-                <p className="text-muted-foreground text-sm">Upload multiple students at once via Excel</p>
+                <p className="text-muted-foreground text-sm">Upload multiple Yuvaks at once via Excel</p>
               </div>
 
               {/* If we have actual students, pass them to extract actual data. Otherwise pass dummy for template. */}
@@ -490,7 +509,7 @@ const AddStudent = () => {
                     await upsertStudents(newStudents);
                     toast({
                       title: "Bulk Add Successful",
-                      description: `Added/Updated ${newStudents.length} students.`,
+                      description: `Added/Updated ${newStudents.length} Yuvaks.`,
                     });
                     navigate('/dashboard');
                   } catch (e) {

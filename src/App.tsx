@@ -24,29 +24,22 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, adminRole, logout } = useAuth();
+const ProtectedRoute = ({ 
+  children, 
+  allowedRoles = ['admin'] 
+}: { 
+  children: React.ReactNode;
+  allowedRoles?: string[];
+}) => {
+  const { isAuthenticated, adminRole } = useAuth();
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (adminRole !== 'admin') {
-    // Show a blank/placeholder page for Karyakartas for now
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center animate-fade-in">
-        <h1 className="text-2xl font-bold text-foreground">Welcome!</h1>
-        <p className="text-muted-foreground mt-2 max-w-md">
-          You are logged in as a <strong>{adminRole}</strong>. The Karyakarta dashboard features are coming soon!
-        </p>
-        <button 
-          onClick={logout}
-          className="mt-8 px-6 py-2 bg-primary text-primary-foreground rounded-xl font-medium shadow-sm hover:bg-primary/90 transition-colors"
-        >
-          Sign Out
-        </button>
-      </div>
-    );
+  // If the user's role is not in the allowed roles list, redirect to dashboard
+  if (allowedRoles && !allowedRoles.includes(adminRole)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -76,19 +69,19 @@ const router = createBrowserRouter(
       <Route path="/" element={<RootRedirect />} />
 
       {/* Protected Routes */}
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/students" element={<ProtectedRoute><Students /></ProtectedRoute>} />
-      <Route path="/birthdays" element={<ProtectedRoute><Birthdays /></ProtectedRoute>} />
-      <Route path="/students/add" element={<ProtectedRoute><AddStudent /></ProtectedRoute>} />
-      <Route path="/students/:id" element={<ProtectedRoute><StudentDetails /></ProtectedRoute>} />
-      <Route path="/students/:id/edit" element={<ProtectedRoute><AddStudent /></ProtectedRoute>} />
-      <Route path="/students/:id/results" element={<ProtectedRoute><StudentResults /></ProtectedRoute>} />
-      <Route path="/update" element={<ProtectedRoute><Update /></ProtectedRoute>} />
-      <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
-      <Route path="/education" element={<ProtectedRoute><Education /></ProtectedRoute>} />
-      <Route path="/whatsapp" element={<ProtectedRoute><Whatsapp /></ProtectedRoute>} />
-      <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
-      <Route path="/tags" element={<ProtectedRoute><Tags /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Dashboard /></ProtectedRoute>} />
+      <Route path="/students" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Students /></ProtectedRoute>} />
+      <Route path="/birthdays" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Birthdays /></ProtectedRoute>} />
+      <Route path="/students/add" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><AddStudent /></ProtectedRoute>} />
+      <Route path="/students/:id" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><StudentDetails /></ProtectedRoute>} />
+      <Route path="/students/:id/edit" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><AddStudent /></ProtectedRoute>} />
+      <Route path="/students/:id/results" element={<ProtectedRoute allowedRoles={['admin']}><StudentResults /></ProtectedRoute>} />
+      <Route path="/update" element={<ProtectedRoute allowedRoles={['admin']}><Update /></ProtectedRoute>} />
+      <Route path="/categories" element={<ProtectedRoute allowedRoles={['admin']}><Categories /></ProtectedRoute>} />
+      <Route path="/education" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Education /></ProtectedRoute>} />
+      <Route path="/whatsapp" element={<ProtectedRoute allowedRoles={['admin']}><Whatsapp /></ProtectedRoute>} />
+      <Route path="/tasks" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Tasks /></ProtectedRoute>} />
+      <Route path="/tags" element={<ProtectedRoute allowedRoles={['admin']}><Tags /></ProtectedRoute>} />
 
       {/* 404 */}
       <Route path="*" element={<NotFound />} />

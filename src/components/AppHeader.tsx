@@ -18,19 +18,26 @@ interface AppHeaderProps {
 }
 
 export const AppHeader = ({ title }: AppHeaderProps) => {
-  const { logout } = useAuth();
+  const { logout, adminRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
+  const isAdmin = adminRole === 'admin';
+
   const menuItems = [
-    { path: '/dashboard', label: 'All Student', icon: LayoutDashboard },
+    { path: '/dashboard', label: 'All Yuvak', icon: LayoutDashboard },
     { path: '/birthdays', label: 'Birthdays', icon: Cake },
-    { path: '/update', label: 'Update', icon: RefreshCw },
-    { path: '/tasks', label: 'Tasks', icon: CheckSquare },
-    { path: '/categories', label: 'Karyakartas', icon: Users },
-    { path: '/education', label: 'Education', icon: BookOpen },
-    { path: '/whatsapp', label: 'Message', icon: MessageCircle },
-    { path: '/tags', label: 'TAG', icon: Tag },
+    ...(isAdmin ? [
+      { path: '/update', label: 'Update', icon: RefreshCw },
+      { path: '/tasks', label: 'Tasks', icon: CheckSquare },
+      { path: '/categories', label: 'Karyakartas', icon: Users },
+      { path: '/education', label: 'Education', icon: BookOpen },
+      { path: '/whatsapp', label: 'Message', icon: MessageCircle },
+      { path: '/tags', label: 'TAG', icon: Tag },
+    ] : [
+      { path: '/tasks', label: 'Tasks', icon: CheckSquare },
+      { path: '/education', label: 'Education', icon: BookOpen },
+    ])
   ];
 
   const filteredMenuItems = menuItems.filter(item => item.path !== location.pathname);

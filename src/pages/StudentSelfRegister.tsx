@@ -54,7 +54,7 @@ const StudentSelfRegister = () => {
           `/api/students/check-mobile?mobile=${formData.mobile}`
         );
         if (res.data?.registered) {
-          setMobileError(`Mobile number is already registered by ${res.data.student?.name || 'another student'}`);
+          setMobileError(`Mobile number is already registered by ${res.data.student?.name || 'another Yuvak'}`);
         } else {
           setMobileError('');
         }
@@ -108,7 +108,7 @@ const StudentSelfRegister = () => {
         if (roommates.length >= maxStudents) {
           toast({
             title: "Validation Error",
-            description: `Room ${formData.roomNo} already has ${maxStudents} students.`,
+            description: `Room ${formData.roomNo} already has ${maxStudents} Yuvaks.`,
             variant: "destructive",
           });
           setSaving(false);
@@ -186,7 +186,7 @@ const StudentSelfRegister = () => {
     <div className="min-h-screen bg-background pb-20 relative animate-fade-in">
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-border shadow-soft">
         <div className="flex items-center justify-center h-16 px-4 max-w-3xl mx-auto">
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Student Self-Registration</h1>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Yuvak Self-Registration</h1>
         </div>
       </header>
 

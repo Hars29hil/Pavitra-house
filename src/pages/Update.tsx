@@ -123,7 +123,7 @@ const Update = () => {
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                Current Students
+                Current
               </button>
               <button
                 onClick={() => setShowAlumni(true)}

@@ -297,12 +297,12 @@ const Tags = () => {
   };
 
   const handleDeleteTag = async (tagId: string, tagName: string) => {
-    if (!confirm(`Are you sure you want to delete tag "${tagName}"? This will unassign it from all students.`)) {
+    if (!confirm(`Are you sure you want to delete tag "${tagName}"? This will unassign it from all Yuvak.`)) {
       return;
     }
 
     const updatedTags = tags.filter(t => t.id !== tagId);
-    
+
     // Clean up assignments using this tag
     const updatedAssignments = { ...assignments };
     Object.keys(updatedAssignments).forEach(studentId => {
@@ -328,14 +328,14 @@ const Tags = () => {
   const handleAssignTag = async (studentId: string, tagId: string | null) => {
     setSavingAssignment(true);
     const updatedAssignments = { ...assignments };
-    
+
     if (tagId === null) {
       delete updatedAssignments[studentId];
     } else {
       const currentTags = updatedAssignments[studentId]
         ? updatedAssignments[studentId].split(',').filter(Boolean)
         : [];
-      
+
       if (currentTags.includes(tagId)) {
         // Toggle off
         const nextTags = currentTags.filter(id => id !== tagId);
@@ -392,7 +392,7 @@ const Tags = () => {
             {/* Create Tag Form */}
             <div className="bg-white border border-border/50 rounded-3xl p-6 shadow-soft space-y-4">
               <h3 className="text-xl font-bold text-foreground">Create New Tag</h3>
-              
+
               <form onSubmit={handleAddTag} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="tagName">Tag Name</Label>
@@ -407,16 +407,16 @@ const Tags = () => {
 
                 <div className="space-y-3">
                   <Label>Tag Color (Color Wheel)</Label>
-                  
+
                   {/* Interactive Color Wheel */}
                   <div className="flex justify-center py-2 bg-muted/20 border border-border/40 rounded-2xl p-4">
                     <ColorWheel color={selectedColor} onChange={setSelectedColor} />
                   </div>
 
                   <div className="flex gap-3 items-center">
-                    <div 
-                      className="w-10 h-10 rounded-full border border-border shadow-sm shrink-0 transition-colors duration-200" 
-                      style={{ backgroundColor: selectedColor }} 
+                    <div
+                      className="w-10 h-10 rounded-full border border-border shadow-sm shrink-0 transition-colors duration-200"
+                      style={{ backgroundColor: selectedColor }}
                     />
                     <Input
                       id="tagColor"
@@ -449,7 +449,7 @@ const Tags = () => {
             {/* List of Tags */}
             <div className="bg-white border border-border/50 rounded-3xl p-6 shadow-soft space-y-4">
               <h3 className="text-xl font-bold text-foreground">All Tags ({tags.length})</h3>
-              
+
               {tags.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic text-center py-6">No custom tags created yet.</p>
               ) : (
@@ -459,7 +459,7 @@ const Tags = () => {
                       if (!val) return false;
                       return val.split(',').includes(tag.id);
                     }).length;
-                    
+
                     return (
                       <div
                         key={tag.id}
@@ -499,13 +499,13 @@ const Tags = () => {
           <div className="lg:col-span-7">
             <div className="bg-white border border-border/50 rounded-3xl p-6 shadow-soft space-y-6 h-full flex flex-col">
               <div>
-                <h3 className="text-xl font-bold text-foreground">Assign Tag to Student</h3>
+                <h3 className="text-xl font-bold text-foreground">Assign Tag to Yuvak</h3>
                 <p className="text-muted-foreground text-sm mt-1">Search for a resident and select which tag to apply.</p>
               </div>
 
               {/* Student Combobox Selector */}
               <div className="space-y-2">
-                <Label>Select Student</Label>
+                <Label>Select Yuvak</Label>
                 <Popover open={openStudentSearch} onOpenChange={setOpenStudentSearch}>
                   <PopoverTrigger asChild>
                     <Button
@@ -516,7 +516,7 @@ const Tags = () => {
                     >
                       <span className="truncate flex items-center gap-2">
                         <Search className="w-5 h-5 opacity-40 shrink-0" />
-                        {selectedStudent ? selectedStudent.name : "Search student name or room..."}
+                        {selectedStudent ? selectedStudent.name : "Search Yuvak name or room..."}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -528,10 +528,10 @@ const Tags = () => {
                         <CommandEmpty>No student found.</CommandEmpty>
                         <CommandGroup>
                           {students.map((student) => {
-                            const studentTagIds = assignments[student.id] 
+                            const studentTagIds = assignments[student.id]
                               ? assignments[student.id].split(',').filter(Boolean)
                               : [];
-                            
+
                             return (
                               <CommandItem
                                 key={student.id}
@@ -624,11 +624,10 @@ const Tags = () => {
                               type="button"
                               disabled={savingAssignment}
                               onClick={() => handleAssignTag(selectedStudent.id, tag.id)}
-                              className={`p-4 border rounded-2xl flex items-center justify-between transition-all font-semibold text-sm ${
-                                currentStudentTagIds.includes(tag.id)
-                                  ? 'bg-primary/5 border-primary text-primary shadow-sm'
-                                  : 'bg-white border-border/60 text-foreground hover:border-foreground/20'
-                              }`}
+                              className={`p-4 border rounded-2xl flex items-center justify-between transition-all font-semibold text-sm ${currentStudentTagIds.includes(tag.id)
+                                ? 'bg-primary/5 border-primary text-primary shadow-sm'
+                                : 'bg-white border-border/60 text-foreground hover:border-foreground/20'
+                                }`}
                             >
                               <div className="flex items-center gap-3">
                                 <span

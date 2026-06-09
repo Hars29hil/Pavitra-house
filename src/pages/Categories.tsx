@@ -286,9 +286,9 @@ const Categories = () => {
       const updatedKaryakarta = { ...selectedKaryakartaForDetail, studentIds: updatedStudentIds };
       setKaryakartas(karyakartas.map(k => k.id === updatedKaryakarta.id ? updatedKaryakarta : k));
       setSelectedKaryakartaForDetail(updatedKaryakarta);
-      toast.success('Student removed from Karyakarta');
+      toast.success('Yuvak removed from Karyakarta');
     } catch (e) {
-      toast.error('Failed to remove student');
+      toast.error('Failed to remove Yuvak');
     }
   };
 
@@ -319,7 +319,7 @@ const Categories = () => {
                 Karyakartas
               </h2>
               <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs pl-1 mt-1">
-                Manage your team Students
+                Manage your team Yuvaks
               </p>
             </div>
 
@@ -333,7 +333,7 @@ const Categories = () => {
                     <UserCircle2 className="w-5 h-5 text-primary" />
                     Add Main Karyakarta
                   </h3>
-                  <p className="text-xs text-muted-foreground">Select a student to designate as a lead Karyakarta.</p>
+                  <p className="text-xs text-muted-foreground">Select a Yuvak to designate as a lead Karyakarta.</p>
                   <Popover open={openMainSearch} onOpenChange={setOpenMainSearch}>
                     <PopoverTrigger asChild>
                       <Button
@@ -343,16 +343,16 @@ const Categories = () => {
                         className="w-full justify-between h-14 text-base rounded-xl font-normal"
                       >
                         <span className="truncate">
-                          {selectedMainStudent ? selectedMainStudent.name : "Search Student..."}
+                          {selectedMainStudent ? selectedMainStudent.name : "Search Yuvak..."}
                         </span>
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[300px] sm:w-[400px] p-0" align="start">
                       <Command>
-                        <CommandInput placeholder="Search student by name..." />
+                        <CommandInput placeholder="Search Yuvak by name..." />
                         <CommandList>
-                          <CommandEmpty>No student found.</CommandEmpty>
+                          <CommandEmpty>No Yuvak found.</CommandEmpty>
                           <CommandGroup>
                             {students.map((student) => (
                               <CommandItem
@@ -393,7 +393,7 @@ const Categories = () => {
                     <Users className="w-5 h-5 text-primary" />
                     Add Sub-Karyakarta
                   </h3>
-                  <p className="text-xs text-muted-foreground">Assign a Student under an existing Karyakarta.</p>
+                  <p className="text-xs text-muted-foreground">Assign a Yuvak under an existing Karyakarta.</p>
 
                   <Select value={selectedParentId} onValueChange={setSelectedParentId}>
                     <SelectTrigger className="w-full h-14 text-base rounded-xl font-normal bg-gray-50/50">
@@ -419,16 +419,16 @@ const Categories = () => {
                         disabled={!selectedParentId || selectedParentId === 'none'}
                       >
                         <span className="truncate">
-                          {selectedSubStudent ? selectedSubStudent.name : "Search Student..."}
+                          {selectedSubStudent ? selectedSubStudent.name : "Search Yuvak..."}
                         </span>
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[300px] sm:w-[400px] p-0" align="start">
                       <Command>
-                        <CommandInput placeholder="Search student by name..." />
+                        <CommandInput placeholder="Search Yuvak by name..." />
                         <CommandList>
-                          <CommandEmpty>No student found.</CommandEmpty>
+                          <CommandEmpty>No Yuvak found.</CommandEmpty>
                           <CommandGroup>
                             {students.map((student) => (
                               <CommandItem
@@ -572,7 +572,7 @@ const Categories = () => {
             {/* Assign Student Form */}
             <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 flex flex-col md:flex-row gap-4 items-end">
               <div className="w-full md:flex-1 space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 ml-1">Search Student to Assign</label>
+                <label className="text-sm font-semibold text-foreground/80 ml-1">Search Yuvak to Assign</label>
                 <Popover open={openStudentSearch} onOpenChange={setOpenStudentSearch}>
                   <PopoverTrigger asChild>
                     <Button
@@ -583,17 +583,17 @@ const Categories = () => {
                     >
                       <span className="truncate">
                         {selectedStudentsToAdd.length > 0
-                          ? `${selectedStudentsToAdd.length} student(s) selected`
-                          : "Search from all students..."}
+                          ? `${selectedStudentsToAdd.length} Yuvak(s) selected`
+                          : "Search from all Yuvaks..."}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[300px] sm:w-[500px] p-0" align="start">
                     <Command>
-                      <CommandInput placeholder="Search student by name..." />
+                      <CommandInput placeholder="Search Yuvak by name..." />
                       <CommandList>
-                        <CommandEmpty>No student found.</CommandEmpty>
+                        <CommandEmpty>No Yuvak found.</CommandEmpty>
                         <CommandGroup>
                           {filteredStudentsForSearch.map((student) => {
                             const isSelected = selectedStudentsToAdd.some(s => s.id === student.id);
@@ -676,16 +676,16 @@ const Categories = () => {
                 >
                   <UserPlus className="w-5 h-5" />
                   {selectedRoomRange
-                    ? `Add ${filteredStudentsForSearch.length} Filtered Students`
-                    : `Add Student${selectedStudentsToAdd.length > 1 ? 's' : ''}`}
+                    ? `Add ${filteredStudentsForSearch.length} Filtered Yuvaks`
+                    : `Add Yuvak${selectedStudentsToAdd.length > 1 ? 's' : ''}`}
                 </Button>
               </div>
             </div>
 
-            {/* List of Assigned Students */}
+            {/* List of Assigned Yuvaks */}
             <div className="bg-white rounded-3xl shadow-sm border border-border/50 overflow-hidden">
               <div className="p-6 border-b border-border/50 bg-gray-50/50">
-                <h3 className="font-bold text-lg text-foreground">Currently Assigned Students</h3>
+                <h3 className="font-bold text-lg text-foreground">Currently Assigned Yuvaks</h3>
               </div>
               <div className="p-0 divide-y divide-border/50">
                 {(() => {
@@ -695,7 +695,7 @@ const Categories = () => {
                   if (assignedStudents.length === 0) {
                     return (
                       <div className="p-10 text-center text-muted-foreground italic">
-                        No students are currently assigned to this Karyakarta.
+                        No Yuvaks are currently assigned to this Karyakarta.
                       </div>
                     );
                   }

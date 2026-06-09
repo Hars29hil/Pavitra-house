@@ -218,7 +218,7 @@ const StudentSelfUpdate = () => {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="bg-white border border-border/50 rounded-3xl shadow-soft p-8 text-center max-w-md w-full">
           <Info className="w-12 h-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">Student Not Found</h2>
+          <h2 className="text-xl font-bold mb-2">Yuvak Not Found</h2>
           <p className="text-muted-foreground">We could not find any records matching this mobile number.</p>
         </div>
       </div>

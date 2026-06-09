@@ -51,7 +51,7 @@ const StudentDetails = () => {
           <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mx-auto text-destructive">
             <UserMinus className="w-10 h-10" />
           </div>
-          <h1 className="text-2xl font-bold">Student not found</h1>
+          <h1 className="text-2xl font-bold">Yuvak not found</h1>
         </div>
       </div>
     );
@@ -71,7 +71,7 @@ const StudentDetails = () => {
           >
             <ArrowLeft className="w-6 h-6" />
           </Button>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Student Profile</h1>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Yuvak Profile</h1>
         </div>
       </header>
 

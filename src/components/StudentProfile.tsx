@@ -21,7 +21,7 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
         if (!student.mobile) {
             toast({
                 title: 'No Mobile Number',
-                description: 'Student does not have a mobile number saved.',
+                description: 'Yuvak does not have a mobile number saved.',
                 variant: 'destructive',
             });
             return;
@@ -32,7 +32,7 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
         navigator.clipboard.writeText(url);
         toast({
             title: 'URL Copied',
-            description: 'The student form URL has been copied to your clipboard.',
+            description: 'The Yuvak form URL has been copied to your clipboard.',
             duration: 3000,
         });
     };
@@ -45,7 +45,7 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
             await deleteStudent(student.id);
 
             toast({
-                title: 'Student Deleted',
+                title: 'Yuvak Deleted',
                 description: `${student.name} has been successfully deleted.`,
                 duration: 2000,
             });
@@ -62,7 +62,7 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
         } catch (error) {
             toast({
                 title: 'Error',
-                description: 'Failed to delete student.',
+                description: 'Failed to delete Yuvak.',
                 variant: 'destructive',
             });
         }
@@ -93,7 +93,7 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
         } catch (error) {
             toast({
                 title: 'Error',
-                description: 'Failed to move student to alumni.',
+                description: 'Failed to move Yuvak to alumni.',
                 variant: 'destructive',
             });
         }
@@ -105,7 +105,7 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
 
             toast({
                 title: 'Moved to Current',
-                description: `${student.name} has been moved to current students list.`,
+                description: `${student.name} has been moved to current Yuvaks list.`,
                 duration: 2000,
             });
 
@@ -121,7 +121,7 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
         } catch (error) {
             toast({
                 title: 'Error',
-                description: 'Failed to move student to current list.',
+                description: 'Failed to move Yuvak to current list.',
                 variant: 'destructive',
             });
         }

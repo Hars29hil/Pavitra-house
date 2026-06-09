@@ -11,8 +11,16 @@ import { getStudents, getSetting } from '@/lib/store';
 import { Student } from '@/types';
 import { cn } from '@/lib/utils';
 import { LayoutDashboard, Clock, ArrowRight } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import KaryakartaDashboard from './KaryakartaDashboard';
 
 const Dashboard = () => {
+  const { adminRole } = useAuth();
+  
+  if (adminRole === 'Karyakarta' || adminRole === 'Sub-Karyakarta') {
+    return <KaryakartaDashboard />;
+  }
+
   const navigate = useNavigate();
   const [showAlumni, setShowAlumni] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
@@ -124,7 +132,7 @@ const Dashboard = () => {
               className="h-11 px-4 bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 text-sm font-semibold whitespace-nowrap shrink-0 hover:bg-blue-700 transition-colors shadow-sm"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Add Student</span>
+              <span className="hidden sm:inline">Add Yuvak</span>
               <span className="sm:hidden">Add</span>
             </button>
           </div>
@@ -152,7 +160,7 @@ const Dashboard = () => {
           ) : (
             <div className="text-center py-12">
               <Search className="w-6 h-6 mx-auto text-gray-400 mb-2" />
-              <p className="text-sm text-gray-500">No students found</p>
+              <p className="text-sm text-gray-500">No Yuvaks found</p>
             </div>
           )}
         </div>
