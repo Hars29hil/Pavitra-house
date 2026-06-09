@@ -487,7 +487,9 @@ const Categories = () => {
                               </div>
                               <div>
                                 <h4 className="text-xl font-bold text-foreground group-hover/main:text-primary transition-colors">{main.name}</h4>
-                                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mt-1">Main Karyakarta</p>
+                                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mt-1">
+                                  Main Karyakarta • {main.studentIds?.length || 0} Yuvaks
+                                </p>
                               </div>
                             </div>
                             <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
@@ -521,7 +523,9 @@ const Categories = () => {
                                       <div className="w-2 h-2 rounded-full bg-primary/40" />
                                       <div>
                                         <h5 className="font-bold text-foreground group-hover/sub:text-primary transition-colors">{sub.name}</h5>
-                                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Sub Karyakarta</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                          Sub Karyakarta • {sub.studentIds?.length || 0} Yuvaks
+                                        </p>
                                       </div>
                                     </div>
                                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>

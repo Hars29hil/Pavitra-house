@@ -43,11 +43,7 @@ const KaryakartaDashboard = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // Add Yuvak Dialog State
-  const [isAddYuvakOpen, setIsAddYuvakOpen] = useState(false);
-  const [addYuvakSearchQuery, setAddYuvakSearchQuery] = useState('');
-  const [selectedYuvakIds, setSelectedYuvakIds] = useState<string[]>([]);
-  const [savingYuvaks, setSavingYuvaks] = useState(false);
+
 
   useEffect(() => {
     fetchData();
@@ -151,71 +147,7 @@ const KaryakartaDashboard = () => {
     });
   }, [roleFilteredStudents, searchQuery]);
 
-  // Available students who are NOT already assigned to this Karyakarta
-  const availableStudents = useMemo(() => {
-    if (!myCategory) return [];
-    const assignedIds = myCategory.studentIds || [];
-    return students.filter(s => !assignedIds.includes(s.id));
-  }, [students, myCategory]);
 
-  // Filtered available students based on search query in the dialog
-  const filteredAvailableStudents = useMemo(() => {
-    const query = addYuvakSearchQuery.trim().toLowerCase();
-    if (!query) return availableStudents;
-    return availableStudents.filter(s => 
-      s.name?.toLowerCase().includes(query) ||
-      (s.roomNo && s.roomNo.includes(query)) ||
-      (s.mobile && s.mobile.includes(query))
-    );
-  }, [availableStudents, addYuvakSearchQuery]);
-
-  const handleToggleSelectAll = () => {
-    const allFilteredIds = filteredAvailableStudents.map(s => s.id);
-    const areAllSelected = allFilteredIds.every(id => selectedYuvakIds.includes(id));
-    
-    if (areAllSelected) {
-      // Deselect all filtered
-      setSelectedYuvakIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
-    } else {
-      // Select all filtered
-      setSelectedYuvakIds(prev => {
-        const uniqueIds = new Set([...prev, ...allFilteredIds]);
-        return Array.from(uniqueIds);
-      });
-    }
-  };
-
-  const isAllFilteredSelected = useMemo(() => {
-    if (filteredAvailableStudents.length === 0) return false;
-    return filteredAvailableStudents.every(s => selectedYuvakIds.includes(s.id));
-  }, [filteredAvailableStudents, selectedYuvakIds]);
-
-  const handleAddSelectedYuvaks = async () => {
-    if (selectedYuvakIds.length === 0 || !myCategory) return;
-    
-    setSavingYuvaks(true);
-    try {
-      const updatedStudentIds = [...(myCategory.studentIds || []), ...selectedYuvakIds];
-      await updateCategory(myCategory.id, { studentIds: updatedStudentIds });
-      
-      toast.success(`${selectedYuvakIds.length} Yuvak(s) assigned successfully!`);
-      
-      // Update categories local state
-      setCategories(prev =>
-        prev.map(c => c.id === myCategory.id ? { ...c, studentIds: updatedStudentIds } : c)
-      );
-      
-      // Reset dialog states
-      setIsAddYuvakOpen(false);
-      setSelectedYuvakIds([]);
-      setAddYuvakSearchQuery('');
-    } catch (error) {
-      console.error('Failed to add Yuvaks:', error);
-      toast.error('Failed to add Yuvaks. Please try again.');
-    } finally {
-      setSavingYuvaks(false);
-    }
-  };
 
   // Summary counts for Quick Stats Cards
   const stats = useMemo(() => {
@@ -265,11 +197,7 @@ const KaryakartaDashboard = () => {
           </div>
           
           <Button
-            onClick={() => {
-              setSelectedYuvakIds([]);
-              setAddYuvakSearchQuery('');
-              setIsAddYuvakOpen(true);
-            }}
+            onClick={() => navigate('/students/add')}
             className="bg-white hover:bg-slate-50 text-blue-700 h-12 px-6 rounded-2xl font-bold flex items-center gap-2 self-start md:self-auto shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <Plus className="w-5 h-5 text-blue-700" />
@@ -409,133 +337,6 @@ const KaryakartaDashboard = () => {
         onUpdate={fetchData}
       />
 
-      {/* Add Yuvak Dialog */}
-      <Dialog open={isAddYuvakOpen} onOpenChange={setIsAddYuvakOpen}>
-        <DialogContent className="sm:max-w-lg rounded-3xl p-6 bg-white max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black text-foreground">Add Yuvaks to My Group</DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-1">
-              Select existing Yuvaks from the hostel database to assign to your group.
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Search bar inside dialog */}
-          <div className="relative my-4 group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <Input
-              placeholder="Search Yuvak by name, room or mobile..."
-              value={addYuvakSearchQuery}
-              onChange={(e) => setAddYuvakSearchQuery(e.target.value)}
-              className="pl-9 h-11 border-border rounded-xl focus:ring-primary/20 focus:border-primary text-sm shadow-sm"
-            />
-          </div>
-
-          {/* Selection Stats and Select All */}
-          {filteredAvailableStudents.length > 0 && (
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/50 text-xs font-semibold text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="select-all-yuvaks"
-                  checked={isAllFilteredSelected}
-                  onCheckedChange={handleToggleSelectAll}
-                  className="rounded"
-                />
-                <label htmlFor="select-all-yuvaks" className="cursor-pointer hover:text-foreground">
-                  Select All Filtered ({filteredAvailableStudents.length})
-                </label>
-              </div>
-              <div>
-                Selected: <span className="text-primary font-black">{selectedYuvakIds.length}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Yuvaks List */}
-          <div className="flex-1 overflow-y-auto max-h-[350px] space-y-2 pr-1 min-h-[150px]">
-            {filteredAvailableStudents.length > 0 ? (
-              filteredAvailableStudents.map(student => {
-                const isSelected = selectedYuvakIds.includes(student.id);
-                return (
-                  <div
-                    key={student.id}
-                    onClick={() => {
-                      setSelectedYuvakIds(prev =>
-                        isSelected ? prev.filter(id => id !== student.id) : [...prev, student.id]
-                      );
-                    }}
-                    className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-primary/5 border-primary/40 shadow-sm'
-                        : 'border-border/40 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => {}} // onClick handles selection
-                      className="rounded"
-                    />
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-primary text-sm shrink-0">
-                      {student.name.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-foreground text-sm truncate">{student.name}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        Room: {student.roomNo || 'N/A'} • Mobile: {student.mobile || 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                <Users className="w-8 h-8 opacity-30 mb-2" />
-                <p className="text-sm font-semibold">No available Yuvaks found</p>
-                <p className="text-xs max-w-xs mt-1">
-                  All Yuvaks in the database are already assigned or don't match your search.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="mt-6 flex flex-col sm:flex-row gap-2 sm:justify-between items-center border-t border-border/50 pt-4">
-            <div className="text-xs text-muted-foreground self-start sm:self-center">
-              Can't find them?{' '}
-              <a
-                href="/students/add"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setIsAddYuvakOpen(false);
-                  navigate('/students/add');
-                }}
-                className="text-blue-600 hover:underline font-bold"
-              >
-                Create new Yuvak
-              </a>
-            </div>
-            
-            <div className="flex gap-2 w-full sm:w-auto justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsAddYuvakOpen(false);
-                  setSelectedYuvakIds([]);
-                  setAddYuvakSearchQuery('');
-                }}
-                className="rounded-xl h-11 px-4"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleAddSelectedYuvaks}
-                disabled={selectedYuvakIds.length === 0 || savingYuvaks}
-                className="rounded-xl h-11 px-6 font-bold"
-              >
-                {savingYuvaks ? 'Adding...' : `Add Selected (${selectedYuvakIds.length})`}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
