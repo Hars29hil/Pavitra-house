@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Loader2, CheckCircle2, Send, Search, Users, X, Filter, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import api from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 import { getStudents, getCategories, Karyakarta } from "@/lib/store";
@@ -26,6 +27,7 @@ import {
 const API_BASE = API_BASE_URL;
 
 export default function Whatsapp() {
+    const { adminRole, adminName } = useAuth();
     const [connected, setConnected] = useState(false);
     const [qr, setQr] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -61,7 +63,7 @@ export default function Whatsapp() {
 
     const handleResetSession = async () => {
         if (!confirm("This will PERMANENTLY delete your login session and force a new QR code. Use this only if you are stuck. Continue?")) return;
-        
+
         try {
             setLoading(true);
             const res = await api.post('/api/reset-session');
@@ -82,7 +84,7 @@ export default function Whatsapp() {
 
     const handleLogout = async () => {
         if (!confirm("Are you sure you want to logout? This will require scanning the QR code again.")) return;
-        
+
         try {
             setLoading(true);
             const res = await api.post('/api/logout');
@@ -111,7 +113,7 @@ export default function Whatsapp() {
                 ]);
                 setStudents(studentsData);
                 setKaryakartas(categoriesData);
-                
+
                 // Load Group Link from settings
                 const savedGroupLink = await api.get('/api/status'); // We could use a setting, but let's check if we have a way to get settings
                 // Better: use the store helper
@@ -173,8 +175,29 @@ export default function Whatsapp() {
         };
     }, []);
 
+    const myCategory = useMemo(() => {
+        return karyakartas.find(
+            c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
+        );
+    }, [karyakartas, adminName]);
+
+    const myAssignedStudents = useMemo(() => {
+        if (adminRole === 'admin') return students;
+        if (!myCategory) return [];
+
+        let assignedIds = new Set<string>(myCategory.studentIds || []);
+        if (myCategory.type === 'main') {
+            const subs = karyakartas.filter(c => c.parentId === myCategory.id);
+            subs.forEach(sub => {
+                (sub.studentIds || []).forEach(id => assignedIds.add(id));
+            });
+        }
+        const ids = Array.from(assignedIds);
+        return students.filter(s => ids.includes(s.id) && !s.isAlumni);
+    }, [students, karyakartas, myCategory, adminRole]);
+
     // Filter Students
-    const filteredStudents = students.filter(s => {
+    const filteredStudents = myAssignedStudents.filter(s => {
         // 1. Basic Filters (Alumni, Search)
         const matchesType = showAlumni ? s.isAlumni : !s.isAlumni;
         const matchesSearch = matchesType && (
@@ -215,16 +238,16 @@ export default function Whatsapp() {
 
     const handleBulkSend = async () => {
         if (selectedIds.size === 0 || !message) {
-            toast.error("Select users and enter a message");
+            toast.error("Select Yuvaks and enter a message");
             return;
         }
 
         setSending(true);
-        const recipients = students.filter(s => selectedIds.has(s.id));
+        const recipients = myAssignedStudents.filter(s => selectedIds.has(s.id));
         let successCount = 0;
         let failCount = 0;
 
-        toast.message(`Sending to ${recipients.length} students...`);
+        toast.message(`Sending to ${recipients.length} Yuvak...`);
 
         for (const student of recipients) {
             if (!student.mobile) {
@@ -318,7 +341,11 @@ export default function Whatsapp() {
         }
     };
 
-    const mainGroups = karyakartas.filter(k => k.type === 'main');
+    const mainGroups = useMemo(() => {
+        const mains = karyakartas.filter(k => k.type === 'main');
+        if (adminRole === 'admin') return mains;
+        return mains.filter(k => k.name.trim().toLowerCase() === adminName.trim().toLowerCase());
+    }, [karyakartas, adminRole, adminName]);
     const selectedGroupName = selectedGroupId ? karyakartas.find(k => k.id === selectedGroupId)?.name : "All Students";
 
     return (
@@ -334,7 +361,7 @@ export default function Whatsapp() {
                             <div className="space-y-1">
                                 <h2 className="text-2xl font-bold flex items-center gap-2">
                                     <Users className="w-6 h-6 text-primary" />
-                                    Select Students
+                                    Select Yuvak
                                 </h2>
                                 <p className="text-muted-foreground text-sm">Target: <span className="font-semibold text-primary">{selectedGroupName}</span></p>
                             </div>
@@ -344,22 +371,24 @@ export default function Whatsapp() {
                         </div>
 
                         {/* Toggle Current / Alumni */}
-                        <div className="flex p-1 bg-muted/50 rounded-xl border border-border/50">
-                            <button
-                                onClick={() => setShowAlumni(false)}
-                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${!showAlumni ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                            >
-                                Current
-                            </button>
-                            <button
-                                onClick={() => setShowAlumni(true)}
-                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${showAlumni ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                            >
-                                Alumni
-                            </button>
-                        </div>
+                        {adminRole === 'admin' && (
+                            <div className="flex p-1 bg-muted/50 rounded-xl border border-border/50">
+                                <button
+                                    onClick={() => setShowAlumni(false)}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${!showAlumni ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                >
+                                    Current
+                                </button>
+                                <button
+                                    onClick={() => setShowAlumni(true)}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${showAlumni ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                >
+                                    Alumni
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex gap-2">
@@ -374,48 +403,50 @@ export default function Whatsapp() {
                         </div>
 
                         {/* Category Filter */}
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="gap-2">
-                                    <Users className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Filter</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                                <DropdownMenuLabel>Filter by Group</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => setSelectedGroupId(null)}>
-                                    <Users className="w-4 h-4 mr-2" />
-                                    All Students
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {mainGroups.length > 0 ? (
-                                    mainGroups.map(main => (
-                                        <DropdownMenuSub key={main.id}>
-                                            <DropdownMenuSubTrigger>
-                                                <span>{main.name}</span>
-                                            </DropdownMenuSubTrigger>
-                                            <DropdownMenuSubContent>
-                                                <DropdownMenuItem onClick={() => setSelectedGroupId(main.id)}>
-                                                    Select Main Group
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                {karyakartas.filter(k => k.parentId === main.id).map(sub => (
-                                                    <DropdownMenuItem key={sub.id} onClick={() => setSelectedGroupId(sub.id)}>
-                                                        {sub.name}
+                        {adminRole !== 'Sub-Karyakarta' && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" className="gap-2">
+                                        <Users className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Filter</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                    <DropdownMenuLabel>Filter by Group</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => setSelectedGroupId(null)}>
+                                        <Users className="w-4 h-4 mr-2" />
+                                        All Students
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    {mainGroups.length > 0 ? (
+                                        mainGroups.map(main => (
+                                            <DropdownMenuSub key={main.id}>
+                                                <DropdownMenuSubTrigger>
+                                                    <span>{main.name}</span>
+                                                </DropdownMenuSubTrigger>
+                                                <DropdownMenuSubContent>
+                                                    <DropdownMenuItem onClick={() => setSelectedGroupId(main.id)}>
+                                                        Select Main Group
                                                     </DropdownMenuItem>
-                                                ))}
-                                                {karyakartas.filter(k => k.parentId === main.id).length === 0 && (
-                                                    <DropdownMenuItem disabled>No Sub-groups</DropdownMenuItem>
-                                                )}
-                                            </DropdownMenuSubContent>
-                                        </DropdownMenuSub>
-                                    ))
-                                ) : (
-                                    <DropdownMenuItem disabled>No Groups Found</DropdownMenuItem>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                                                    <DropdownMenuSeparator />
+                                                    {karyakartas.filter(k => k.parentId === main.id).map(sub => (
+                                                        <DropdownMenuItem key={sub.id} onClick={() => setSelectedGroupId(sub.id)}>
+                                                            {sub.name}
+                                                        </DropdownMenuItem>
+                                                    ))}
+                                                    {karyakartas.filter(k => k.parentId === main.id).length === 0 && (
+                                                        <DropdownMenuItem disabled>No Sub-groups</DropdownMenuItem>
+                                                    )}
+                                                </DropdownMenuSubContent>
+                                            </DropdownMenuSub>
+                                        ))
+                                    ) : (
+                                        <DropdownMenuItem disabled>No Groups Found</DropdownMenuItem>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
 
                         <Button variant="outline" onClick={toggleSelectAll}>
                             {selectedIds.size === filteredStudents.length && filteredStudents.length > 0 ? "Deselect All" : "Select All"}
@@ -486,14 +517,14 @@ export default function Whatsapp() {
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">WhatsApp Group Link</Label>
                                 <div className="flex gap-2">
-                                    <Input 
-                                        placeholder="https://chat.whatsapp.com/..." 
+                                    <Input
+                                        placeholder="https://chat.whatsapp.com/..."
                                         value={groupLink}
                                         onChange={(e) => setGroupLink(e.target.value)}
                                         className="h-11 rounded-xl bg-white/50"
                                     />
-                                    <Button 
-                                        size="sm" 
+                                    <Button
+                                        size="sm"
                                         className="rounded-xl h-11 px-4"
                                         onClick={saveGroupLinkSetting}
                                         disabled={isSavingGroup}

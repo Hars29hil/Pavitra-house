@@ -128,7 +128,7 @@ const Dashboard = () => {
 
             {/* Add Button */}
             <button
-              onClick={() => navigate('/students/add')}
+              onClick={() => navigate(`/students/add?alumni=${showAlumni}`)}
               className="h-11 px-4 bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 text-sm font-semibold whitespace-nowrap shrink-0 hover:bg-blue-700 transition-colors shadow-sm"
             >
               <Plus className="w-4 h-4" />

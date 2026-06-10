@@ -74,7 +74,7 @@ const Students = () => {
       });
     }
     const ids = Array.from(assignedIds);
-    return students.filter(s => ids.includes(s.id));
+    return students.filter(s => ids.includes(s.id) && !s.isAlumni);
   }, [students, categories, myCategory, adminRole]);
 
   const filteredStudents = myAssignedStudents.filter(student => {
@@ -122,30 +122,32 @@ const Students = () => {
 
 
 
-            <div className="flex w-full sm:w-auto p-1.5 bg-muted/30 backdrop-blur-sm rounded-2xl border border-border/50 shadow-sm">
-              <button
-                onClick={() => setShowAlumni(false)}
-                className={cn(
-                  "flex-1 sm:flex-none px-3 sm:px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 whitespace-nowrap",
-                  !showAlumni
-                    ? "bg-primary text-white shadow-soft"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/50"
-                )}
-              >
-                Current ({myAssignedStudents.filter(s => !s.isAlumni).length})
-              </button>
-              <button
-                onClick={() => setShowAlumni(true)}
-                className={cn(
-                  "flex-1 sm:flex-none px-3 sm:px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 whitespace-nowrap",
-                  showAlumni
-                    ? "bg-primary text-white shadow-soft"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/50"
-                )}
-              >
-                Alumni ({myAssignedStudents.filter(s => s.isAlumni).length})
-              </button>
-            </div>
+            {adminRole === 'admin' && (
+              <div className="flex w-full sm:w-auto p-1.5 bg-muted/30 backdrop-blur-sm rounded-2xl border border-border/50 shadow-sm">
+                <button
+                  onClick={() => setShowAlumni(false)}
+                  className={cn(
+                    "flex-1 sm:flex-none px-3 sm:px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 whitespace-nowrap",
+                    !showAlumni
+                      ? "bg-primary text-white shadow-soft"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/50"
+                  )}
+                >
+                  Current ({myAssignedStudents.filter(s => !s.isAlumni).length})
+                </button>
+                <button
+                  onClick={() => setShowAlumni(true)}
+                  className={cn(
+                    "flex-1 sm:flex-none px-3 sm:px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 whitespace-nowrap",
+                    showAlumni
+                      ? "bg-primary text-white shadow-soft"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/50"
+                  )}
+                >
+                  Alumni ({myAssignedStudents.filter(s => s.isAlumni).length})
+                </button>
+              </div>
+            )}
 
 
           </div>
@@ -187,7 +189,7 @@ const Students = () => {
 
         {/* FAB */}
         <Button
-          onClick={() => navigate('/students/add')}
+          onClick={() => navigate(`/students/add?alumni=${showAlumni}`)}
           className="fixed bottom-8 right-8 w-16 h-16 rounded-2xl shadow-soft-lg bg-primary hover:bg-primary/90 hover:scale-[1.1] active:scale-[0.9] transition-all z-50 group"
           size="icon"
         >

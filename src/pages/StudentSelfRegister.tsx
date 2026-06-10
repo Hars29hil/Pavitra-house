@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Save, User, Loader2, Info, ArrowLeft, CheckCircle2, Award, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,8 @@ import api from '@/lib/api';
 
 const StudentSelfRegister = () => {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const isAlumniParam = searchParams.get('alumni') === 'true';
 
   const [formData, setFormData] = useState({
     roomNo: '',
@@ -28,7 +31,7 @@ const StudentSelfRegister = () => {
     profileImage: '',
     job: '',
     college: '',
-    isAlumni: true,
+    isAlumni: isAlumniParam,
     linkedin: '',
     socialLink: '',
     designation: '',
@@ -182,11 +185,33 @@ const StudentSelfRegister = () => {
     );
   }
 
+  const dynamicFields = [
+    ...(!formData.isAlumni ? [
+      { name: 'roomNo', label: 'Room Number *', type: 'text', placeholder: 'e.g. 101', required: true },
+      { name: 'college', label: 'College *', type: 'text', placeholder: 'e.g. SEMCOM College', required: true },
+      { name: 'degree', label: 'Degree *', type: 'text', placeholder: 'e.g. BBA', required: true },
+      { name: 'year', label: 'Year *', type: 'text', placeholder: 'e.g. 2nd Year', required: true },
+      { name: 'result', label: 'Result/CGPA', type: 'text', placeholder: 'e.g. 8.5', required: false },
+    ] : [
+      { name: 'college', label: 'College Name *', type: 'text', placeholder: 'e.g. SEMCOM College', required: true },
+      { name: 'degree', label: 'Last or Pursuing Degree Completed *', type: 'text', placeholder: 'e.g. BBA', required: true },
+      { name: 'job', label: 'Company Name', type: 'text', placeholder: 'e.g. Google', required: false },
+      { name: 'designation', label: 'Designation', type: 'text', placeholder: 'e.g. Senior Developer', required: false },
+      { name: 'jobPlace', label: 'Job Place or City', type: 'text', placeholder: 'e.g. Bangalore', required: false },
+      { name: 'livingPlace', label: 'Living Place or City', type: 'text', placeholder: 'e.g. Anand', required: false },
+    ]),
+    { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music, Coding', required: false },
+    { name: 'linkedin', label: 'LinkedIn URL', type: 'text', placeholder: 'https://linkedin.com/in/username', required: false },
+    { name: 'socialLink', label: 'Social Media URL (Instagram, Facebook, etc.)', type: 'text', placeholder: 'https://instagram.com/username', required: false, fullWidth: true },
+  ];
+
   return (
     <div className="min-h-screen bg-background pb-20 relative animate-fade-in">
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-border shadow-soft">
         <div className="flex items-center justify-center h-16 px-4 max-w-3xl mx-auto">
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Yuvak Self-Registration</h1>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            {formData.isAlumni ? 'Alumni Self-Registration' : 'Resident Yuvak Self-Registration'}
+          </h1>
         </div>
       </header>
 
@@ -315,130 +340,29 @@ const StudentSelfRegister = () => {
                 className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
               />
             </div>
-            {/* Degree * */}
-            <div className="space-y-1 sm:space-y-2">
-              <Label htmlFor="degree" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">
-                Last or Pursuing Degree Completed *
-              </Label>
-              <Input
-                id="degree"
-                name="degree"
-                type="text"
-                placeholder="e.g. BBA"
-                value={formData.degree}
-                onChange={handleChange}
-                required
-                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-              />
-            </div>
-
-            {/* College */}
-            <div className="space-y-1 sm:space-y-2">
-              <Label htmlFor="college" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">
-                College Name
-              </Label>
-              <Input
-                id="college"
-                name="college"
-                type="text"
-                placeholder="e.g. SEMCOM College"
-                value={formData.college}
-                onChange={handleChange}
-                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-              />
-            </div>
-
-            {/* Professional Details */}
-            <div className="space-y-1 sm:space-y-2">
-              <Label htmlFor="job" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Company Name</Label>
-              <Input
-                id="job"
-                name="job"
-                type="text"
-                placeholder="e.g. Google"
-                value={formData.job}
-                onChange={handleChange}
-                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-              />
-            </div>
-            <div className="space-y-1 sm:space-y-2">
-              <Label htmlFor="designation" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Designation</Label>
-              <Input
-                id="designation"
-                name="designation"
-                type="text"
-                placeholder="e.g. Senior Developer"
-                value={formData.designation}
-                onChange={handleChange}
-                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-              />
-            </div>
-            <div className="space-y-1 sm:space-y-2">
-              <Label htmlFor="jobPlace" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Job Place or City</Label>
-              <Input
-                id="jobPlace"
-                name="jobPlace"
-                type="text"
-                placeholder="e.g. Bangalore"
-                value={formData.jobPlace}
-                onChange={handleChange}
-                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-              />
-            </div>
-            <div className="space-y-1 sm:space-y-2">
-              <Label htmlFor="livingPlace" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Living Place or City</Label>
-              <Input
-                id="livingPlace"
-                name="livingPlace"
-                type="text"
-                placeholder="e.g. Anand"
-                value={formData.livingPlace}
-                onChange={handleChange}
-                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-              />
-            </div>
-
-            {/* Interests */}
-            <div className="space-y-1 sm:space-y-2">
-              <Label htmlFor="interest" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Interests</Label>
-              <Input
-                id="interest"
-                name="interest"
-                type="text"
-                placeholder="Sports, Music, Coding"
-                value={formData.interest}
-                onChange={handleChange}
-                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-              />
-            </div>
-
-            {/* LinkedIn URL */}
-            <div className="space-y-1 sm:space-y-2">
-              <Label htmlFor="linkedin" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">LinkedIn URL</Label>
-              <Input
-                id="linkedin"
-                name="linkedin"
-                type="text"
-                placeholder="https://linkedin.com/in/username"
-                value={formData.linkedin}
-                onChange={handleChange}
-                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-              />
-            </div>
-
-            {/* Social Media URL */}
-            <div className="space-y-1 sm:space-y-2 md:col-span-2">
-              <Label htmlFor="socialLink" className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">Social Media URL (Instagram, Facebook, etc.)</Label>
-              <Input
-                id="socialLink"
-                name="socialLink"
-                type="text"
-                placeholder="https://instagram.com/username"
-                value={formData.socialLink}
-                onChange={handleChange}
-                className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-              />
-            </div>
+            {dynamicFields.map((field) => (
+              <div
+                key={field.name}
+                className={cn(
+                  "space-y-1 sm:space-y-2",
+                  field.fullWidth && "md:col-span-2"
+                )}
+              >
+                <Label htmlFor={field.name} className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">
+                  {field.label}
+                </Label>
+                <Input
+                  id={field.name}
+                  name={field.name}
+                  type={field.type}
+                  placeholder={field.placeholder}
+                  value={formData[field.name as keyof typeof formData] as string}
+                  onChange={handleChange}
+                  required={field.required}
+                  className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
+                />
+              </div>
+            ))}
           </div>
 
           <Button

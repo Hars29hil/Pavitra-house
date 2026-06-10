@@ -79,7 +79,7 @@ const router = createBrowserRouter(
       <Route path="/update" element={<ProtectedRoute allowedRoles={['admin']}><Update /></ProtectedRoute>} />
       <Route path="/categories" element={<ProtectedRoute allowedRoles={['admin']}><Categories /></ProtectedRoute>} />
       <Route path="/education" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Education /></ProtectedRoute>} />
-      <Route path="/whatsapp" element={<ProtectedRoute allowedRoles={['admin']}><Whatsapp /></ProtectedRoute>} />
+      <Route path="/whatsapp" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Whatsapp /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Tasks /></ProtectedRoute>} />
       <Route path="/tags" element={<ProtectedRoute allowedRoles={['admin']}><Tags /></ProtectedRoute>} />
 

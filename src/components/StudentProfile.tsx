@@ -1,10 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Mail, Calendar, BookOpen, GraduationCap, Heart, Edit, UserMinus, User, Hash, Award, UserCheck, Briefcase, School, Linkedin, Globe, Copy, Trash2 } from 'lucide-react';
+import { Phone, Mail, Calendar, BookOpen, GraduationCap, Heart, Edit, UserMinus, User, Hash, Award, UserCheck, Briefcase, School, Linkedin, Globe, Copy, Trash2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Student } from '@/types';
 import { updateStudent, deleteStudent } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface StudentProfileProps {
     student: Student;
@@ -16,6 +17,7 @@ interface StudentProfileProps {
 export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = false }: StudentProfileProps) => {
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { adminRole } = useAuth();
 
     const handleCopyUrl = () => {
         if (!student.mobile) {
@@ -195,11 +197,24 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
                     <span className="text-xs font-bold uppercase tracking-wider hidden sm:block">Copy Link</span>
                 </button>
 
+                {/* Back Button */}
+                <Button
+                    size="icon"
+                    variant="ghost"
+                    className="absolute top-4 left-4 rounded-xl h-9 w-9 bg-slate-100 hover:bg-slate-200 text-muted-foreground hover:text-foreground shadow-sm transition-all"
+                    onClick={() => {
+                        if (onClose) onClose();
+                        navigate('/dashboard');
+                    }}
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                </Button>
+
                 {!hideEditAction && (
                     <Button
                         size="icon"
                         variant="destructive"
-                        className="absolute top-4 left-4 rounded-xl h-9 w-9 bg-destructive/10 text-destructive hover:bg-destructive hover:text-white border border-destructive/20 shadow-sm transition-all"
+                        className="absolute top-4 left-16 rounded-xl h-9 w-9 bg-destructive/10 text-destructive hover:bg-destructive hover:text-white border border-destructive/20 shadow-sm transition-all"
                         onClick={handleDeleteStudent}
                     >
                         <Trash2 className="w-4.5 h-4.5" />
@@ -224,44 +239,58 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
                     )}
                 </div>
 
-                <div className={`${isCompact ? 'mt-4' : 'mt-8'} flex flex-col sm:flex-row justify-center gap-3`}>
+                <div className={`${isCompact ? 'mt-4' : 'mt-8'} flex flex-wrap items-center justify-center gap-3`}>
                     {!student.isAlumni ? (
                         <>
                             {!hideEditAction && (
                                 <Button
                                     size="lg"
-                                    className="rounded-2xl h-12 px-8 font-bold bg-primary hover:bg-primary/90 shadow-soft w-full sm:w-auto"
+                                    className="rounded-2xl h-12 px-8 font-bold bg-primary hover:bg-primary/90 shadow-soft w-full sm:w-auto shrink-0"
                                     onClick={() => navigate(`/students/${student.id}/edit`)}
                                 >
                                     <Edit className="w-4 h-4 mr-2" />
                                     Edit Profile
                                 </Button>
                             )}
-                            <Button
-                                size="lg"
-                                variant="secondary"
-                                className="rounded-2xl h-12 px-8 font-bold border border-border/50 w-full sm:w-auto"
-                                onClick={handleMoveToAlumni}
-                            >
-                                <UserMinus className="w-4 h-4 mr-2" />
-                                Move to Alumni
-                            </Button>
+                            {adminRole === 'admin' && (
+                                <Button
+                                    size="lg"
+                                    variant="secondary"
+                                    className="rounded-2xl h-12 px-8 font-bold border border-border/50 w-full sm:w-auto shrink-0"
+                                    onClick={handleMoveToAlumni}
+                                >
+                                    <UserMinus className="w-4 h-4 mr-2" />
+                                    Move to Alumni
+                                </Button>
+                            )}
                         </>
                     ) : (
-                        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                            <div className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-accent/20 text-accent text-xs sm:text-sm font-bold rounded-2xl border border-accent/10 uppercase tracking-widest w-full sm:w-auto">
-                                <GraduationCap className="w-5 h-5" />
-                                Alumni Member
+                        <>
+                            <div className="inline-flex items-center justify-center gap-2 px-6 h-12 bg-accent/20 text-accent text-xs sm:text-sm font-bold rounded-2xl border border-accent/10 uppercase tracking-widest w-full sm:w-auto shrink-0">
+                                <GraduationCap className="w-5 h-5 shrink-0" />
+                                <span>Alumni Member</span>
                             </div>
-                            <Button
-                                size="lg"
-                                className="rounded-2xl h-12 px-8 font-bold bg-primary hover:bg-primary/90 shadow-soft w-full sm:w-auto"
-                                onClick={handleMoveToCurrent}
-                            >
-                                <UserCheck className="w-4 h-4 mr-2" />
-                                Move to Current
-                            </Button>
-                        </div>
+                            {!hideEditAction && (
+                                <Button
+                                    size="lg"
+                                    className="rounded-2xl h-12 px-8 font-bold bg-primary hover:bg-primary/90 shadow-soft w-full sm:w-auto shrink-0"
+                                    onClick={() => navigate(`/students/${student.id}/edit`)}
+                                >
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Edit Profile
+                                </Button>
+                            )}
+                            {adminRole === 'admin' && (
+                                <Button
+                                    size="lg"
+                                    className="rounded-2xl h-12 px-8 font-bold bg-primary hover:bg-primary/90 shadow-soft w-full sm:w-auto shrink-0"
+                                    onClick={handleMoveToCurrent}
+                                >
+                                    <UserCheck className="w-4 h-4 mr-2" />
+                                    Move to Current
+                                </Button>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

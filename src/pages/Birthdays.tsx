@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Cake, Sparkles, Send, Settings, Clock, Power, Users, ChevronDown } from 'lucide-react';
+import { Cake, Sparkles, Send, Settings, Clock, Power, Users, ChevronDown, GraduationCap } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { getStudents, getSetting, updateSetting, getCategories, Karyakarta } from '@/lib/store';
@@ -77,7 +77,7 @@ const Birthdays = () => {
             });
         }
         const ids = Array.from(assignedIds);
-        return students.filter(s => ids.includes(s.id));
+        return students.filter(s => ids.includes(s.id) || s.isAlumni);
     }, [students, categories, myCategory, adminRole]);
 
     useEffect(() => {
@@ -450,10 +450,17 @@ const Birthdays = () => {
                                         className="flex items-center gap-4 flex-1 cursor-pointer min-w-0"
                                         onClick={() => navigate(`/students/${student.id}`)}
                                     >
-                                        <div className="w-14 h-14 rounded-2xl bg-primary flex flex-col items-center justify-center shadow-soft shrink-0">
-                                            <span className="text-white font-bold text-lg leading-none">{student.roomNo}</span>
-                                            <span className="text-white/70 font-bold text-[10px] uppercase tracking-tighter mt-0.5">Room</span>
-                                        </div>
+                                        {student.isAlumni ? (
+                                            <div className="w-14 h-14 rounded-2xl bg-accent/20 flex flex-col items-center justify-center shadow-soft shrink-0 text-accent border border-accent/10">
+                                                <GraduationCap className="w-6 h-6" />
+                                                <span className="font-bold text-[9px] uppercase tracking-tighter mt-0.5">Alumni</span>
+                                            </div>
+                                        ) : (
+                                            <div className="w-14 h-14 rounded-2xl bg-primary flex flex-col items-center justify-center shadow-soft shrink-0">
+                                                <span className="text-white font-bold text-lg leading-none">{student.roomNo}</span>
+                                                <span className="text-white/70 font-bold text-[10px] uppercase tracking-tighter mt-0.5">Room</span>
+                                            </div>
+                                        )}
                                         <div className="overflow-hidden">
                                             <h3 className="font-bold text-lg text-foreground truncate">{student.name}</h3>
                                             <p className="text-sm font-medium text-muted-foreground truncate">{student.mobile || 'No Mobile'}</p>

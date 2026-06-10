@@ -76,7 +76,10 @@ export const StudentListItem = ({
   return (
     <div
       onClick={onClick}
-      className="w-full flex items-center gap-2 sm:gap-4 p-2.5 sm:p-5 pl-4 sm:pl-6 glass-card rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg hover:scale-[1.01] active:scale-[0.99] animate-fade-in text-left cursor-pointer group relative overflow-hidden"
+      className={cn(
+        "w-full flex items-center gap-2 sm:gap-4 p-2.5 sm:p-5 pl-4 sm:pl-6 glass-card rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg hover:scale-[1.01] active:scale-[0.99] animate-fade-in text-left cursor-pointer group relative overflow-hidden",
+        hideContactActions && "pr-16 sm:pr-20"
+      )}
       style={bgStyle}
     >
       {/* Left border gradient indicator */}

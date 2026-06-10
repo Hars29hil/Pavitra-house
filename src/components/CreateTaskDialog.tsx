@@ -234,22 +234,24 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
                         </div>
 
                         {/* Toggle Current / Alumni */}
-                        <div className="flex p-1 bg-muted/50 rounded-xl border border-border/50 mb-2">
-                            <button
-                                onClick={() => setShowAlumni(false)}
-                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${!showAlumni ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                            >
-                                Current
-                            </button>
-                            <button
-                                onClick={() => setShowAlumni(true)}
-                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${showAlumni ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                            >
-                                Alumni
-                            </button>
-                        </div>
+                        {adminRole === 'admin' && (
+                            <div className="flex p-1 bg-muted/50 rounded-xl border border-border/50 mb-2">
+                                <button
+                                    onClick={() => setShowAlumni(false)}
+                                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${!showAlumni ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                >
+                                    Current
+                                </button>
+                                <button
+                                    onClick={() => setShowAlumni(true)}
+                                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${showAlumni ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                        }`}
+                                >
+                                    Alumni
+                                </button>
+                            </div>
+                        )}
 
                         <div className="flex gap-2">
                             <div className="relative flex-1">

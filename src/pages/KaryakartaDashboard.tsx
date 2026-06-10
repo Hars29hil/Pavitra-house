@@ -104,9 +104,9 @@ const KaryakartaDashboard = () => {
     return myCategory.studentIds || [];
   }, [myCategory, selectedFilter, mySubKaryakartas]);
 
-  // 4. Retrieve Student objects from the IDs list
+  // 4. Retrieve Student objects from the IDs list (excluding Alumni)
   const assignedStudents = useMemo(() => {
-    return students.filter(s => filteredStudentIds.includes(s.id));
+    return students.filter(s => filteredStudentIds.includes(s.id) && !s.isAlumni);
   }, [students, filteredStudentIds]);
 
   // 5. Apply sub-karyakarta studying year or alumni filters if selected
@@ -151,28 +151,33 @@ const KaryakartaDashboard = () => {
 
   // Summary counts for Quick Stats Cards
   const stats = useMemo(() => {
-    if (!myCategory) return { total: 0, direct: 0, current: 0, alumni: 0 };
+    if (!myCategory) return { total: 0, direct: 0 };
     
     // Direct assigned students (all for Sub, direct-only for Main)
-    const directCount = myCategory.studentIds?.length || 0;
+    const directCount = (myCategory.studentIds || []).filter(id => {
+      const s = students.find(x => x.id === id);
+      return s && !s.isAlumni;
+    }).length;
     
     // Total assigned (including all sub-karyakarta students if Main)
-    let totalIds = new Set<string>(myCategory.studentIds || []);
+    let totalIds = new Set<string>();
+    (myCategory.studentIds || []).forEach(id => {
+      const s = students.find(x => x.id === id);
+      if (s && !s.isAlumni) totalIds.add(id);
+    });
+    
     if (myCategory.type === 'main') {
       mySubKaryakartas.forEach(sub => {
-        (sub.studentIds || []).forEach(id => totalIds.add(id));
+        (sub.studentIds || []).forEach(id => {
+          const s = students.find(x => x.id === id);
+          if (s && !s.isAlumni) totalIds.add(id);
+        });
       });
     }
     
-    const matchedStudents = students.filter(s => totalIds.has(s.id));
-    const currentCount = matchedStudents.filter(s => !s.isAlumni).length;
-    const alumniCount = matchedStudents.filter(s => s.isAlumni).length;
-
     return {
       total: totalIds.size,
-      direct: directCount,
-      current: currentCount,
-      alumni: alumniCount
+      direct: directCount
     };
   }, [myCategory, mySubKaryakartas, students]);
 
@@ -197,7 +202,7 @@ const KaryakartaDashboard = () => {
           </div>
           
           <Button
-            onClick={() => navigate('/students/add')}
+            onClick={() => navigate('/students/add?alumni=false')}
             className="bg-white hover:bg-slate-50 text-blue-700 h-12 px-6 rounded-2xl font-bold flex items-center gap-2 self-start md:self-auto shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <Plus className="w-5 h-5 text-blue-700" />
@@ -234,28 +239,12 @@ const KaryakartaDashboard = () => {
               {myCategory.type === 'main' && (
                 <div className="bg-white p-5 rounded-2xl shadow-soft border border-border/40 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">My Direct</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">My Direct Yuvaks</p>
                     <UserCheck className="w-4 h-4 text-green-500" />
                   </div>
                   <p className="text-2xl sm:text-3xl font-black text-foreground">{stats.direct}</p>
                 </div>
               )}
-
-              <div className="bg-white p-5 rounded-2xl shadow-soft border border-border/40 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Current</p>
-                  <ClipboardCheck className="w-4 h-4 text-indigo-500" />
-                </div>
-                <p className="text-2xl sm:text-3xl font-black text-foreground">{stats.current}</p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl shadow-soft border border-border/40 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Alumni</p>
-                  <GraduationCap className="w-4 h-4 text-purple-500" />
-                </div>
-                <p className="text-2xl sm:text-3xl font-black text-foreground">{stats.alumni}</p>
-              </div>
             </div>
 
             {/* Search & Selection Filter Options */}

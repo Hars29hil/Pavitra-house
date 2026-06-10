@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, useBlocker } from 'react-router-dom';
+import { useNavigate, useParams, useBlocker, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, UserPlus, Save, Calendar as CalendarIcon, X, User, Loader2, Copy, BookOpen, Award } from 'lucide-react';
 import { format } from "date-fns";
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,8 @@ const AddStudent = () => {
   const { toast } = useToast();
   const { adminRole, adminName } = useAuth();
   const isEditing = !!id;
+  const [searchParams] = useSearchParams();
+  const isAlumniParam = searchParams.get('alumni') === 'true';
 
   const [formData, setFormData] = useState({
     roomNo: '',
@@ -59,7 +61,7 @@ const AddStudent = () => {
     profileImage: '',
     job: '',
     college: '',
-    isAlumni: true,
+    isAlumni: isAlumniParam,
     linkedin: '',
     socialLink: '',
     designation: '',
@@ -202,7 +204,7 @@ const AddStudent = () => {
   };
 
   const handleCopyRegisterLink = () => {
-    const registerUrl = `${window.location.origin}/register`;
+    const registerUrl = `${window.location.origin}/register?alumni=${formData.isAlumni}`;
     navigator.clipboard.writeText(registerUrl);
     toast({
       title: 'Link Copied',
@@ -294,22 +296,22 @@ const AddStudent = () => {
     { name: 'dob', label: 'Date of Birth', type: 'date', placeholder: '' },
     { name: 'mobile', label: 'Mobile Number', type: 'tel', placeholder: '+91 9876543210' },
     { name: 'email', label: 'Email Address', type: 'email', placeholder: 'email@example.com' },
-    { 
-      name: 'degree', 
-      label: 'Last or pursuing Degree Completed', 
-      type: 'text', 
-      placeholder: 'e.g. BBA' 
-    },
-    { 
-      name: 'college', 
-      label: 'College Name', 
-      type: 'text', 
-      placeholder: 'e.g. SEMCOM College' 
-    },
-    { name: 'job', label: 'Company Name', type: 'text', placeholder: 'e.g. Google' },
-    { name: 'designation', label: 'Designation', type: 'text', placeholder: 'e.g. Senior Developer' },
-    { name: 'jobPlace', label: 'Job Place or City', type: 'text', placeholder: 'e.g. Bangalore' },
-    { name: 'livingPlace', label: 'Living Place or City', type: 'text', placeholder: 'e.g. Anand' },
+    
+    ...(!formData.isAlumni ? [
+      { name: 'roomNo', label: 'Room Number', type: 'text', placeholder: 'e.g. 101' },
+      { name: 'college', label: 'College', type: 'text', placeholder: 'e.g. SEMCOM College' },
+      { name: 'degree', label: 'Degree', type: 'text', placeholder: 'e.g. BBA' },
+      { name: 'year', label: 'Year', type: 'text', placeholder: 'e.g. 2nd Year' },
+      { name: 'result', label: 'Result/CGPA', type: 'text', placeholder: 'e.g. 8.5' },
+    ] : [
+      { name: 'college', label: 'College Name', type: 'text', placeholder: 'e.g. SEMCOM College' },
+      { name: 'degree', label: 'Last or pursuing Degree Completed', type: 'text', placeholder: 'e.g. BBA' },
+      { name: 'job', label: 'Company Name', type: 'text', placeholder: 'e.g. Google' },
+      { name: 'designation', label: 'Designation', type: 'text', placeholder: 'e.g. Senior Developer' },
+      { name: 'jobPlace', label: 'Job Place or City', type: 'text', placeholder: 'e.g. Bangalore' },
+      { name: 'livingPlace', label: 'Living Place or City', type: 'text', placeholder: 'e.g. Anand' },
+    ]),
+
     { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music' },
     { name: 'linkedin', label: 'LinkedIn URL', type: 'text', placeholder: 'https://linkedin.com/in/username' },
     { name: 'socialLink', label: 'Social Media URL (Instagram, Facebook, X, etc.)', type: 'text', placeholder: 'https://instagram.com/username' },
@@ -327,13 +329,13 @@ const AddStudent = () => {
           >
             <ArrowLeft className="w-6 h-6" />
           </Button>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">{isEditing ? 'Edit Yuvak Details' : 'Registration'}</h1> {/* Changed from isEditing to isEditing */}
+          <h1 className="text-xl font-bold tracking-tight text-foreground">{isEditing ? 'Edit Yuvak Details' : (formData.isAlumni ? 'Register Alumni' : 'New Admission')}</h1>
         </div>
       </header>
 
       <main className="p-4 md:p-6 max-w-5xl mx-auto space-y-8 mt-4">
         {/* Banner to Copy Form Link for Self Registration */}
-        {!isEditing && (
+        {!isEditing && adminRole === 'admin' && (
           <div className="bg-primary/5 border border-primary/20 rounded-3xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in shadow-soft">
             <div className="space-y-1">
               <h3 className="text-lg font-bold text-foreground">Self-Registration</h3>
@@ -354,7 +356,7 @@ const AddStudent = () => {
         <div className="space-y-1">
           <h2 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
             <UserPlus className="w-6 h-6 text-primary" />
-            {isEditing ? 'Update Information' : 'New Admission'} {/* Changed from isEditing to isEditing */}
+            {isEditing ? 'Update Information' : (formData.isAlumni ? 'New Alumni Registration' : 'New Admission')}
           </h2>
           <p className="text-muted-foreground font-medium uppercase tracking-widest text-[10px]">Fill in the details below to proceed</p>
         </div>
@@ -393,6 +395,7 @@ const AddStudent = () => {
           </div>
           <p className="mt-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">Profile Picture</p>
         </div>
+
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="bg-white border border-border/50 rounded-3xl shadow-soft p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 sm:gap-y-6">
@@ -459,7 +462,7 @@ const AddStudent = () => {
                       value={formData[field.name as keyof typeof formData] as string}
                       onChange={handleChange}
                       className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-                      required={!['job', 'interest', 'profileImage', 'linkedin', 'socialLink', 'college', 'result', 'year'].includes(field.name)}
+                      required={!['job', 'designation', 'jobPlace', 'livingPlace', 'interest', 'profileImage', 'linkedin', 'socialLink', 'college', 'result', 'year'].includes(field.name)}
                     />
                   )}
                 </div>
@@ -478,7 +481,7 @@ const AddStudent = () => {
 
         {/* Bulk Add Section */}
         {
-          !isEditing && (
+          !isEditing && adminRole === 'admin' && (
             <div className="mt-12 pt-8 border-t border-border/50">
               <div className="mb-6">
                 <h3 className="text-xl font-bold mb-2">Bulk Registration</h3>

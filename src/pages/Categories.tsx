@@ -132,7 +132,7 @@ const Categories = () => {
           getStudents(),
           getCategories()
         ]);
-        setStudents(studentsData || []);
+        setStudents((studentsData || []).filter(s => !s.isAlumni));
         setKaryakartas(categoriesData || []);
       } catch (error) {
         console.error("Error fetching data:", error);
