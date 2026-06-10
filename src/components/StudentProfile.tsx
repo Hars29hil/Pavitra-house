@@ -266,10 +266,6 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
                         </>
                     ) : (
                         <>
-                            <div className="inline-flex items-center justify-center gap-2 px-6 h-12 bg-accent/20 text-accent text-xs sm:text-sm font-bold rounded-2xl border border-accent/10 uppercase tracking-widest w-full sm:w-auto shrink-0">
-                                <GraduationCap className="w-5 h-5 shrink-0" />
-                                <span>Alumni Member</span>
-                            </div>
                             {!hideEditAction && (
                                 <Button
                                     size="lg"
