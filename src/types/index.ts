@@ -34,6 +34,7 @@ export interface Task {
   description?: string;
   isPracticeQuestion?: boolean;
   questionContent?: string;
+  showToKaryakarta?: boolean;
 }
 
 export interface Category {

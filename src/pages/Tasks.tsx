@@ -20,6 +20,7 @@ const Tasks = () => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch Tasks from DB
@@ -101,6 +102,8 @@ const Tasks = () => {
     if (adminRole !== 'admin') {
       if (!task.assignedTo || !assignedStudentIds) return false;
       if (!assignedStudentIds.includes(task.assignedTo)) return false;
+      // Filter out tasks that should not be visible to Karyakarta
+      if (task.showToKaryakarta === false) return false;
     }
 
     return matchesFilter && matchesSearch;
@@ -114,6 +117,19 @@ const Tasks = () => {
       }
     } catch (e) {
       toast.error("Failed to save task to database");
+    }
+  };
+
+  const handleUpdateTask = async (id: string, updates: Partial<Task>) => {
+    try {
+      const updated = await updateTask(id, updates);
+      if (updated) {
+        setTasks(prev => prev.map(t => t.id === id ? updated : t));
+        toast.success("Task updated successfully");
+      }
+    } catch (e) {
+      toast.error("Failed to update task");
+      throw e;
     }
   };
 
@@ -199,7 +215,10 @@ const Tasks = () => {
                 <TaskItem
                   task={task}
                   onToggle={() => toggleTask(task.id)}
-                  onEdit={() => toast.info('Edit functionality coming soon!')}
+                  onEdit={() => {
+                    setTaskToEdit(task);
+                    setShowCreateDialog(true);
+                  }}
                   onDelete={() => handleDeleteTask(task.id)}
                 />
               </div>
@@ -220,15 +239,25 @@ const Tasks = () => {
         <Button
           className="fixed bottom-8 right-8 w-16 h-16 rounded-2xl shadow-soft-lg bg-primary hover:bg-primary/90 hover:scale-[1.1] active:scale-[0.9] transition-all z-50 group"
           size="icon"
-          onClick={() => setShowCreateDialog(true)}
+          onClick={() => {
+            setTaskToEdit(null);
+            setShowCreateDialog(true);
+          }}
         >
           <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
         </Button>
 
         <CreateTaskDialog
           open={showCreateDialog}
-          onOpenChange={setShowCreateDialog}
+          onOpenChange={(open) => {
+            setShowCreateDialog(open);
+            if (!open) {
+              setTaskToEdit(null);
+            }
+          }}
           onTaskCreate={handleCreateTask}
+          taskToEdit={taskToEdit}
+          onTaskUpdate={handleUpdateTask}
         />
       </main>
     </div>

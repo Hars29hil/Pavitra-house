@@ -41,6 +41,11 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
         >
           {task.title}
         </h3>
+        {task.description && (
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-normal">
+            {task.description}
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-3 mt-1.5">
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground bg-muted/30 px-2.5 py-1 rounded-lg">
             <Calendar className="w-3.5 h-3.5" />

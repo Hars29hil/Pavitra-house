@@ -135,6 +135,7 @@ const fromDbTask = (db: any): Task => ({
     description: db.description,
     isPracticeQuestion: db.is_practice_question,
     questionContent: db.question_content,
+    showToKaryakarta: db.show_to_karyakarta,
 });
 
 const toDbTask = (task: Partial<Task>) => {
@@ -145,12 +146,14 @@ const toDbTask = (task: Partial<Task>) => {
     if (task.assignedToName !== undefined) db.assigned_to_name = task.assignedToName;
     if (task.isPracticeQuestion !== undefined) db.is_practice_question = task.isPracticeQuestion;
     if (task.questionContent !== undefined) db.question_content = task.questionContent;
+    if (task.showToKaryakarta !== undefined) db.show_to_karyakarta = task.showToKaryakarta;
 
     delete db.dueDate;
     delete db.assignedTo;
     delete db.assignedToName;
     delete db.isPracticeQuestion;
     delete db.questionContent;
+    delete db.showToKaryakarta;
     return db;
 };
 

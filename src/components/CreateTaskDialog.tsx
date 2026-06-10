@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { getStudents, getCategories, Karyakarta } from '@/lib/store';
-import { Student } from '@/types';
+import { Student, Task } from '@/types';
 import { Search, User2, Calendar, ClipboardList, HelpCircle, Send, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -17,9 +17,17 @@ interface CreateTaskDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onTaskCreate: (task: any) => void;
+    taskToEdit?: Task | null;
+    onTaskUpdate?: (id: string, updates: Partial<Task>) => void;
 }
 
-export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTaskDialogProps) => {
+export const CreateTaskDialog = ({ 
+    open, 
+    onOpenChange, 
+    onTaskCreate,
+    taskToEdit = null,
+    onTaskUpdate
+}: CreateTaskDialogProps) => {
     const { adminName, adminRole } = useAuth();
     const [step, setStep] = useState(1);
     const [showAlumni, setShowAlumni] = useState(false);
@@ -30,23 +38,37 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
 
     const [taskData, setTaskData] = useState({
         title: '',
-        isPracticeQuestion: false,
-        questionContent: '',
+        description: '',
         dueDate: '',
+        showToKaryakarta: false,
     });
 
     // Fetch students and categories when dialog opens
     useEffect(() => {
         if (open) {
             Promise.all([getStudents(), getCategories()]).then(([studentsData, categoriesData]) => {
-                setStudents(studentsData || []);
+                const currentStudents = studentsData || [];
+                setStudents(currentStudents);
                 setCategories(categoriesData || []);
+
+                if (taskToEdit) {
+                    setStep(2);
+                    const assignedStudent = currentStudents.find(s => s.id === taskToEdit.assignedTo);
+                    setSelectedStudents(assignedStudent ? [assignedStudent] : []);
+                    setTaskData({
+                        title: taskToEdit.title || '',
+                        description: taskToEdit.description || '',
+                        dueDate: taskToEdit.dueDate || '',
+                        showToKaryakarta: taskToEdit.showToKaryakarta || false,
+                    });
+                } else {
+                    setStep(1);
+                    setSelectedStudents([]);
+                    setTaskData({ title: '', description: '', dueDate: '', showToKaryakarta: false });
+                }
             });
-            setStep(1);
-            setSelectedStudents([]);
-            setTaskData({ title: '', isPracticeQuestion: false, questionContent: '', dueDate: '' });
         }
-    }, [open]);
+    }, [open, taskToEdit]);
 
     const myCategory = useMemo(() => {
         return categories.find(
@@ -105,6 +127,27 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
             return;
         }
 
+        if (taskToEdit && onTaskUpdate) {
+            toast.message("Updating task...");
+            try {
+                const student = selectedStudents[0];
+                const updates = {
+                    title: taskData.title,
+                    dueDate: taskData.dueDate,
+                    description: taskData.description,
+                    showToKaryakarta: taskData.showToKaryakarta,
+                    assignedTo: student.id,
+                    assignedToName: student.name,
+                };
+                await onTaskUpdate(taskToEdit.id, updates);
+                onOpenChange(false);
+            } catch (error) {
+                console.error("Failed to update task:", error);
+                toast.error("Failed to update task");
+            }
+            return;
+        }
+
         toast.message(`Creating tasks for ${selectedStudents.length} students...`);
 
         let successCount = 0;
@@ -119,8 +162,8 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
                 category: 'General',
                 assignedTo: student.id,
                 assignedToName: student.name,
-                isPracticeQuestion: taskData.isPracticeQuestion,
-                questionContent: taskData.questionContent
+                description: taskData.description,
+                showToKaryakarta: taskData.showToKaryakarta
             };
 
             try {
@@ -130,7 +173,7 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
 
                 // Send WhatsApp notification
                 if (student.mobile) {
-                    const message = `*New Task Assigned: ${taskData.title}*\n\n${taskData.questionContent ? `Question: ${taskData.questionContent}\n\n` : ''}📅 Due Date: ${taskData.dueDate}\n\nPlease submit by the deadline.`;
+                    const message = `*New Task Assigned: ${taskData.title}*\n\n${taskData.description ? `Description: ${taskData.description}\n\n` : ''}📅 Due Date: ${taskData.dueDate}\n\nPlease submit by the deadline.`;
 
                     // Sanitize phone number: remove spaces, dashes, and handle country code
                     let sanitizedNumber = student.mobile
@@ -222,7 +265,7 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl p-6 border-none">
                 <DialogHeader>
-                    <DialogTitle>Create New Task</DialogTitle>
+                    <DialogTitle>{taskToEdit ? 'Edit Task' : 'Create New Task'}</DialogTitle>
                     <DialogDescription className="sr-only">Fill in the form to create and assign a new task to students.</DialogDescription>
                 </DialogHeader>
 
@@ -313,8 +356,8 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
                 {step === 2 && (
                     <div className="space-y-6 animate-fade-in">
                         <div className="space-y-1">
-                            <h3 className="font-bold text-lg">Task Details</h3>
-                            <p className="text-sm text-muted-foreground">Assigning to <span className="text-primary font-bold">{selectedStudents.length} Students</span></p>
+                            <h3 className="font-bold text-lg">{taskToEdit ? 'Edit Task Details' : 'Task Details'}</h3>
+                            <p className="text-sm text-muted-foreground">{taskToEdit ? 'Editing details for ' : 'Assigning to '}<span className="text-primary font-bold">{selectedStudents.length} Students</span></p>
                         </div>
 
                         <div className="space-y-4">
@@ -327,29 +370,27 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
                                 />
                             </div>
 
-                            <div className="flex items-center space-x-2 border p-4 rounded-xl">
-                                <Checkbox
-                                    id="practice"
-                                    checked={taskData.isPracticeQuestion}
-                                    onCheckedChange={(c) => setTaskData({ ...taskData, isPracticeQuestion: !!c })}
+                            <div className="space-y-2 animate-slide-in">
+                                <Label>Description</Label>
+                                <Textarea
+                                    placeholder="Enter task description here..."
+                                    value={taskData.description}
+                                    onChange={(e) => setTaskData({ ...taskData, description: e.target.value })}
+                                    className="min-h-[100px]"
                                 />
-                                <Label htmlFor="practice" className="cursor-pointer flex-1">
-                                    Is this a Practice Question?
-                                    <span className="block text-xs text-muted-foreground font-normal">If checked, we'll draft a WhatsApp message.</span>
-                                </Label>
                             </div>
 
-                            {taskData.isPracticeQuestion && (
-                                <div className="space-y-2 animate-slide-in">
-                                    <Label>Question Content</Label>
-                                    <Textarea
-                                        placeholder="Enter the practice question here..."
-                                        value={taskData.questionContent}
-                                        onChange={(e) => setTaskData({ ...taskData, questionContent: e.target.value })}
-                                        className="min-h-[100px]"
-                                    />
-                                </div>
-                            )}
+                            <div className="flex items-xl space-x-2 border p-4 rounded-xl">
+                                <Checkbox
+                                    id="showToKaryakarta"
+                                    checked={taskData.showToKaryakarta}
+                                    onCheckedChange={(c) => setTaskData({ ...taskData, showToKaryakarta: !!c })}
+                                />
+                                <Label htmlFor="showToKaryakarta" className="cursor-pointer flex-1 font-bold">
+                                    Show to Karyakarta
+                                    <span className="block text-xs text-muted-foreground font-normal">If checked, Karyakartas will see this task.</span>
+                                </Label>
+                            </div>
 
                             <div className="space-y-2">
                                 <Label>Deadline Date</Label>
@@ -363,13 +404,9 @@ export const CreateTaskDialog = ({ open, onOpenChange, onTaskCreate }: CreateTas
 
                         <div className="flex gap-3">
                             <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>Back</Button>
-                            <Button className="flex-1" onClick={handleSubmit}>
-                                {taskData.isPracticeQuestion ? (
-                                    <>
-                                        <Send className="w-4 h-4 mr-2" />
-                                        Assign & Send
-                                    </>
-                                ) : 'Assign Task'}
+                            <Button className="flex-1 bg-primary text-white hover:bg-primary/90 rounded-xl" onClick={handleSubmit}>
+                                <Send className="w-4 h-4 mr-2" />
+                                {taskToEdit ? 'Save Changes' : 'Assign & Send'}
                             </Button>
                         </div>
                     </div>
