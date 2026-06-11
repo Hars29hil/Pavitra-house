@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Users, Loader2, Plus, UserCircle2, Trash2, Edit, ArrowLeft, UserPlus, UserMinus, Check, Filter, Clock, Calendar } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Users, Loader2, Plus, UserCircle2, Trash2, Edit, ArrowLeft, UserPlus, UserMinus, Check, Filter, Clock, Calendar, ClipboardList } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -35,9 +36,10 @@ import {
 } from "@/components/ui/select"
 import { ChevronsUpDown } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { getStudents, getCategories, addCategory, deleteCategory, updateCategory, getTasks, Karyakarta } from '@/lib/store';
+import { getStudents, getCategories, addCategory, deleteCategory, updateCategory, getTasks, updateTask, Karyakarta } from '@/lib/store';
 import { Student } from '@/types';
 import { toast } from 'sonner';
+import { TaskItem } from '@/components/TaskItem';
 
 const Categories = () => {
   const { confirm } = useConfirm();
@@ -66,6 +68,8 @@ const Categories = () => {
   const [openStudentSearch, setOpenStudentSearch] = useState(false);
   const [selectedRoomRange, setSelectedRoomRange] = useState<{ label: string, rooms: number[] } | null>(null);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
+  const [showTasksModal, setShowTasksModal] = useState(false);
+  const [tasksFilter, setTasksFilter] = useState<'all' | 'pending' | 'done'>('all');
 
   // Dynamic Room Ranges
   const generatedRanges = useMemo(() => {
@@ -207,6 +211,20 @@ const Categories = () => {
     const existingNames = new Set(karyakartas.map(k => k.name.trim().toLowerCase()));
     return students.filter(student => !existingNames.has(student.name.trim().toLowerCase()));
   }, [students, karyakartas]);
+
+  // Tasks related to the selected Karyakarta (for both detail view and tasks modal)
+  const karyakartaTasks = useMemo(() => {
+    if (!selectedKaryakartaForDetail) return [];
+    const assignedIds = selectedKaryakartaForDetail.studentIds || [];
+    const nameLower = selectedKaryakartaForDetail.name.trim().toLowerCase();
+    
+    return tasks.filter(task => {
+      const isCreatedBy = task.createdBy && task.createdBy.trim().toLowerCase() === nameLower;
+      const taskStudentIds = (task.assignedTo || '').split(',').map(id => id.trim());
+      const isAssignedToTheirYuvak = taskStudentIds.some(id => assignedIds.includes(id));
+      return isCreatedBy || isAssignedToTheirYuvak;
+    });
+  }, [selectedKaryakartaForDetail, tasks]);
 
   // Fetch Data on mount and setup polling
   useEffect(() => {
@@ -414,6 +432,27 @@ const Categories = () => {
       toast.success('Yuvak removed from Karyakarta');
     } catch (e) {
       toast.error('Failed to remove Yuvak');
+    }
+  };
+
+  const handleToggleTaskStatus = async (task: Task) => {
+    const newStatus = task.status === 'pending' ? 'done' : 'pending';
+
+    // Update Local State
+    setTasks(prev =>
+      prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t)
+    );
+
+    // Update DB
+    try {
+      await updateTask(task.id, { status: newStatus });
+      toast.success("Task status updated successfully");
+    } catch (e) {
+      // Revert on error
+      setTasks(prev =>
+        prev.map(t => t.id === task.id ? { ...t, status: task.status } : t)
+      );
+      toast.error("Failed to update task status");
     }
   };
 
@@ -682,17 +721,9 @@ const Categories = () => {
         ) : (() => {
           const assignedIds = selectedKaryakartaForDetail?.studentIds || [];
           const assignedStudents = students.filter(s => assignedIds.includes(s.id));
-          
-          const nameLower = (selectedKaryakartaForDetail?.name || '').trim().toLowerCase();
-          const karyakartaTasks = tasks.filter(task => {
-            const isCreatedBy = task.createdBy && task.createdBy.trim().toLowerCase() === nameLower;
-            const taskStudentIds = (task.assignedTo || '').split(',').map(id => id.trim());
-            const isAssignedToTheirYuvak = taskStudentIds.some(id => assignedIds.includes(id));
-            return isCreatedBy || isAssignedToTheirYuvak;
-          });
 
-          const totalMeetings = karyakartaTasks.filter(t => t.category === 'Yuvak' && t.status === 'done').length;
-          const pendingMeetings = karyakartaTasks.filter(t => t.category === 'Yuvak' && t.status === 'pending').length;
+          const totalMeetups = karyakartaTasks.filter(t => t.category === 'Yuvak' && t.status === 'done').length;
+          const pendingMeetups = karyakartaTasks.filter(t => t.category === 'Yuvak' && t.status === 'pending').length;
 
           const yuvakMeetData = assignedStudents.map(student => {
             const meetCount = tasks.filter(t => 
@@ -753,7 +784,7 @@ const Categories = () => {
               </div>
 
               {/* Report Dashboard Section */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white p-5 rounded-3xl shadow-soft border border-border/50 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                     <Users className="w-6 h-6" />
@@ -769,8 +800,8 @@ const Categories = () => {
                     <Check className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-2xl font-extrabold text-emerald-600">{totalMeetings}</p>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Meetings Done</p>
+                    <p className="text-2xl font-extrabold text-emerald-600">{totalMeetups}</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Meetups Done</p>
                   </div>
                 </div>
 
@@ -779,8 +810,21 @@ const Categories = () => {
                     <Clock className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-2xl font-extrabold text-amber-600">{pendingMeetings}</p>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pending Meetings</p>
+                    <p className="text-2xl font-extrabold text-amber-600">{pendingMeetups}</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pending Meetups</p>
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => setShowTasksModal(true)}
+                  className="bg-white p-5 rounded-3xl shadow-soft border border-border/50 flex items-center gap-4 cursor-pointer hover:shadow-soft-lg hover:scale-[1.02] active:scale-[0.98] transition-all hover:border-violet-200 group/taskcard"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600 shrink-0 group-hover/taskcard:bg-violet-100 transition-colors">
+                    <ClipboardList className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-extrabold text-violet-600">{karyakartaTasks.length}</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Tasks</p>
                   </div>
                 </div>
               </div>
@@ -788,17 +832,17 @@ const Categories = () => {
               {/* Graphs / Charts Section */}
               {assignedStudents.length > 0 && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Yuvak Meeting Frequency Chart */}
+                  {/* Yuvak Meetup Frequency Chart */}
                   <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 space-y-4">
                     <div>
-                      <h3 className="font-bold text-lg text-foreground">Yuvak Meeting Frequency</h3>
+                      <h3 className="font-bold text-lg text-foreground">Yuvak Meetup Frequency</h3>
                       <p className="text-xs text-muted-foreground">Number of times this Karyakarta has met each Yuvak</p>
                     </div>
                     <div className="h-[250px] w-full pt-4">
-                      {totalMeetings === 0 ? (
+                      {totalMeetups === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground">
                           <Calendar className="w-10 h-10 text-muted-foreground/40 mb-2" />
-                          <p className="text-sm font-medium">No completed meetings logged yet.</p>
+                          <p className="text-sm font-medium">No completed meetups logged yet.</p>
                         </div>
                       ) : (
                         <ResponsiveContainer width="100%" height="100%">
@@ -830,10 +874,10 @@ const Categories = () => {
                       <p className="text-xs text-muted-foreground">Daily count of completed Yuvak meetups</p>
                     </div>
                     <div className="h-[250px] w-full pt-4">
-                      {totalMeetings === 0 ? (
+                      {totalMeetups === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground">
                           <Calendar className="w-10 h-10 text-muted-foreground/40 mb-2" />
-                          <p className="text-sm font-medium">No completed meetings logged yet.</p>
+                          <p className="text-sm font-medium">No completed meetups logged yet.</p>
                         </div>
                       ) : (
                         <ResponsiveContainer width="100%" height="100%">
@@ -1055,6 +1099,78 @@ const Categories = () => {
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditingKaryakarta(null)} className="rounded-xl h-12">Cancel</Button>
               <Button onClick={handleSaveEdit} className="rounded-xl h-12">Save Changes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Karyakarta Tasks Dialog */}
+        <Dialog open={showTasksModal} onOpenChange={setShowTasksModal}>
+          <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl p-6">
+            <DialogHeader className="pb-4 border-b">
+              <DialogTitle className="text-2xl font-extrabold text-foreground flex items-center gap-2">
+                <ClipboardList className="w-6 h-6 text-violet-600" />
+                Tasks for {selectedKaryakartaForDetail?.name}
+              </DialogTitle>
+            </DialogHeader>
+            
+            {/* Filter Tabs */}
+            <div className="flex p-1 bg-muted/30 backdrop-blur-sm rounded-2xl border border-border/50 shadow-sm my-4 w-fit mx-auto sm:mx-0">
+              {(['all', 'pending', 'done'] as const).map((f) => {
+                const count = f === 'all' 
+                  ? karyakartaTasks.length 
+                  : karyakartaTasks.filter(t => t.status === f).length;
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setTasksFilter(f)}
+                    className={cn(
+                      "px-4 py-2 text-xs font-bold rounded-xl transition-all duration-300 capitalize flex items-center gap-1.5",
+                      tasksFilter === f
+                        ? "bg-primary text-white shadow-soft"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/50"
+                    )}
+                  >
+                    {f}
+                    <span className={cn(
+                      "px-1.5 py-0.5 rounded-md text-[10px] font-bold",
+                      tasksFilter === f ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                    )}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Task list */}
+            <div className="space-y-3 py-2 max-h-[50vh] overflow-y-auto pr-1">
+              {(() => {
+                const filtered = tasksFilter === 'all'
+                  ? karyakartaTasks
+                  : karyakartaTasks.filter(t => t.status === tasksFilter);
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-muted-foreground italic border-2 border-dashed rounded-2xl">
+                      No {tasksFilter !== 'all' ? tasksFilter : ''} tasks found.
+                    </div>
+                  );
+                }
+
+                return filtered.map((task) => (
+                  <TaskItem
+                    key={task.id}
+                    task={task}
+                    onToggle={() => handleToggleTaskStatus(task)}
+                  />
+                ));
+              })()}
+            </div>
+            
+            <DialogFooter className="pt-4 border-t">
+              <Button onClick={() => setShowTasksModal(false)} className="rounded-xl h-12 w-full sm:w-auto">
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

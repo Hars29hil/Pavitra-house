@@ -218,7 +218,7 @@ const Tasks = () => {
 
           {/* Filter Tabs */}
           <div className="flex w-full md:w-auto p-1.5 bg-muted/30 backdrop-blur-sm rounded-2xl border border-border/50 shadow-sm md:ml-auto">
-            {(['pending', 'done'] as const).map((f) => (
+            {(['all', 'pending', 'done'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
