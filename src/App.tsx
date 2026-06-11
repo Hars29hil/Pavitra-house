@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, RouterProvider, createRoutesFromElements, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ConfirmationProvider } from "@/contexts/ConfirmationContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Students from "./pages/Students";
@@ -114,9 +115,11 @@ function RootRedirect() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <RouterProvider router={router} />
+      <ConfirmationProvider>
+        <Toaster />
+        <Sonner />
+        <RouterProvider router={router} />
+      </ConfirmationProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

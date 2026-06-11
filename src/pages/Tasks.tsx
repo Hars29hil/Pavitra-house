@@ -1,18 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, ClipboardList, Search } from 'lucide-react';
+import { Plus, ClipboardList, Search, Users, CheckSquare } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { TaskItem } from '@/components/TaskItem';
 import { Button } from '@/components/ui/button';
 import { Task, Student } from '@/types';
 import { Input } from '@/components/ui/input';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
+import { CreateYuvakTaskDialog } from '@/components/CreateYuvakTaskDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { getTasks, addTask, updateTask, deleteTask, getStudents, getCategories, Karyakarta } from '@/lib/store';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-
+import { useConfirm } from '@/contexts/ConfirmationContext';
 const Tasks = () => {
+  const { confirm } = useConfirm();
   const { adminName, adminRole } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -20,13 +23,17 @@ const Tasks = () => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showTypeSelection, setShowTypeSelection] = useState(false);
+  const [showYuvakDialog, setShowYuvakDialog] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch Tasks from DB
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+
+  // Fetch Tasks from DB and setup polling
   useEffect(() => {
-    const fetchTasks = async () => {
-      setLoading(true);
+    const fetchTasks = async (isInitial = false) => {
+      if (isInitial) setLoading(true);
       try {
         const [tasksData, studentsData, categoriesData] = await Promise.all([
           getTasks(),
@@ -38,15 +45,24 @@ const Tasks = () => {
         setCategories(categoriesData || []);
       } catch (error) {
         console.error("Error fetching tasks:", error);
-        setTasks([]);
-        setStudents([]);
-        setCategories([]);
+        if (isInitial) {
+          setTasks([]);
+          setStudents([]);
+          setCategories([]);
+        }
       } finally {
-        setLoading(false);
+        if (isInitial) setLoading(false);
       }
     };
-    fetchTasks();
-  }, []);
+
+    fetchTasks(true);
+
+    const interval = setInterval(() => {
+      fetchTasks(false);
+    }, 5000); // Polling every 5 seconds for real-time updates
+
+    return () => clearInterval(interval);
+  }, [refetchTrigger]);
 
   const myCategory = useMemo(() => {
     return categories.find(
@@ -76,6 +92,11 @@ const Tasks = () => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
+    if (task.createdBy && task.createdBy.trim().toLowerCase() !== adminName.trim().toLowerCase()) {
+      toast.error(`Only the creator (${task.createdBy}) can mark this task as complete`);
+      return;
+    }
+
     const newStatus = task.status === 'pending' ? 'done' : 'pending';
 
     // Update Local State
@@ -101,7 +122,11 @@ const Tasks = () => {
 
     if (adminRole !== 'admin') {
       if (!task.assignedTo || !assignedStudentIds) return false;
-      if (!assignedStudentIds.includes(task.assignedTo)) return false;
+      
+      const taskStudentIds = task.assignedTo.split(',').map(id => id.trim());
+      const hasAssignedStudent = taskStudentIds.some(id => assignedStudentIds.includes(id));
+      if (!hasAssignedStudent) return false;
+
       // Filter out tasks that should not be visible to Karyakarta
       if (task.showToKaryakarta === false) return false;
     }
@@ -115,8 +140,10 @@ const Tasks = () => {
       if (savedTask) {
         setTasks(prev => [savedTask, ...prev]);
       }
+      return savedTask;
     } catch (e) {
       toast.error("Failed to save task to database");
+      throw e;
     }
   };
 
@@ -135,7 +162,14 @@ const Tasks = () => {
 
   const handleDeleteTask = async (taskId: string) => {
     // Confirm deletion
-    if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+    const isConfirmed = await confirm({
+      title: "Delete Task?",
+      message: "Are you sure you want to delete this task? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "destructive"
+    });
+    if (!isConfirmed) {
       return;
     }
 
@@ -241,11 +275,49 @@ const Tasks = () => {
           size="icon"
           onClick={() => {
             setTaskToEdit(null);
-            setShowCreateDialog(true);
+            if (adminRole === 'admin') {
+              setShowCreateDialog(true);
+            } else {
+              setShowTypeSelection(true);
+            }
           }}
         >
           <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
         </Button>
+
+        <Dialog open={showTypeSelection} onOpenChange={setShowTypeSelection}>
+          <DialogContent className="sm:max-w-sm rounded-3xl p-6 border-none bg-white">
+            <DialogHeader className="text-center">
+              <DialogTitle className="text-xl font-black text-foreground">Choose Task Type</DialogTitle>
+              <DialogDescription>
+                Select what kind of task you want to create.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-1 gap-4 pt-4">
+              <Button 
+                onClick={() => {
+                  setShowTypeSelection(false);
+                  setShowYuvakDialog(true);
+                }}
+                className="h-20 rounded-2xl flex flex-col items-center justify-center gap-1.5 bg-primary text-white hover:bg-primary/95 text-base font-black shadow-md border-none"
+              >
+                <Users className="w-6 h-6" />
+                Log Yuvak Meet
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setShowTypeSelection(false);
+                  setShowCreateDialog(true);
+                }}
+                className="h-20 rounded-2xl flex flex-col items-center justify-center gap-1.5 hover:bg-muted text-base font-black border border-border/60 text-foreground"
+              >
+                <CheckSquare className="w-6 h-6 text-primary" />
+                Assign Other Task
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <CreateTaskDialog
           open={showCreateDialog}
@@ -258,6 +330,13 @@ const Tasks = () => {
           onTaskCreate={handleCreateTask}
           taskToEdit={taskToEdit}
           onTaskUpdate={handleUpdateTask}
+        />
+
+        <CreateYuvakTaskDialog
+          open={showYuvakDialog}
+          onOpenChange={setShowYuvakDialog}
+          onTaskCreate={handleCreateTask}
+          tasks={tasks}
         />
       </main>
     </div>

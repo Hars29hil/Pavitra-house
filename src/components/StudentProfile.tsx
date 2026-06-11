@@ -6,6 +6,7 @@ import { Student } from '@/types';
 import { updateStudent, deleteStudent } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useConfirm } from '@/contexts/ConfirmationContext';
 
 interface StudentProfileProps {
     student: Student;
@@ -17,6 +18,7 @@ interface StudentProfileProps {
 export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = false }: StudentProfileProps) => {
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { confirm } = useConfirm();
     const { adminRole } = useAuth();
 
     const handleCopyUrl = () => {
@@ -40,8 +42,14 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
     };
 
     const handleDeleteStudent = async () => {
-        const confirmed = window.confirm(`Are you sure you want to delete ${student.name}? This action cannot be undone.`);
-        if (!confirmed) return;
+        const isConfirmed = await confirm({
+            title: `Delete ${student.name}?`,
+            message: `Are you sure you want to delete ${student.name}? This action cannot be undone.`,
+            confirmText: "Delete",
+            cancelText: "Cancel",
+            variant: "destructive"
+        });
+        if (!isConfirmed) return;
 
         try {
             await deleteStudent(student.id);

@@ -1,7 +1,8 @@
-import { Calendar, Check, Clock, Tag, Edit2, Trash2 } from 'lucide-react';
+import { Calendar, Check, Clock, Tag, Edit2, Trash2, User2 } from 'lucide-react';
 import { Task } from '@/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TaskItemProps {
   task: Task;
@@ -11,7 +12,9 @@ interface TaskItemProps {
 }
 
 export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) => {
+  const { adminName, adminRole } = useAuth();
   const isPending = task.status === 'pending';
+  const canToggle = !task.createdBy || task.createdBy.trim().toLowerCase() === adminName.trim().toLowerCase();
 
   return (
     <div
@@ -21,12 +24,15 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
       )}
     >
       <button
-        onClick={onToggle}
+        onClick={canToggle ? onToggle : undefined}
+        disabled={!canToggle}
         className={cn(
           "w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all duration-300 shrink-0",
-          isPending
-            ? "border-muted-foreground/30 hover:border-success hover:bg-success/10 group-hover:scale-110"
-            : "border-success bg-success text-white shadow-sm"
+          !canToggle 
+            ? "border-muted-foreground/20 bg-muted/10 cursor-not-allowed opacity-60"
+            : isPending
+              ? "border-muted-foreground/30 hover:border-success hover:bg-success/10 group-hover:scale-110"
+              : "border-success bg-success text-white shadow-sm"
         )}
       >
         {!isPending && <Check className="w-4 h-4 stroke-[3]" />}
@@ -55,9 +61,14 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
             <Tag className="w-3.5 h-3.5" />
             {task.category}
           </span>
-          {task.assignedToName && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
-              👤 {task.assignedToName}
+          {task.assignedToName && task.assignedToName.split(',').map((name, idx) => (
+            <span key={idx} className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+              👤 {name.trim()}
+            </span>
+          ))}
+          {adminRole === 'admin' && task.createdBy && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 uppercase tracking-tight">
+              ✍️ Added by: {task.createdBy}
             </span>
           )}
         </div>

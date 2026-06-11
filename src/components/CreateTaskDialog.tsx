@@ -40,7 +40,7 @@ export const CreateTaskDialog = ({
         title: '',
         description: '',
         dueDate: '',
-        showToKaryakarta: false,
+        showToKaryakarta: true,
     });
 
     // Fetch students and categories when dialog opens
@@ -53,8 +53,9 @@ export const CreateTaskDialog = ({
 
                 if (taskToEdit) {
                     setStep(2);
-                    const assignedStudent = currentStudents.find(s => s.id === taskToEdit.assignedTo);
-                    setSelectedStudents(assignedStudent ? [assignedStudent] : []);
+                    const assignedIds = (taskToEdit.assignedTo || '').split(',').map(id => id.trim());
+                    const assignedStudents = currentStudents.filter(s => assignedIds.includes(s.id));
+                    setSelectedStudents(assignedStudents);
                     setTaskData({
                         title: taskToEdit.title || '',
                         description: taskToEdit.description || '',
@@ -64,7 +65,7 @@ export const CreateTaskDialog = ({
                 } else {
                     setStep(1);
                     setSelectedStudents([]);
-                    setTaskData({ title: '', description: '', dueDate: '', showToKaryakarta: false });
+                    setTaskData({ title: '', description: '', dueDate: '', showToKaryakarta: true });
                 }
             });
         }
@@ -163,7 +164,8 @@ export const CreateTaskDialog = ({
                 assignedTo: student.id,
                 assignedToName: student.name,
                 description: taskData.description,
-                showToKaryakarta: taskData.showToKaryakarta
+                showToKaryakarta: taskData.showToKaryakarta,
+                createdBy: adminName
             };
 
             try {
@@ -380,17 +382,19 @@ export const CreateTaskDialog = ({
                                 />
                             </div>
 
-                            <div className="flex items-xl space-x-2 border p-4 rounded-xl">
-                                <Checkbox
-                                    id="showToKaryakarta"
-                                    checked={taskData.showToKaryakarta}
-                                    onCheckedChange={(c) => setTaskData({ ...taskData, showToKaryakarta: !!c })}
-                                />
-                                <Label htmlFor="showToKaryakarta" className="cursor-pointer flex-1 font-bold">
-                                    Show to Karyakarta
-                                    <span className="block text-xs text-muted-foreground font-normal">If checked, Karyakartas will see this task.</span>
-                                </Label>
-                            </div>
+                            {adminRole === 'admin' && (
+                                <div className="flex items-xl space-x-2 border p-4 rounded-xl">
+                                    <Checkbox
+                                        id="showToKaryakarta"
+                                        checked={taskData.showToKaryakarta}
+                                        onCheckedChange={(c) => setTaskData({ ...taskData, showToKaryakarta: !!c })}
+                                    />
+                                    <Label htmlFor="showToKaryakarta" className="cursor-pointer flex-1 font-bold">
+                                        Show to Karyakarta
+                                        <span className="block text-xs text-muted-foreground font-normal">If checked, Karyakartas will see this task.</span>
+                                    </Label>
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <Label>Deadline Date</Label>

@@ -15,8 +15,10 @@ import { getEducationResources, addEducationResource, deleteEducationResource, g
 import { Student } from '@/types';
 import api from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useConfirm } from '@/contexts/ConfirmationContext';
 
 export default function Education() {
+    const { confirm } = useConfirm();
     const { adminName, adminRole } = useAuth();
     
     // Data State
@@ -88,7 +90,14 @@ export default function Education() {
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!confirm("Are you sure?")) return;
+        const isConfirmed = await confirm({
+            title: "Delete Resource?",
+            message: "Are you sure you want to delete this education resource?",
+            confirmText: "Delete",
+            cancelText: "Cancel",
+            variant: "destructive"
+        });
+        if (!isConfirmed) return;
 
         try {
             await deleteEducationResource(id);

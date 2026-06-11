@@ -20,6 +20,7 @@ import {
 import { getStudents, getSetting, updateSetting } from '@/lib/store';
 import { Student } from '@/types';
 import { toast } from 'sonner';
+import { useConfirm } from '@/contexts/ConfirmationContext';
 import {
   Dialog,
   DialogContent,
@@ -207,6 +208,7 @@ interface TagItem {
 }
 
 const Tags = () => {
+  const { confirm } = useConfirm();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
   const [tags, setTags] = useState<TagItem[]>([]);
@@ -297,7 +299,14 @@ const Tags = () => {
   };
 
   const handleDeleteTag = async (tagId: string, tagName: string) => {
-    if (!confirm(`Are you sure you want to delete tag "${tagName}"? This will unassign it from all Yuvak.`)) {
+    const isConfirmed = await confirm({
+      title: "Delete Tag?",
+      message: `Are you sure you want to delete tag "${tagName}"? This will unassign it from all Yuvak.`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "destructive"
+    });
+    if (!isConfirmed) {
       return;
     }
 

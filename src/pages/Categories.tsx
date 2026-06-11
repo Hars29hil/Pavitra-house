@@ -1,7 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Users, Loader2, Plus, UserCircle2, Trash2, Edit, ArrowLeft, UserPlus, UserMinus, Check, Filter } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Users, Loader2, Plus, UserCircle2, Trash2, Edit, ArrowLeft, UserPlus, UserMinus, Check, Filter, Clock, Calendar } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Task } from '@/types';
+import { useConfirm } from '@/contexts/ConfirmationContext';
 import {
   Command,
   CommandEmpty,
@@ -31,14 +35,16 @@ import {
 } from "@/components/ui/select"
 import { ChevronsUpDown } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { getStudents, getCategories, addCategory, deleteCategory, updateCategory, Karyakarta } from '@/lib/store';
+import { getStudents, getCategories, addCategory, deleteCategory, updateCategory, getTasks, Karyakarta } from '@/lib/store';
 import { Student } from '@/types';
 import { toast } from 'sonner';
 
 const Categories = () => {
+  const { confirm } = useConfirm();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
   const [karyakartas, setKaryakartas] = useState<Karyakarta[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   // Overview State
   const [selectedMainStudent, setSelectedMainStudent] = useState<Student | null>(null);
@@ -55,9 +61,11 @@ const Categories = () => {
   // Detail View State
   const [viewMode, setViewMode] = useState<'overview' | 'detail'>('overview');
   const [selectedKaryakartaForDetail, setSelectedKaryakartaForDetail] = useState<Karyakarta | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedStudentsToAdd, setSelectedStudentsToAdd] = useState<Student[]>([]);
   const [openStudentSearch, setOpenStudentSearch] = useState(false);
   const [selectedRoomRange, setSelectedRoomRange] = useState<{ label: string, rooms: number[] } | null>(null);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   // Dynamic Room Ranges
   const generatedRanges = useMemo(() => {
@@ -123,25 +131,51 @@ const Categories = () => {
     });
   }, [students, selectedRoomRange]);
 
-  // Fetch Data on mount
+  // Fetch Data on mount and setup polling
   useEffect(() => {
-    const init = async () => {
-      setLoading(true);
+    const fetchData = async (isInitial = false) => {
+      if (isInitial) setLoading(true);
       try {
-        const [studentsData, categoriesData] = await Promise.all([
+        const [studentsData, categoriesData, tasksData] = await Promise.all([
           getStudents(),
-          getCategories()
+          getCategories(),
+          getTasks()
         ]);
         setStudents((studentsData || []).filter(s => !s.isAlumni));
         setKaryakartas(categoriesData || []);
+        setTasks(tasksData || []);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
-        setLoading(false);
+        if (isInitial) setLoading(false);
       }
     };
-    init();
-  }, []);
+
+    fetchData(true);
+
+    const interval = setInterval(() => {
+      fetchData(false);
+    }, 5000); // Polling every 5 seconds for real-time updates
+
+    return () => clearInterval(interval);
+  }, [refetchTrigger]);
+
+  // Synchronize view mode with URL search parameters and background updates
+  useEffect(() => {
+    const karyakartaId = searchParams.get('karyakarta');
+    if (karyakartaId && karyakartas.length > 0) {
+      const match = karyakartas.find(k => k.id === karyakartaId);
+      if (match) {
+        setSelectedKaryakartaForDetail(match);
+        setViewMode('detail');
+      } else {
+        setSearchParams({});
+      }
+    } else if (!karyakartaId) {
+      setViewMode('overview');
+      setSelectedKaryakartaForDetail(null);
+    }
+  }, [searchParams, karyakartas]);
 
   const handleAddMain = async () => {
     if (!selectedMainStudent) {
@@ -203,9 +237,23 @@ const Categories = () => {
 
     const hasSubs = karyakartas.some(k => k.parentId === id);
     if (hasSubs) {
-      if (!confirm('This Karyakarta has Sub-Karyakartas. Deleting it will also delete them. Continue?')) return;
+      const isConfirmed = await confirm({
+        title: "Delete Karyakarta?",
+        message: "This Karyakarta has Sub-Karyakartas. Deleting it will also delete them. Continue?",
+        confirmText: "Delete",
+        cancelText: "Cancel",
+        variant: "destructive"
+      });
+      if (!isConfirmed) return;
     } else {
-      if (!confirm('Are you sure you want to delete this Karyakarta?')) return;
+      const isConfirmed = await confirm({
+        title: "Delete Karyakarta?",
+        message: "Are you sure you want to delete this Karyakarta?",
+        confirmText: "Delete",
+        cancelText: "Cancel",
+        variant: "destructive"
+      });
+      if (!isConfirmed) return;
     }
 
     try {
@@ -293,10 +341,9 @@ const Categories = () => {
   };
 
   const openDetailView = (karyakarta: Karyakarta) => {
-    setSelectedKaryakartaForDetail(karyakarta);
     setSelectedStudentsToAdd([]);
     setSelectedRoomRange(null);
-    setViewMode('detail');
+    setSearchParams({ karyakarta: karyakarta.id });
   };
 
   const mainKaryakartas = karyakartas.filter(k => k.type === 'main');
@@ -555,177 +602,285 @@ const Categories = () => {
               )}
             </div>
           </>
-        ) : (
-          /* Detail View Section */
-          <div className="space-y-6 animate-fade-in">
-            {/* Header / Back Button */}
-            <div className="flex items-center gap-4 border-b border-border/50 pb-6">
-              <Button variant="outline" size="icon" className="rounded-full" onClick={() => setViewMode('overview')}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <div>
-                <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
-                  {selectedKaryakartaForDetail?.name}
-                </h2>
-                <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs mt-1">
-                  Assign Yuvak to this {selectedKaryakartaForDetail?.type === 'main' ? 'Main' : 'Sub'} Karyakarta
-                </p>
-              </div>
-            </div>
+        ) : (() => {
+          const assignedIds = selectedKaryakartaForDetail?.studentIds || [];
+          const assignedStudents = students.filter(s => assignedIds.includes(s.id));
+          
+          const nameLower = (selectedKaryakartaForDetail?.name || '').trim().toLowerCase();
+          const karyakartaTasks = tasks.filter(task => {
+            const isCreatedBy = task.createdBy && task.createdBy.trim().toLowerCase() === nameLower;
+            const taskStudentIds = (task.assignedTo || '').split(',').map(id => id.trim());
+            const isAssignedToTheirYuvak = taskStudentIds.some(id => assignedIds.includes(id));
+            return isCreatedBy || isAssignedToTheirYuvak;
+          });
 
-            {/* Assign Student Form */}
-            <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 flex flex-col md:flex-row gap-4 items-end">
-              <div className="w-full md:flex-1 space-y-2">
-                <label className="text-sm font-semibold text-foreground/80 ml-1">Search Yuvak to Assign</label>
-                <Popover open={openStudentSearch} onOpenChange={setOpenStudentSearch}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={openStudentSearch}
-                      className="w-full justify-between h-14 text-base rounded-xl font-normal"
-                    >
-                      <span className="truncate">
-                        {selectedStudentsToAdd.length > 0
-                          ? `${selectedStudentsToAdd.length} Yuvak(s) selected`
-                          : "Search from all Yuvaks..."}
-                      </span>
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] sm:w-[500px] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Search Yuvak by name..." />
-                      <CommandList>
-                        <CommandEmpty>No Yuvak found.</CommandEmpty>
-                        <CommandGroup>
-                          {filteredStudentsForSearch.map((student) => {
-                            const isSelected = selectedStudentsToAdd.some(s => s.id === student.id);
-                            return (
-                              <CommandItem
-                                key={student.id}
-                                value={student.name}
-                                onSelect={() => {
-                                  setSelectedStudentsToAdd(prev => {
-                                    if (prev.some(s => s.id === student.id)) {
-                                      return prev.filter(s => s.id !== student.id);
-                                    } else {
-                                      return [...prev, student];
-                                    }
-                                  });
-                                }}
-                                className={`cursor-pointer py-3 ${isSelected ? 'bg-primary/5' : ''}`}
-                              >
-                                <div className="flex items-center justify-between w-full">
-                                  <div className="flex items-center gap-3 min-w-0">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}`}>
-                                      {student.name.charAt(0)}
-                                    </div>
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="font-medium text-base truncate">{student.name}</span>
-                                      <span className="text-xs text-muted-foreground truncate">Room: {student.roomNo || 'N/A'}</span>
-                                    </div>
-                                  </div>
-                                  {isSelected && <Check className="w-5 h-5 text-primary shrink-0 ml-3" />}
-                                </div>
-                              </CommandItem>
-                            );
-                          })}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+          const totalMeetings = karyakartaTasks.filter(t => t.category === 'Yuvak' && t.status === 'done').length;
+          const pendingMeetings = karyakartaTasks.filter(t => t.category === 'Yuvak' && t.status === 'pending').length;
+
+          const yuvakMeetData = assignedStudents.map(student => {
+            const meetCount = tasks.filter(t => 
+              t.category === 'Yuvak' && 
+              t.status === 'done' && 
+              t.assignedTo && 
+              t.assignedTo.split(',').map(id => id.trim()).includes(student.id)
+            ).length;
+            
+            return {
+              name: student.name,
+              shortName: student.name.split(' ')[0],
+              meets: meetCount
+            };
+          });
+
+          return (
+            /* Detail View Section */
+            <div className="space-y-6 animate-fade-in">
+              {/* Header / Back Button */}
+              <div className="flex items-center gap-4 border-b border-border/50 pb-6">
+                <Button variant="outline" size="icon" className="rounded-full" onClick={() => setSearchParams({})}>
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <div>
+                  <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
+                    {selectedKaryakartaForDetail?.name}
+                  </h2>
+                  <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs mt-1">
+                    Assign Yuvak to this {selectedKaryakartaForDetail?.type === 'main' ? 'Main' : 'Sub'} Karyakarta
+                  </p>
+                </div>
               </div>
 
-              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-                {selectedKaryakartaForDetail?.type === 'main' && (
-                  <Popover>
+              {/* Report Dashboard Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white p-5 rounded-3xl shadow-soft border border-border/50 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-extrabold text-foreground">{assignedStudents.length}</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assigned Yuvaks</p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl shadow-soft border border-border/50 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                    <Check className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-extrabold text-emerald-600">{totalMeetings}</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Meetings Done</p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl shadow-soft border border-border/50 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-extrabold text-amber-600">{pendingMeetings}</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pending Meetings</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Graph / Chart */}
+              {assignedStudents.length > 0 && (
+                <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 space-y-4">
+                  <div>
+                    <h3 className="font-bold text-lg text-foreground">Yuvak Meeting Frequency</h3>
+                    <p className="text-xs text-muted-foreground">Number of times this Karyakarta has met each Yuvak</p>
+                  </div>
+                  <div className="h-[250px] w-full pt-4">
+                    {totalMeetings === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground">
+                        <Calendar className="w-10 h-10 text-muted-foreground/40 mb-2" />
+                        <p className="text-sm font-medium">No completed meetings logged yet.</p>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={yuvakMeetData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="meetGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.9}/>
+                              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                          <XAxis dataKey="shortName" tick={{ fill: '#6b7280', fontSize: 11, fontWeight: 600 }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                            labelStyle={{ fontWeight: 'bold', color: '#111827' }}
+                          />
+                          <Bar dataKey="meets" fill="url(#meetGradient)" radius={[8, 8, 0, 0]} name="Meets Count" maxBarSize={45} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Assign Student Form */}
+              <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 flex flex-col md:flex-row gap-4 items-end">
+                <div className="w-full md:flex-1 space-y-2">
+                  <label className="text-sm font-semibold text-foreground/80 ml-1">Search Yuvak to Assign</label>
+                  <Popover open={openStudentSearch} onOpenChange={setOpenStudentSearch}>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={`h-14 px-4 rounded-xl font-bold ${selectedRoomRange ? 'bg-primary/10 text-primary border-primary' : ''}`}>
-                        <Filter className="w-5 h-5 mr-2" />
-                        {selectedRoomRange ? selectedRoomRange.label : 'Filter Range'}
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={openStudentSearch}
+                        className="w-full justify-between h-14 text-base rounded-xl font-normal"
+                      >
+                        <span className="truncate">
+                          {selectedStudentsToAdd.length > 0
+                            ? `${selectedStudentsToAdd.length} Yuvak(s) selected`
+                            : "Search from all Yuvaks..."}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-48 p-0" align="end">
+                    <PopoverContent className="w-[300px] sm:w-[500px] p-0" align="start">
                       <Command>
+                        <CommandInput placeholder="Search Yuvak by name..." />
                         <CommandList>
+                          <CommandEmpty>No Yuvak found.</CommandEmpty>
                           <CommandGroup>
-                            <CommandItem
-                              onSelect={() => { setSelectedRoomRange(null); setOpenStudentSearch(false); }}
-                              className="cursor-pointer font-medium"
-                            >
-                              All Rooms
-                            </CommandItem>
-                            {generatedRanges.map(range => (
-                              <CommandItem
-                                key={range.label}
-                                onSelect={() => { setSelectedRoomRange(range); setOpenStudentSearch(false); }}
-                                className="cursor-pointer"
-                              >
-                                {range.label}
-                              </CommandItem>
-                            ))}
+                            {filteredStudentsForSearch.map((student) => {
+                              const isSelected = selectedStudentsToAdd.some(s => s.id === student.id);
+                              return (
+                                <CommandItem
+                                  key={student.id}
+                                  value={student.name}
+                                  onSelect={() => {
+                                    setSelectedStudentsToAdd(prev => {
+                                      if (prev.some(s => s.id === student.id)) {
+                                        return prev.filter(s => s.id !== student.id);
+                                      } else {
+                                        return [...prev, student];
+                                      }
+                                    });
+                                  }}
+                                  className={`cursor-pointer py-3 ${isSelected ? 'bg-primary/5' : ''}`}
+                                >
+                                  <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}`}>
+                                        {student.name.charAt(0)}
+                                      </div>
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="font-medium text-base truncate">{student.name}</span>
+                                        <span className="text-xs text-muted-foreground truncate">Room: {student.roomNo || 'N/A'}</span>
+                                      </div>
+                                    </div>
+                                    {isSelected && <Check className="w-5 h-5 text-primary shrink-0 ml-3" />}
+                                  </div>
+                                </CommandItem>
+                              );
+                            })}
                           </CommandGroup>
                         </CommandList>
                       </Command>
                     </PopoverContent>
                   </Popover>
-                )}
+                </div>
 
-                <Button
-                  onClick={handleAssignStudent}
-                  className="h-14 px-8 rounded-xl text-md font-bold gap-2"
-                  disabled={selectedRoomRange ? filteredStudentsForSearch.length === 0 : selectedStudentsToAdd.length === 0}
-                >
-                  <UserPlus className="w-5 h-5" />
-                  {selectedRoomRange
-                    ? `Add ${filteredStudentsForSearch.length} Filtered Yuvaks`
-                    : `Add Yuvak${selectedStudentsToAdd.length > 1 ? 's' : ''}`}
-                </Button>
+                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                  {selectedKaryakartaForDetail?.type === 'main' && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={`h-14 px-4 rounded-xl font-bold ${selectedRoomRange ? 'bg-primary/10 text-primary border-primary' : ''}`}>
+                          <Filter className="w-5 h-5 mr-2" />
+                          {selectedRoomRange ? selectedRoomRange.label : 'Filter Range'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-0" align="end">
+                        <Command>
+                          <CommandList>
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() => { setSelectedRoomRange(null); setOpenStudentSearch(false); }}
+                                className="cursor-pointer font-medium"
+                              >
+                                All Rooms
+                              </CommandItem>
+                              {generatedRanges.map(range => (
+                                <CommandItem
+                                  key={range.label}
+                                  onSelect={() => { setSelectedRoomRange(range); setOpenStudentSearch(false); }}
+                                  className="cursor-pointer"
+                                >
+                                  {range.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+
+                  <Button
+                    onClick={handleAssignStudent}
+                    className="h-14 px-8 rounded-xl text-md font-bold gap-2"
+                    disabled={selectedRoomRange ? filteredStudentsForSearch.length === 0 : selectedStudentsToAdd.length === 0}
+                  >
+                    <UserPlus className="w-5 h-5" />
+                    {selectedRoomRange
+                      ? `Add ${filteredStudentsForSearch.length} Filtered Yuvaks`
+                      : `Add Yuvak${selectedStudentsToAdd.length > 1 ? 's' : ''}`}
+                  </Button>
+                </div>
               </div>
-            </div>
 
-            {/* List of Assigned Yuvaks */}
-            <div className="bg-white rounded-3xl shadow-sm border border-border/50 overflow-hidden">
-              <div className="p-6 border-b border-border/50 bg-gray-50/50">
-                <h3 className="font-bold text-lg text-foreground">Currently Assigned Yuvaks</h3>
-              </div>
-              <div className="p-0 divide-y divide-border/50">
-                {(() => {
-                  const assignedIds = selectedKaryakartaForDetail?.studentIds || [];
-                  const assignedStudents = students.filter(s => assignedIds.includes(s.id));
-
-                  if (assignedStudents.length === 0) {
-                    return (
-                      <div className="p-10 text-center text-muted-foreground italic">
-                        No Yuvaks are currently assigned to this Karyakarta.
-                      </div>
-                    );
-                  }
-
-                  return assignedStudents.map(student => (
-                    <div key={student.id} className="p-4 px-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-sm">
-                          {student.name.charAt(0)}
-                        </div>
-                        <div>
-                          <h5 className="font-bold text-foreground text-sm">{student.name}</h5>
-                          <p className="text-xs text-muted-foreground font-medium">Room: {student.roomNo || 'N/A'} • Mobile: {student.mobile || 'N/A'}</p>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon" className="hover:text-destructive hover:bg-red-50 text-muted-foreground" onClick={() => handleRemoveStudent(student.id)}>
-                        <UserMinus className="h-4 w-4" />
-                      </Button>
+              {/* List of Assigned Yuvaks */}
+              <div className="bg-white rounded-3xl shadow-sm border border-border/50 overflow-hidden">
+                <div className="p-6 border-b border-border/50 bg-gray-50/50">
+                  <h3 className="font-bold text-lg text-foreground">Currently Assigned Yuvaks</h3>
+                </div>
+                <div className="p-0 divide-y divide-border/50">
+                  {assignedStudents.length === 0 ? (
+                    <div className="p-10 text-center text-muted-foreground italic">
+                      No Yuvaks are currently assigned to this Karyakarta.
                     </div>
-                  ));
-                })()}
-              </div>
-            </div>
+                  ) : (
+                    assignedStudents.map(student => {
+                      const meetCount = tasks.filter(t => 
+                        t.category === 'Yuvak' && 
+                        t.status === 'done' && 
+                        t.assignedTo && 
+                        t.assignedTo.split(',').map(id => id.trim()).includes(student.id)
+                      ).length;
 
-          </div>
-        )}
+                      return (
+                        <div key={student.id} className="p-4 px-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-sm">
+                              {student.name.charAt(0)}
+                            </div>
+                            <div>
+                              <h5 className="font-bold text-foreground text-sm flex items-center gap-2">
+                                {student.name}
+                                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 px-2 py-0.5 rounded-full">
+                                  Met: {meetCount} times
+                                </span>
+                              </h5>
+                              <p className="text-xs text-muted-foreground font-medium">Room: {student.roomNo || 'N/A'} • Mobile: {student.mobile || 'N/A'}</p>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="icon" className="hover:text-destructive hover:bg-red-50 text-muted-foreground" onClick={() => handleRemoveStudent(student.id)}>
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+            </div>
+          );
+        })()}
 
         {/* Edit Dialog */}
         <Dialog open={!!editingKaryakarta} onOpenChange={(open) => !open && setEditingKaryakarta(null)}>

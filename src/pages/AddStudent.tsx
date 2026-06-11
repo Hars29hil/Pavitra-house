@@ -19,23 +19,31 @@ import { useAuth } from '@/contexts/AuthContext';
 import { BulkUpdate } from '@/components/BulkUpdate';
 import { uploadToImgBB } from '@/lib/imgbb';
 import { cn } from '@/lib/utils';
+import { useConfirm } from '@/contexts/ConfirmationContext';
 
 // Hook for blocking navigation
 function useUnsavedChanges(isDirty: boolean) {
+  const { confirm } = useConfirm();
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) => isDirty && currentLocation.pathname !== nextLocation.pathname
   );
 
   useEffect(() => {
     if (blocker.state === "blocked") {
-      const confirm = window.confirm("Changes save nathi thaya. Bahar javu che?");
-      if (confirm) {
-        blocker.proceed();
-      } else {
-        blocker.reset();
-      }
+      confirm({
+        title: "Unsaved Changes",
+        message: "Changes save nathi thaya. Bahar javu che?",
+        confirmText: "Leave",
+        cancelText: "Stay"
+      }).then((proceed) => {
+        if (proceed) {
+          blocker.proceed();
+        } else {
+          blocker.reset();
+        }
+      });
     }
-  }, [blocker]);
+  }, [blocker, confirm]);
 }
 
 const AddStudent = () => {

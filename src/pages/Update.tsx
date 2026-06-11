@@ -11,9 +11,11 @@ import { BulkUpdate } from '@/components/BulkUpdate';
 import { toast } from 'sonner';
 import { getStudents, deleteStudent, upsertStudents } from '@/lib/store';
 import { cn } from '@/lib/utils';
+import { useConfirm } from '@/contexts/ConfirmationContext';
 
 const Update = () => {
   const navigate = useNavigate();
+  const { confirm } = useConfirm();
   const [activeTab, setActiveTab] = useState('single');
   const [searchQuery, setSearchQuery] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
@@ -52,7 +54,14 @@ const Update = () => {
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Are you sure you want to delete this student?')) {
+    const isConfirmed = await confirm({
+      title: "Delete Student?",
+      message: "Are you sure you want to delete this student record? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "destructive"
+    });
+    if (isConfirmed) {
       try {
         await deleteStudent(id);
         const updatedList = students.filter(s => s.id !== id);

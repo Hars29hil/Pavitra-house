@@ -3,6 +3,7 @@ import { Loader2, CheckCircle2, Send, Search, Users, X, Filter, ChevronRight } f
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useConfirm } from "@/contexts/ConfirmationContext";
 import api from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 import { getStudents, getCategories, Karyakarta } from "@/lib/store";
@@ -27,6 +28,7 @@ import {
 const API_BASE = API_BASE_URL;
 
 export default function Whatsapp() {
+    const { confirm } = useConfirm();
     const { adminRole, adminName } = useAuth();
     const [connected, setConnected] = useState(false);
     const [qr, setQr] = useState<string | null>(null);
@@ -62,7 +64,14 @@ export default function Whatsapp() {
     };
 
     const handleResetSession = async () => {
-        if (!confirm("This will PERMANENTLY delete your login session and force a new QR code. Use this only if you are stuck. Continue?")) return;
+        const isConfirmed = await confirm({
+            title: "Reset Session?",
+            message: "This will PERMANENTLY delete your login session and force a new QR code. Use this only if you are stuck. Continue?",
+            confirmText: "Reset Session",
+            cancelText: "Cancel",
+            variant: "destructive"
+        });
+        if (!isConfirmed) return;
 
         try {
             setLoading(true);
@@ -83,7 +92,14 @@ export default function Whatsapp() {
     };
 
     const handleLogout = async () => {
-        if (!confirm("Are you sure you want to logout? This will require scanning the QR code again.")) return;
+        const isConfirmed = await confirm({
+            title: "Logout?",
+            message: "Are you sure you want to logout? This will require scanning the QR code again.",
+            confirmText: "Logout",
+            cancelText: "Cancel",
+            variant: "destructive"
+        });
+        if (!isConfirmed) return;
 
         try {
             setLoading(true);

@@ -35,6 +35,7 @@ export interface Task {
   isPracticeQuestion?: boolean;
   questionContent?: string;
   showToKaryakarta?: boolean;
+  createdBy?: string;
 }
 
 export interface Category {

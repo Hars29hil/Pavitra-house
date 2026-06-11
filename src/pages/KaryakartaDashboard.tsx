@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Users, UserCheck, ShieldCheck, GraduationCap, ClipboardCheck } from 'lucide-react';
+import { Search, Plus, Users, UserCheck, ShieldCheck, GraduationCap, ClipboardCheck, CheckSquare } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { StudentListItem } from '@/components/StudentListItem';
 import { StudentProfileSheet } from '@/components/StudentProfileSheet';
@@ -23,9 +23,11 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from 'sonner';
-import { getStudents, getCategories, updateCategory, Karyakarta } from '@/lib/store';
-import { Student } from '@/types';
+import { getStudents, getCategories, updateCategory, Karyakarta, getTasks, addTask } from '@/lib/store';
+import { Student, Task } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { CreateTaskDialog } from '@/components/CreateTaskDialog';
+import { CreateYuvakTaskDialog } from '@/components/CreateYuvakTaskDialog';
 
 const KaryakartaDashboard = () => {
   const navigate = useNavigate();
@@ -34,6 +36,12 @@ const KaryakartaDashboard = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [categories, setCategories] = useState<Karyakarta[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Tasks state
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [showTypeSelection, setShowTypeSelection] = useState(false);
+  const [showYuvakDialog, setShowYuvakDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,23 +53,51 @@ const KaryakartaDashboard = () => {
 
 
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
-  const fetchData = async () => {
-    setLoading(true);
+  useEffect(() => {
+    const fetchData = async (isInitial = false) => {
+      if (isInitial) setLoading(true);
+      try {
+        const [studentsData, categoriesData, tasksData] = await Promise.all([
+          getStudents(),
+          getCategories(),
+          getTasks()
+        ]);
+        setStudents(studentsData || []);
+        setCategories(categoriesData || []);
+        setTasks(tasksData || []);
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+      } finally {
+        if (isInitial) setLoading(false);
+      }
+    };
+
+    fetchData(true);
+
+    const interval = setInterval(() => {
+      fetchData(false);
+    }, 5000); // Polling every 5 seconds for real-time updates
+
+    return () => clearInterval(interval);
+  }, [refetchTrigger]);
+
+  const handleRefetch = () => {
+    setRefetchTrigger(prev => prev + 1);
+  };
+
+  const handleCreateTask = async (newTask: Task) => {
     try {
-      const [studentsData, categoriesData] = await Promise.all([
-        getStudents(),
-        getCategories()
-      ]);
-      setStudents(studentsData || []);
-      setCategories(categoriesData || []);
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
-    } finally {
-      setLoading(false);
+      const savedTask = await addTask(newTask);
+      if (savedTask) {
+        setTasks(prev => [savedTask, ...prev]);
+        toast.success("Task created successfully!");
+      }
+      return savedTask;
+    } catch (e) {
+      toast.error("Failed to save task to database");
+      throw e;
     }
   };
 
@@ -323,7 +359,68 @@ const KaryakartaDashboard = () => {
         student={selectedStudent}
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
-        onUpdate={fetchData}
+        onUpdate={handleRefetch}
+      />
+
+      {/* Floating Plus Task Button */}
+      <Button
+        className="fixed bottom-8 right-8 w-16 h-16 rounded-2xl shadow-soft-lg bg-primary hover:bg-primary/90 hover:scale-[1.1] active:scale-[0.9] transition-all z-50 group"
+        size="icon"
+        onClick={() => {
+          setShowTypeSelection(true);
+        }}
+      >
+        <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
+      </Button>
+
+      {/* Type Selection Dialog */}
+      <Dialog open={showTypeSelection} onOpenChange={setShowTypeSelection}>
+        <DialogContent className="sm:max-w-sm rounded-3xl p-6 border-none bg-white">
+          <DialogHeader className="text-center">
+            <DialogTitle className="text-xl font-black text-foreground">Choose Task Type</DialogTitle>
+            <DialogDescription>
+              Select what kind of task you want to create.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-4 pt-4">
+            <Button 
+              onClick={() => {
+                setShowTypeSelection(false);
+                setShowYuvakDialog(true);
+              }}
+              className="h-20 rounded-2xl flex flex-col items-center justify-center gap-1.5 bg-primary text-white hover:bg-primary/95 text-base font-black shadow-md border-none"
+            >
+              <Users className="w-6 h-6" />
+              Log Yuvak Meet
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => {
+                setShowTypeSelection(false);
+                setShowCreateDialog(true);
+              }}
+              className="h-20 rounded-2xl flex flex-col items-center justify-center gap-1.5 hover:bg-muted text-base font-black border border-border/60 text-foreground"
+            >
+              <CheckSquare className="w-6 h-6 text-primary" />
+              Assign Other Task
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Task Dialog */}
+      <CreateTaskDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onTaskCreate={handleCreateTask}
+      />
+
+      {/* Create Yuvak Task Dialog */}
+      <CreateYuvakTaskDialog
+        open={showYuvakDialog}
+        onOpenChange={setShowYuvakDialog}
+        onTaskCreate={handleCreateTask}
+        tasks={tasks}
       />
 
     </div>

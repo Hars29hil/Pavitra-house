@@ -13,6 +13,9 @@ import { cn } from '@/lib/utils';
 import { LayoutDashboard, Clock, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import KaryakartaDashboard from './KaryakartaDashboard';
+import { CreateTaskDialog } from '@/components/CreateTaskDialog';
+import { addTask } from '@/lib/store';
+import { toast } from 'sonner';
 
 const Dashboard = () => {
   const { adminRole } = useAuth();
@@ -28,27 +31,51 @@ const Dashboard = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [tagsData, setTagsData] = useState<{ tags: any[], assignments: Record<string, string> }>({ tags: [], assignments: {} });
+  
+  // Task state
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   useEffect(() => {
-    fetchStudents();
-  }, []);
-
-  const fetchStudents = async () => {
-    try {
-      const data = await getStudents();
-      setStudents(data || []);
-      
-      const tagsSetting = await getSetting('student_tags');
-      if (tagsSetting) {
-        try {
-          setTagsData(JSON.parse(tagsSetting));
-        } catch (e) {
-          console.error('Error parsing student_tags setting:', e);
+    const fetchStudentsData = async () => {
+      try {
+        const data = await getStudents();
+        setStudents(data || []);
+        
+        const tagsSetting = await getSetting('student_tags');
+        if (tagsSetting) {
+          try {
+            setTagsData(JSON.parse(tagsSetting));
+          } catch (e) {
+            console.error('Error parsing student_tags setting:', e);
+          }
         }
+      } catch (error) {
+        console.error(error);
       }
-    } catch (error) {
-      console.error(error);
-      setStudents([]);
+    };
+
+    fetchStudentsData();
+
+    const interval = setInterval(() => {
+      fetchStudentsData();
+    }, 5000); // Polling every 5 seconds for real-time updates
+
+    return () => clearInterval(interval);
+  }, [refetchTrigger]);
+
+  const handleRefetch = () => {
+    setRefetchTrigger(prev => prev + 1);
+  };
+
+  const handleCreateTask = async (newTask: any) => {
+    try {
+      await addTask(newTask);
+      toast.success("Task assigned successfully!");
+    } catch (e) {
+      toast.error("Failed to save task to database");
+      throw e;
     }
   };
 
@@ -171,7 +198,23 @@ const Dashboard = () => {
         student={selectedStudent}
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
-        onUpdate={fetchStudents}
+        onUpdate={handleRefetch}
+      />
+
+      {/* Floating Plus Task Button */}
+      <Button
+        className="fixed bottom-8 right-8 w-16 h-16 rounded-2xl shadow-soft-lg bg-primary hover:bg-primary/90 hover:scale-[1.1] active:scale-[0.9] transition-all z-50 group"
+        size="icon"
+        onClick={() => setShowCreateDialog(true)}
+      >
+        <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
+      </Button>
+
+      {/* Create Task Dialog */}
+      <CreateTaskDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onTaskCreate={handleCreateTask}
       />
     </div>
   );
