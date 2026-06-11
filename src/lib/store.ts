@@ -79,7 +79,7 @@ const fromDbStudent = (db: any): Student => ({
     year: db.year,
     result: db.result,
     interest: db.interest,
-    isAlumni: db.is_alumni,
+    isAlumni: db.is_alumni === true || db.is_alumni === 1 || db.is_alumni === '1' || db.is_alumni === 'true',
     createdAt: db.created_at,
     profileImage: resolveProfileImageUrl(db.profile_image),
     job: db.job,
@@ -418,6 +418,16 @@ export const getStudentResults = async (studentId: string): Promise<StudentResul
         return (res.data || []).map(fromDbResult);
     } catch (error) {
         console.error('Unexpected error fetching results:', error);
+        return [];
+    }
+};
+
+export const getAllStudentResults = async (): Promise<StudentResult[]> => {
+    try {
+        const res = await api.get<any[]>('/api/student_results');
+        return (res.data || []).map(fromDbResult);
+    } catch (error) {
+        console.error('Unexpected error fetching all results:', error);
         return [];
     }
 };

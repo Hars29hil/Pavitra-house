@@ -7,6 +7,39 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { getStudentByMobile, updateStudent } from '@/lib/store';
 import { uploadToImgBB } from '@/lib/imgbb';
+import { Switch } from '@/components/ui/switch';
+
+const collegeSuggestions = [
+  "G H Patel Information & Technology",
+  "SEMCOM",
+  "MBIT",
+  "BVM",
+  "BJVM Commerce College",
+  "CHARUSAT",
+  "NVPAS",
+  "SPEC",
+  "CISST",
+  "Dr. V. H. Dave",
+  "Anand Institute of Social Work",
+  "P. G. Department of Computer Science"
+];
+
+const normalizeCollegeName = (name: string): string => {
+  const clean = name.trim().toLowerCase();
+  if (clean === 'gcet') return 'G H Patel Information & Technology';
+  if (clean === 'semcom') return 'SEMCOM';
+  if (clean === 'mbit') return 'MBIT';
+  if (clean === 'bvm') return 'BVM';
+  if (clean === 'bjvm') return 'BJVM Commerce College';
+  if (clean === 'charusat') return 'CHARUSAT';
+  if (clean === 'nvpas') return 'NVPAS';
+  if (clean === 'spec') return 'SPEC';
+  if (clean === 'cisst') return 'CISST';
+  if (clean === 'dr. v. h. dave' || clean === 'dr v h dave' || clean === 'dave') return 'Dr. V. H. Dave';
+  
+  const matched = collegeSuggestions.find(s => s.toLowerCase() === clean);
+  return matched || name;
+};
 
 const StudentSelfUpdate = () => {
   const { mobile } = useParams<{ mobile: string }>();
@@ -35,6 +68,7 @@ const StudentSelfUpdate = () => {
     livingPlace: '',
   });
 
+  const [isWorking, setIsWorking] = useState(false);
   const [initialData, setInitialData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -69,6 +103,9 @@ const StudentSelfUpdate = () => {
             livingPlace: student.livingPlace || '',
           };
           setFormData(data);
+
+          const studentIsWorking = Boolean(student.job || student.designation || student.jobPlace);
+          setIsWorking(studentIsWorking);
           
           // Store which fields had data initially to disable them
           const initialDataMap: Record<string, string> = {};
@@ -108,6 +145,15 @@ const StudentSelfUpdate = () => {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleCollegeBlur = () => {
+    if (formData.college) {
+      setFormData(prev => ({
+        ...prev,
+        college: normalizeCollegeName(prev.college)
+      }));
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,10 +203,18 @@ const StudentSelfUpdate = () => {
 
     setSaving(true);
     try {
-      await updateStudent(studentId, {
+      const payload = {
         ...formData,
         age: formData.age ? Number(formData.age) : undefined,
-      });
+        college: normalizeCollegeName(formData.college),
+      };
+      if (!formData.isAlumni && !isWorking) {
+        payload.job = '';
+        payload.designation = '';
+        payload.jobPlace = '';
+      }
+
+      await updateStudent(studentId, payload);
       toast({
         title: 'Update Successful',
         description: `Your details have been saved successfully!`,
@@ -184,22 +238,29 @@ const StudentSelfUpdate = () => {
     { name: 'email', label: 'Email Address', type: 'email', placeholder: 'email@example.com' },
     { name: 'dob', label: 'Date of Birth (YYYY-MM-DD)', type: 'date', placeholder: '' },
     { name: 'age', label: 'Age', type: 'number', placeholder: '20' },
-    { 
-      name: 'degree', 
-      label: 'Last or pursuing Degree Completed *', 
-      type: 'text', 
-      placeholder: 'e.g. BBA' 
-    },
-    { 
-      name: 'college', 
-      label: 'College Name', 
-      type: 'text', 
-      placeholder: 'e.g. SEMCOM College' 
-    },
-    { name: 'job', label: 'Company Name', type: 'text', placeholder: 'e.g. Google' },
-    { name: 'designation', label: 'Designation', type: 'text', placeholder: 'e.g. Senior Developer' },
-    { name: 'jobPlace', label: 'Job Place or City', type: 'text', placeholder: 'e.g. Bangalore' },
-    { name: 'livingPlace', label: 'Living Place or City', type: 'text', placeholder: 'e.g. Anand' },
+    
+    ...(!formData.isAlumni ? [
+      { name: 'roomNo', label: 'Room Number', type: 'text', placeholder: 'e.g. 101' },
+      { name: 'college', label: 'College', type: 'text', placeholder: 'e.g. SEMCOM College' },
+      { name: 'degree', label: 'Degree', type: 'text', placeholder: 'e.g. BBA' },
+      { name: 'year', label: 'Year', type: 'text', placeholder: 'e.g. 2nd Year' },
+      { name: 'result', label: 'Result/CGPA', type: 'text', placeholder: 'e.g. 8.5' },
+      { name: 'isWorkingToggle', label: 'Doing Job?', type: 'toggle', placeholder: '' },
+    ] : [
+      { name: 'college', label: 'College Name', type: 'text', placeholder: 'e.g. SEMCOM College' },
+      { name: 'degree', label: 'Last or pursuing Degree Completed', type: 'text', placeholder: 'e.g. BBA' },
+      { name: 'job', label: 'Company Name', type: 'text', placeholder: 'e.g. Google' },
+      { name: 'designation', label: 'Designation', type: 'text', placeholder: 'e.g. Senior Developer' },
+      { name: 'jobPlace', label: 'Job Place or City', type: 'text', placeholder: 'e.g. Bangalore' },
+      { name: 'livingPlace', label: 'Living Place or City', type: 'text', placeholder: 'e.g. Anand' },
+    ]),
+
+    ...(!formData.isAlumni && isWorking ? [
+      { name: 'job', label: 'Company Name', type: 'text', placeholder: 'e.g. Google' },
+      { name: 'designation', label: 'Designation', type: 'text', placeholder: 'e.g. Senior Developer' },
+      { name: 'jobPlace', label: 'Job Place or City', type: 'text', placeholder: 'e.g. Bangalore' },
+    ] : []),
+
     { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music' },
     { name: 'linkedin', label: 'LinkedIn URL', type: 'text', placeholder: 'https://linkedin.com/in/username' },
     { name: 'socialLink', label: 'Social Media URL (Instagram, Facebook, X, etc.)', type: 'text', placeholder: 'https://instagram.com/username' },
@@ -294,16 +355,50 @@ const StudentSelfUpdate = () => {
                   <Label htmlFor={field.name} className="text-xs sm:text-sm font-bold text-foreground/80 ml-1">
                     {field.label} {isDisabled && <span className="text-[10px] text-muted-foreground ml-2 font-normal">(Read Only)</span>}
                   </Label>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    type={field.type}
-                    placeholder={isDisabled ? '' : field.placeholder}
-                    value={formData[field.name as keyof typeof formData] as string}
-                    onChange={handleChange}
-                    disabled={isDisabled}
-                    className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm disabled:opacity-80 disabled:bg-muted/50"
-                  />
+                  {field.type === 'toggle' ? (
+                    <div className="flex items-center space-x-2 h-11 sm:h-12">
+                      <Switch
+                        id={field.name}
+                        checked={isWorking}
+                        onCheckedChange={(checked) => {
+                          setIsWorking(checked);
+                          if (!checked) {
+                            setFormData(prev => ({
+                              ...prev,
+                              job: '',
+                              designation: '',
+                              jobPlace: '',
+                            }));
+                          }
+                        }}
+                      />
+                      <span className="text-xs sm:text-sm font-medium text-muted-foreground">
+                        {isWorking ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type={field.type}
+                        placeholder={isDisabled ? '' : field.placeholder}
+                        value={formData[field.name as keyof typeof formData] as string}
+                        onChange={handleChange}
+                        onBlur={field.name === 'college' ? handleCollegeBlur : undefined}
+                        disabled={isDisabled}
+                        list={field.name === 'college' && !isDisabled ? 'college-suggestions' : undefined}
+                        className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm disabled:opacity-80 disabled:bg-muted/50"
+                      />
+                      {field.name === 'college' && !isDisabled && (
+                        <datalist id="college-suggestions">
+                          {collegeSuggestions.map(col => (
+                            <option key={col} value={col} />
+                          ))}
+                        </datalist>
+                      )}
+                    </>
+                  )}
                 </div>
               );
             })}

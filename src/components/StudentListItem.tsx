@@ -1,11 +1,12 @@
 import React from 'react';
-import { GraduationCap, Phone, MessageCircle, Hash } from 'lucide-react';
+import { GraduationCap, Phone, MessageCircle, Hash, Download } from 'lucide-react';
 import { Student } from '@/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getCategories, Karyakarta } from '@/lib/store';
 import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface StudentListItemProps {
   student: Student;
@@ -24,6 +25,7 @@ export const StudentListItem = ({
 }: StudentListItemProps) => {
   const [karyakartaCats, setKaryakartaCats] = useState<Karyakarta[]>([]);
   const [imgError, setImgError] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   useEffect(() => {
     setImgError(false);
@@ -35,6 +37,27 @@ export const StudentListItem = ({
       setKaryakartaCats(studentTags);
     });
   }, [student.id]);
+
+  const handleDownloadImage = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!student.profileImage) return;
+    try {
+      const response = await fetch(student.profileImage);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const extension = student.profileImage.split('.').pop() || 'jpg';
+      link.download = `${student.name.replace(/\s+/g, '_')}_profile.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download image:', error);
+      window.open(student.profileImage, '_blank');
+    }
+  };
 
   const handleCall = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -91,7 +114,18 @@ export const StudentListItem = ({
           }}
         />
       )}
-      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden shadow-soft group-hover:shadow-soft-lg transition-all shrink-0 bg-primary/10 flex items-center justify-center">
+      <div 
+        onClick={(e) => {
+          if (student.profileImage && !imgError) {
+            e.stopPropagation();
+            setIsImageModalOpen(true);
+          }
+        }}
+        className={cn(
+          "w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden shadow-soft group-hover:shadow-soft-lg transition-all shrink-0 bg-primary/10 flex items-center justify-center",
+          student.profileImage && !imgError && "cursor-pointer"
+        )}
+      >
         {student.profileImage && !imgError ? (
           <img
             src={student.profileImage}
@@ -153,6 +187,38 @@ export const StudentListItem = ({
           </div>
         )}
       </div>
+
+      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+        <DialogContent 
+          onClick={(e) => e.stopPropagation()}
+          className="max-w-xl p-0 overflow-hidden bg-transparent border-none shadow-none flex flex-col items-center justify-center"
+        >
+          {student.profileImage && (
+            <div className="relative group max-h-[85vh] max-w-full rounded-2xl overflow-hidden shadow-2xl bg-black/40 backdrop-blur-sm p-4 flex flex-col items-center">
+              <img src={student.profileImage} alt={student.name} className="max-h-[70vh] max-w-full rounded-xl object-contain mx-auto" />
+              <div className="mt-4 flex justify-center gap-4">
+                <Button 
+                  onClick={handleDownloadImage}
+                  className="bg-white/95 text-primary hover:bg-white hover:scale-105 active:scale-95 transition-all rounded-xl font-bold px-6 shadow-soft"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Image
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsImageModalOpen(false);
+                  }}
+                  className="bg-black/30 border-white/20 text-white hover:bg-black/50 rounded-xl"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div >
   );
 };

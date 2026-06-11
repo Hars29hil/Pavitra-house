@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Mail, Calendar, BookOpen, GraduationCap, Heart, Edit, UserMinus, User, Hash, Award, UserCheck, Briefcase, School, Linkedin, Globe, Copy, Trash2, ArrowLeft } from 'lucide-react';
+import { Phone, Mail, Calendar, BookOpen, GraduationCap, Heart, Edit, UserMinus, User, Hash, Award, UserCheck, Briefcase, School, Linkedin, Globe, Copy, Trash2, ArrowLeft, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Student } from '@/types';
 import { updateStudent, deleteStudent } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +21,31 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
     const { toast } = useToast();
     const { confirm } = useConfirm();
     const { adminRole } = useAuth();
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
+    const handleDownloadImage = async () => {
+        if (!student.profileImage) return;
+        try {
+            const response = await fetch(student.profileImage);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const extension = student.profileImage.split('.').pop() || 'jpg';
+            link.download = `${student.name.replace(/\s+/g, '_')}_profile.${extension}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast({
+                title: 'Download Started',
+                description: 'Profile image download started successfully.'
+            });
+        } catch (error) {
+            console.error('Failed to download image:', error);
+            window.open(student.profileImage, '_blank');
+        }
+    };
 
     const handleCopyUrl = () => {
         if (!student.mobile) {
@@ -228,7 +254,10 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
                         <Trash2 className="w-4.5 h-4.5" />
                     </Button>
                 )}
-                <div className={`${isCompact ? 'w-24 h-24 mb-4' : 'w-32 h-32 mb-6'} mx-auto rounded-3xl overflow-hidden shadow-soft-lg bg-muted/20 border-4 border-white`}>
+                <div 
+                    className={`${isCompact ? 'w-24 h-24 mb-4' : 'w-32 h-32 mb-6'} mx-auto rounded-3xl overflow-hidden shadow-soft-lg bg-muted/20 border-4 border-white cursor-pointer hover:opacity-90 active:scale-95 transition-all`}
+                    onClick={() => student.profileImage && setIsImageModalOpen(true)}
+                >
                     {student.profileImage ? (
                         <img src={student.profileImage} alt={student.name} className="w-full h-full object-cover" />
                     ) : (
@@ -342,7 +371,31 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
                 ))}
             </div>
 
-
+            <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+                <DialogContent className="max-w-xl p-0 overflow-hidden bg-transparent border-none shadow-none flex flex-col items-center justify-center">
+                    {student.profileImage && (
+                        <div className="relative group max-h-[85vh] max-w-full rounded-2xl overflow-hidden shadow-2xl bg-black/40 backdrop-blur-sm p-4 flex flex-col items-center">
+                            <img src={student.profileImage} alt={student.name} className="max-h-[70vh] max-w-full rounded-xl object-contain mx-auto" />
+                            <div className="mt-4 flex justify-center gap-4">
+                                <Button 
+                                    onClick={handleDownloadImage}
+                                    className="bg-white/95 text-primary hover:bg-white hover:scale-105 active:scale-95 transition-all rounded-xl font-bold px-6 shadow-soft"
+                                >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Download Image
+                                </Button>
+                                <Button 
+                                    variant="outline"
+                                    onClick={() => setIsImageModalOpen(false)}
+                                    className="bg-black/30 border-white/20 text-white hover:bg-black/50 rounded-xl"
+                                >
+                                    Close
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div >
     );
 };

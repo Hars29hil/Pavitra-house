@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useBlocker, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, UserPlus, Save, Calendar as CalendarIcon, X, User, Loader2, Copy, BookOpen, Award } from 'lucide-react';
 import { format } from "date-fns";
@@ -21,15 +21,19 @@ import { uploadToImgBB } from '@/lib/imgbb';
 import { cn } from '@/lib/utils';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 
+import { Switch } from '@/components/ui/switch';
+
 // Hook for blocking navigation
 function useUnsavedChanges(isDirty: boolean) {
   const { confirm } = useConfirm();
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) => isDirty && currentLocation.pathname !== nextLocation.pathname
   );
+  const isConfirmingRef = useRef(false);
 
   useEffect(() => {
-    if (blocker.state === "blocked") {
+    if (blocker.state === "blocked" && !isConfirmingRef.current) {
+      isConfirmingRef.current = true;
       confirm({
         title: "Unsaved Changes",
         message: "Changes save nathi thaya. Bahar javu che?",
@@ -39,12 +43,43 @@ function useUnsavedChanges(isDirty: boolean) {
         if (proceed) {
           blocker.proceed();
         } else {
+          isConfirmingRef.current = false;
           blocker.reset();
         }
       });
     }
   }, [blocker, confirm]);
 }
+
+const normalizeCollegeName = (name: string): string => {
+  const clean = name.trim().toLowerCase();
+  if (clean === 'gcet') return 'G H Patel Information & Technology';
+  if (clean === 'semcom') return 'SEMCOM';
+  if (clean === 'mbit') return 'MBIT';
+  if (clean === 'bvm') return 'BVM';
+  if (clean === 'bjvm') return 'BJVM Commerce College';
+  if (clean === 'charusat') return 'CHARUSAT';
+  if (clean === 'nvpas') return 'NVPAS';
+  if (clean === 'spec') return 'SPEC';
+  if (clean === 'cisst') return 'CISST';
+  if (clean === 'dr. v. h. dave' || clean === 'dr v h dave' || clean === 'dave') return 'Dr. V. H. Dave';
+  
+  const matched = [
+    "G H Patel Information & Technology",
+    "SEMCOM",
+    "MBIT",
+    "BVM",
+    "BJVM Commerce College",
+    "CHARUSAT",
+    "NVPAS",
+    "SPEC",
+    "CISST",
+    "Dr. V. H. Dave",
+    "Anand Institute of Social Work",
+    "P. G. Department of Computer Science"
+  ].find(s => s.toLowerCase() === clean);
+  return matched || name;
+};
 
 const AddStudent = () => {
   const navigate = useNavigate();
@@ -77,9 +112,30 @@ const AddStudent = () => {
     livingPlace: '',
   });
 
+  const [isWorking, setIsWorking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
+
+  const collegeSuggestions = useMemo(() => {
+    const predefined = [
+      "G H Patel Information & Technology",
+      "SEMCOM",
+      "MBIT",
+      "BVM",
+      "BJVM Commerce College",
+      "CHARUSAT",
+      "NVPAS",
+      "SPEC",
+      "CISST",
+      "Dr. V. H. Dave",
+      "Anand Institute of Social Work",
+      "P. G. Department of Computer Science"
+    ];
+    const dbColleges = allStudents.map(s => s.college).filter((c): c is string => !!c && c.trim() !== "");
+    const combined = Array.from(new Set([...predefined, ...dbColleges]));
+    return combined.sort();
+  }, [allStudents]);
 
   // 1. Recover History (Prevent random back swipes)
   useEffect(() => {
@@ -131,6 +187,8 @@ const AddStudent = () => {
               jobPlace: student.jobPlace || '',
               livingPlace: student.livingPlace || '',
             });
+            const studentIsWorking = Boolean(student.job || student.designation || student.jobPlace);
+            setIsWorking(studentIsWorking);
             // Reset dirty after loading initial data
             setIsDirty(false);
           } else {
@@ -160,6 +218,15 @@ const AddStudent = () => {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleCollegeBlur = () => {
+    if (formData.college) {
+      setFormData(prev => ({
+        ...prev,
+        college: normalizeCollegeName(prev.college)
+      }));
+    }
   };
 
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -243,11 +310,19 @@ const AddStudent = () => {
         return;
       }
 
+      const payload = {
+        ...formData,
+        age: Number(formData.age),
+        college: normalizeCollegeName(formData.college),
+      };
+      if (!formData.isAlumni && !isWorking) {
+        payload.job = '';
+        payload.designation = '';
+        payload.jobPlace = '';
+      }
+
       if (isEditing && id) {
-        await updateStudent(id, {
-          ...formData,
-          age: Number(formData.age),
-        });
+        await updateStudent(id, payload);
         toast({
           title: 'Yuvak Updated',
           description: `${formData.name} has been updated successfully.`,
@@ -256,11 +331,7 @@ const AddStudent = () => {
         navigate(-1); 
       } else {
         // New Student
-        const newStudent = await addStudent({
-          ...formData,
-          age: Number(formData.age),
-          isAlumni: formData.isAlumni,
-        });
+        const newStudent = await addStudent(payload);
 
         // Auto-assign newly created student to active Karyakarta/Sub-Karyakarta
         if (adminRole === 'Karyakarta' || adminRole === 'Sub-Karyakarta') {
@@ -311,6 +382,7 @@ const AddStudent = () => {
       { name: 'degree', label: 'Degree', type: 'text', placeholder: 'e.g. BBA' },
       { name: 'year', label: 'Year', type: 'text', placeholder: 'e.g. 2nd Year' },
       { name: 'result', label: 'Result/CGPA', type: 'text', placeholder: 'e.g. 8.5' },
+      { name: 'isWorkingToggle', label: 'Doing Job?', type: 'toggle', placeholder: '' },
     ] : [
       { name: 'college', label: 'College Name', type: 'text', placeholder: 'e.g. SEMCOM College' },
       { name: 'degree', label: 'Last or pursuing Degree Completed', type: 'text', placeholder: 'e.g. BBA' },
@@ -319,6 +391,12 @@ const AddStudent = () => {
       { name: 'jobPlace', label: 'Job Place or City', type: 'text', placeholder: 'e.g. Bangalore' },
       { name: 'livingPlace', label: 'Living Place or City', type: 'text', placeholder: 'e.g. Anand' },
     ]),
+
+    ...(!formData.isAlumni && isWorking ? [
+      { name: 'job', label: 'Company Name', type: 'text', placeholder: 'e.g. Google' },
+      { name: 'designation', label: 'Designation', type: 'text', placeholder: 'e.g. Senior Developer' },
+      { name: 'jobPlace', label: 'Job Place or City', type: 'text', placeholder: 'e.g. Bangalore' },
+    ] : []),
 
     { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music' },
     { name: 'linkedin', label: 'LinkedIn URL', type: 'text', placeholder: 'https://linkedin.com/in/username' },
@@ -461,17 +539,50 @@ const AddStudent = () => {
                         />
                       </PopoverContent>
                     </Popover>
+                  ) : field.type === 'toggle' ? (
+                    <div className="flex items-center space-x-2 h-11 sm:h-12">
+                      <Switch
+                        id={field.name}
+                        checked={isWorking}
+                        onCheckedChange={(checked) => {
+                          setIsDirty(true);
+                          setIsWorking(checked);
+                          if (!checked) {
+                            setFormData(prev => ({
+                              ...prev,
+                              job: '',
+                              designation: '',
+                              jobPlace: '',
+                            }));
+                          }
+                        }}
+                      />
+                      <span className="text-xs sm:text-sm font-medium text-muted-foreground">
+                        {isWorking ? 'Yes' : 'No'}
+                      </span>
+                    </div>
                   ) : (
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type={field.type}
-                      placeholder={field.placeholder}
-                      value={formData[field.name as keyof typeof formData] as string}
-                      onChange={handleChange}
-                      className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
-                      required={!['job', 'designation', 'jobPlace', 'livingPlace', 'interest', 'profileImage', 'linkedin', 'socialLink', 'college', 'result', 'year'].includes(field.name)}
-                    />
+                    <>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type={field.type}
+                        placeholder={field.placeholder}
+                        value={formData[field.name as keyof typeof formData] as string}
+                        onChange={handleChange}
+                        onBlur={field.name === 'college' ? handleCollegeBlur : undefined}
+                        list={field.name === 'college' ? 'college-suggestions' : undefined}
+                        className="h-11 sm:h-12 bg-background/50 border-border/50 focus:border-primary focus:ring-primary/20 rounded-xl transition-all font-medium text-xs sm:text-sm"
+                        required={!['job', 'designation', 'jobPlace', 'livingPlace', 'interest', 'profileImage', 'linkedin', 'socialLink', 'college', 'result', 'year'].includes(field.name)}
+                      />
+                      {field.name === 'college' && (
+                        <datalist id="college-suggestions">
+                          {collegeSuggestions.map(col => (
+                            <option key={col} value={col} />
+                          ))}
+                        </datalist>
+                      )}
+                    </>
                   )}
                 </div>
               ))}

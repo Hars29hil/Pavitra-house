@@ -19,15 +19,15 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
   return (
     <div
       className={cn(
-        "flex items-center gap-4 p-5 bg-white border border-border/50 rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg animate-fade-in group",
-        isPending ? "border-l-4 border-warning" : "border-l-4 border-success opacity-80"
+        "flex items-start gap-4 p-5 bg-white border border-border/50 rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg animate-fade-in group",
+        isPending ? "border-l-4 border-l-warning" : "border-l-4 border-l-success opacity-80"
       )}
     >
       <button
         onClick={canToggle ? onToggle : undefined}
         disabled={!canToggle}
         className={cn(
-          "w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all duration-300 shrink-0",
+          "w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all duration-300 shrink-0 mt-0.5",
           !canToggle 
             ? "border-muted-foreground/20 bg-muted/10 cursor-not-allowed opacity-60"
             : isPending
@@ -53,28 +53,28 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
           </p>
         )}
         <div className="flex flex-wrap items-center gap-3 mt-1.5">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground bg-muted/30 px-2.5 py-1 rounded-lg">
-            <Calendar className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground bg-muted/30 px-2.5 py-1 rounded-lg whitespace-nowrap">
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
             {task.dueDate}
           </span>
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/5 px-2.5 py-1 rounded-lg border border-primary/10 uppercase tracking-tighter">
-            <Tag className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/5 px-2.5 py-1 rounded-lg border border-primary/10 uppercase tracking-tighter whitespace-nowrap">
+            <Tag className="w-3.5 h-3.5 shrink-0" />
             {task.category}
           </span>
           {task.assignedToName && task.assignedToName.split(',').map((name, idx) => (
-            <span key={idx} className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+            <span key={idx} className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100 whitespace-nowrap">
               👤 {name.trim()}
             </span>
           ))}
           {adminRole === 'admin' && task.createdBy && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 uppercase tracking-tight">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 uppercase tracking-tight whitespace-nowrap">
               ✍️ Added by: {task.createdBy}
             </span>
           )}
         </div>
       </div>
 
-      <div className="hidden sm:block shrink-0">
+      <div className="hidden sm:block shrink-0 mt-1">
         <span
           className={cn(
             "px-3 py-1 text-[10px] font-bold rounded-full uppercase tracking-widest border",
@@ -88,7 +88,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
       </div>
 
       {/* Edit and Delete Buttons */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2 shrink-0 mt-0.5">
         {onEdit && (
           <Button
             variant="ghost"

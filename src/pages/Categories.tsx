@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Users, Loader2, Plus, UserCircle2, Trash2, Edit, ArrowLeft, UserPlus, UserMinus, Check, Filter, Clock, Calendar } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Task } from '@/types';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 import {
@@ -117,7 +117,70 @@ const Categories = () => {
   }, [students]);
 
   const filteredStudentsForSearch = useMemo(() => {
-    return students.filter(student => {
+    if (!selectedKaryakartaForDetail) return [];
+
+    let availableStudents = students;
+
+    const allMainKaryakartaNames = new Set(
+      karyakartas.filter(k => k.type === 'main').map(k => k.name.trim().toLowerCase())
+    );
+
+    const allSubKaryakartaNames = new Set(
+      karyakartas.filter(k => k.type === 'sub').map(k => k.name.trim().toLowerCase())
+    );
+
+    if (selectedKaryakartaForDetail.type === 'sub') {
+      // For Sub Karyakarta: Only show Yuvaks assigned to their parent Main Karyakarta
+      const parent = karyakartas.find(k => k.id === selectedKaryakartaForDetail.parentId);
+      const parentStudentIds = parent?.studentIds || [];
+      availableStudents = availableStudents.filter(student => parentStudentIds.includes(student.id));
+
+      // AND filter out Yuvaks already assigned to any Sub Karyakarta
+      const allSubStudentIds = new Set<string>();
+      karyakartas.forEach(k => {
+        if (k.type === 'sub') {
+          (k.studentIds || []).forEach(id => allSubStudentIds.add(id));
+        }
+      });
+      availableStudents = availableStudents.filter(student => !allSubStudentIds.has(student.id));
+
+      // ALSO filter out anyone who is a Main Karyakarta or Sub Karyakarta
+      availableStudents = availableStudents.filter(student => {
+        const nameLower = student.name.trim().toLowerCase();
+        return !allMainKaryakartaNames.has(nameLower) && !allSubKaryakartaNames.has(nameLower);
+      });
+    } else {
+      // For Main Karyakarta (Wing Commander)
+      // A Yuvak can only be assigned to ONE Main Karyakarta.
+      // Filter out students who are already assigned to ANY Main Karyakarta
+      const allMainStudentIds = new Set<string>();
+      karyakartas.forEach(k => {
+        if (k.type === 'main') {
+          (k.studentIds || []).forEach(id => allMainStudentIds.add(id));
+        }
+      });
+      availableStudents = availableStudents.filter(student => !allMainStudentIds.has(student.id));
+
+      // Filter out Main Karyakartas (Wing Commanders)
+      // Filter out Sub-Karyakartas (Sub-Wing Commanders) EXCEPT those who belong to this Main Karyakarta
+      const mySubKaryakartaNames = new Set(
+        karyakartas
+          .filter(k => k.type === 'sub' && k.parentId === selectedKaryakartaForDetail.id)
+          .map(k => k.name.trim().toLowerCase())
+      );
+
+      availableStudents = availableStudents.filter(student => {
+        const nameLower = student.name.trim().toLowerCase();
+        if (allMainKaryakartaNames.has(nameLower)) return false;
+        if (allSubKaryakartaNames.has(nameLower)) {
+          // Keep it ONLY if it belongs to this Main Karyakarta
+          return mySubKaryakartaNames.has(nameLower);
+        }
+        return true;
+      });
+    }
+
+    return availableStudents.filter(student => {
       if (!selectedRoomRange) return true;
       const room = parseInt(student.roomNo || '');
       if (isNaN(room)) return false;
@@ -129,7 +192,21 @@ const Categories = () => {
         return selectedRoomRange.rooms.includes(room);
       }
     });
-  }, [students, selectedRoomRange]);
+  }, [students, karyakartas, selectedKaryakartaForDetail, selectedRoomRange]);
+
+  // Filtered students for adding a new Main Karyakarta
+  // Should not show anyone who is already a Main Karyakarta or Sub-Karyakarta
+  const studentsAvailableForMainKaryakarta = useMemo(() => {
+    const existingNames = new Set(karyakartas.map(k => k.name.trim().toLowerCase()));
+    return students.filter(student => !existingNames.has(student.name.trim().toLowerCase()));
+  }, [students, karyakartas]);
+
+  // Filtered students for adding a new Sub-Karyakarta
+  // Should not show anyone who is already a Main Karyakarta or Sub-Karyakarta
+  const studentsAvailableForSubKaryakarta = useMemo(() => {
+    const existingNames = new Set(karyakartas.map(k => k.name.trim().toLowerCase()));
+    return students.filter(student => !existingNames.has(student.name.trim().toLowerCase()));
+  }, [students, karyakartas]);
 
   // Fetch Data on mount and setup polling
   useEffect(() => {
@@ -401,7 +478,7 @@ const Categories = () => {
                         <CommandList>
                           <CommandEmpty>No Yuvak found.</CommandEmpty>
                           <CommandGroup>
-                            {students.map((student) => (
+                            {studentsAvailableForMainKaryakarta.map((student) => (
                               <CommandItem
                                 key={student.id}
                                 value={student.name}
@@ -477,7 +554,7 @@ const Categories = () => {
                         <CommandList>
                           <CommandEmpty>No Yuvak found.</CommandEmpty>
                           <CommandGroup>
-                            {students.map((student) => (
+                            {studentsAvailableForSubKaryakarta.map((student) => (
                               <CommandItem
                                 key={student.id}
                                 value={student.name}
@@ -632,6 +709,31 @@ const Categories = () => {
             };
           });
 
+          // Generate 30 days daily meetup data
+          const dailyMeetData = (() => {
+            const data = [];
+            const today = new Date();
+            for (let i = 29; i >= 0; i--) {
+              const d = new Date();
+              d.setDate(today.getDate() - i);
+              const dateStr = d.toISOString().split('T')[0];
+              const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+              
+              const count = karyakartaTasks.filter(t => {
+                if (t.category !== 'Yuvak' || t.status !== 'done' || !t.dueDate) return false;
+                const taskDate = t.dueDate.split('T')[0];
+                return taskDate === dateStr;
+              }).length;
+
+              data.push({
+                date: dateStr,
+                label,
+                meets: count
+              });
+            }
+            return data;
+          })();
+
           return (
             /* Detail View Section */
             <div className="space-y-6 animate-fade-in">
@@ -683,39 +785,71 @@ const Categories = () => {
                 </div>
               </div>
 
-              {/* Graph / Chart */}
+              {/* Graphs / Charts Section */}
               {assignedStudents.length > 0 && (
-                <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 space-y-4">
-                  <div>
-                    <h3 className="font-bold text-lg text-foreground">Yuvak Meeting Frequency</h3>
-                    <p className="text-xs text-muted-foreground">Number of times this Karyakarta has met each Yuvak</p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Yuvak Meeting Frequency Chart */}
+                  <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 space-y-4">
+                    <div>
+                      <h3 className="font-bold text-lg text-foreground">Yuvak Meeting Frequency</h3>
+                      <p className="text-xs text-muted-foreground">Number of times this Karyakarta has met each Yuvak</p>
+                    </div>
+                    <div className="h-[250px] w-full pt-4">
+                      {totalMeetings === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground">
+                          <Calendar className="w-10 h-10 text-muted-foreground/40 mb-2" />
+                          <p className="text-sm font-medium">No completed meetings logged yet.</p>
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={yuvakMeetData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="meetGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.9}/>
+                                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis dataKey="shortName" tick={{ fill: '#6b7280', fontSize: 11, fontWeight: 600 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                            <Tooltip
+                              contentStyle={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                              labelStyle={{ fontWeight: 'bold', color: '#111827' }}
+                            />
+                            <Bar dataKey="meets" fill="url(#meetGradient)" radius={[8, 8, 0, 0]} name="Meets Count" maxBarSize={45} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
                   </div>
-                  <div className="h-[250px] w-full pt-4">
-                    {totalMeetings === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground">
-                        <Calendar className="w-10 h-10 text-muted-foreground/40 mb-2" />
-                        <p className="text-sm font-medium">No completed meetings logged yet.</p>
-                      </div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={yuvakMeetData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="meetGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.9}/>
-                              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                          <XAxis dataKey="shortName" tick={{ fill: '#6b7280', fontSize: 11, fontWeight: 600 }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                          <Tooltip
-                            contentStyle={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
-                            labelStyle={{ fontWeight: 'bold', color: '#111827' }}
-                          />
-                          <Bar dataKey="meets" fill="url(#meetGradient)" radius={[8, 8, 0, 0]} name="Meets Count" maxBarSize={45} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
+
+                  {/* Daily Meetup Line Chart (Last 30 Days) */}
+                  <div className="bg-white p-6 rounded-3xl shadow-soft border border-border/50 space-y-4">
+                    <div>
+                      <h3 className="font-bold text-lg text-foreground">Daily Meetup Activity (Last 30 Days)</h3>
+                      <p className="text-xs text-muted-foreground">Daily count of completed Yuvak meetups</p>
+                    </div>
+                    <div className="h-[250px] w-full pt-4">
+                      {totalMeetings === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground">
+                          <Calendar className="w-10 h-10 text-muted-foreground/40 mb-2" />
+                          <p className="text-sm font-medium">No completed meetings logged yet.</p>
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={dailyMeetData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis dataKey="label" tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                            <Tooltip
+                              contentStyle={{ backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                              labelStyle={{ fontWeight: 'bold', color: '#111827' }}
+                            />
+                            <Line type="monotone" dataKey="meets" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, strokeWidth: 1 }} activeDot={{ r: 6 }} name="Meets Count" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -845,12 +979,24 @@ const Categories = () => {
                     </div>
                   ) : (
                     assignedStudents.map(student => {
-                      const meetCount = tasks.filter(t => 
+                      const studentMeets = tasks.filter(t => 
                         t.category === 'Yuvak' && 
                         t.status === 'done' && 
                         t.assignedTo && 
                         t.assignedTo.split(',').map(id => id.trim()).includes(student.id)
-                      ).length;
+                      );
+                      
+                      const meetCount = studentMeets.length;
+                      
+                      let lastMeetDate = 'Never';
+                      if (studentMeets.length > 0) {
+                        const sortedMeets = [...studentMeets].sort((a, b) => {
+                          const dateA = new Date(a.dueDate).getTime();
+                          const dateB = new Date(b.dueDate).getTime();
+                          return dateB - dateA;
+                        });
+                        lastMeetDate = sortedMeets[0].dueDate;
+                      }
 
                       return (
                         <div key={student.id} className="p-4 px-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
@@ -859,10 +1005,17 @@ const Categories = () => {
                               {student.name.charAt(0)}
                             </div>
                             <div>
-                              <h5 className="font-bold text-foreground text-sm flex items-center gap-2">
+                              <h5 className="font-bold text-foreground text-sm flex items-center flex-wrap gap-2">
                                 {student.name}
                                 <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 px-2 py-0.5 rounded-full">
                                   Met: {meetCount} times
+                                </span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  lastMeetDate === 'Never' 
+                                    ? 'bg-gray-50 text-gray-500 border-gray-200' 
+                                    : 'bg-blue-50 text-blue-600 border-blue-100'
+                                }`}>
+                                  Last Meet: {lastMeetDate}
                                 </span>
                               </h5>
                               <p className="text-xs text-muted-foreground font-medium">Room: {student.roomNo || 'N/A'} • Mobile: {student.mobile || 'N/A'}</p>
