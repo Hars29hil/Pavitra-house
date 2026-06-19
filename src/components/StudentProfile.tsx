@@ -232,17 +232,22 @@ export const StudentProfile = ({ student, onClose, onUpdate, hideEditAction = fa
                 </button>
 
                 {/* Back Button */}
-                <Button
-                    size="icon"
-                    variant="ghost"
-                    className="absolute top-4 left-4 rounded-xl h-9 w-9 bg-slate-100 hover:bg-slate-200 text-muted-foreground hover:text-foreground shadow-sm transition-all"
-                    onClick={() => {
-                        if (onClose) onClose();
-                        navigate('/dashboard');
-                    }}
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                </Button>
+                {adminRole !== 'yuvak' && (
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        className="absolute top-4 left-4 rounded-xl h-9 w-9 bg-slate-100 hover:bg-slate-200 text-muted-foreground hover:text-foreground shadow-sm transition-all"
+                        onClick={() => {
+                            if (onClose) {
+                                onClose();
+                            } else {
+                                navigate(-1);
+                            }
+                        }}
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                    </Button>
+                )}
 
                 {!hideEditAction && (
                     <Button

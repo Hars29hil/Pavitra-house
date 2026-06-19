@@ -35,17 +35,17 @@ import { cn } from '@/lib/utils';
 const KaryakartaDashboard = () => {
   const navigate = useNavigate();
   const { adminName, adminRole } = useAuth();
-  
+
   const [students, setStudents] = useState<Student[]>([]);
   const [categories, setCategories] = useState<Karyakarta[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Tasks state
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showTypeSelection, setShowTypeSelection] = useState(false);
   const [showYuvakDialog, setShowYuvakDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  
+
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
@@ -53,7 +53,7 @@ const KaryakartaDashboard = () => {
   const [selectedInterest, setSelectedInterest] = useState<string>('all');
   const [exporting, setExporting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // Profile Drawer State
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -223,12 +223,12 @@ const KaryakartaDashboard = () => {
     try {
       setExporting(true);
       toast.success("Preparing academic report...");
-      
+
       const allResults = await getAllStudentResults();
-      
+
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Academic Report');
-      
+
       worksheet.columns = [
         { header: 'Yuvak Name', key: 'name', width: 25 },
         { header: 'Status', key: 'status', width: 12 },
@@ -257,10 +257,10 @@ const KaryakartaDashboard = () => {
       headerRow.height = 28;
 
       const rowsData: any[] = [];
-      
+
       finalStudentsList.forEach(student => {
         const studentResults = allResults.filter(r => r.studentId === student.id);
-        
+
         const baseData = {
           name: student.name || '',
           status: student.isAlumni ? 'Alumni' : 'Current',
@@ -272,7 +272,7 @@ const KaryakartaDashboard = () => {
           interest: student.interest || '',
           profileCgpa: student.result || '-'
         };
-        
+
         if (studentResults.length > 0) {
           studentResults.forEach(r => {
             rowsData.push({
@@ -295,7 +295,7 @@ const KaryakartaDashboard = () => {
           });
         }
       });
-      
+
       worksheet.addRows(rowsData);
 
       worksheet.eachRow((row, rowNumber) => {
@@ -318,7 +318,7 @@ const KaryakartaDashboard = () => {
             row.getCell('backlogs').font = { color: { argb: '991B1B' }, bold: true };
           }
         }
-        
+
         row.eachCell(cell => {
           cell.border = {
             top: { style: 'thin', color: { argb: 'E5E7EB' } },
@@ -331,7 +331,7 @@ const KaryakartaDashboard = () => {
 
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      
+
       const filterText = (selectedCollege !== 'all' ? `_${selectedCollege}` : '') + (selectedInterest !== 'all' ? `_${selectedInterest}` : '');
       const filename = `Yuvak_Academic_Report${filterText.replace(/\s+/g, '_')}.xlsx`;
       saveAs(blob, filename);
@@ -349,20 +349,20 @@ const KaryakartaDashboard = () => {
   // Summary counts for Quick Stats Cards
   const stats = useMemo(() => {
     if (!myCategory) return { total: 0, direct: 0 };
-    
+
     // Direct assigned students (all for Sub, direct-only for Main)
     const directCount = (myCategory.studentIds || []).filter(id => {
       const s = students.find(x => x.id === id);
       return s && !s.isAlumni;
     }).length;
-    
+
     // Total assigned (including all sub-karyakarta students if Main)
     let totalIds = new Set<string>();
     (myCategory.studentIds || []).forEach(id => {
       const s = students.find(x => x.id === id);
       if (s && !s.isAlumni) totalIds.add(id);
     });
-    
+
     if (myCategory.type === 'main') {
       mySubKaryakartas.forEach(sub => {
         (sub.studentIds || []).forEach(id => {
@@ -371,7 +371,7 @@ const KaryakartaDashboard = () => {
         });
       });
     }
-    
+
     return {
       total: totalIds.size,
       direct: directCount
@@ -383,7 +383,7 @@ const KaryakartaDashboard = () => {
       <AppHeader title="Hari-Saurabh Hostel" />
 
       <main className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
-        
+
         {/* Welcome Greeting Banner */}
         <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-primary text-white p-6 sm:p-8 rounded-3xl shadow-soft-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
@@ -397,7 +397,7 @@ const KaryakartaDashboard = () => {
               Manage, track and register Yuvaks assigned under your care.
             </p>
           </div>
-          
+
           <Button
             onClick={() => navigate('/students/add?alumni=false')}
             className="bg-white hover:bg-slate-50 text-blue-700 h-12 px-6 rounded-2xl font-bold flex items-center gap-2 self-start md:self-auto shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
@@ -422,7 +422,7 @@ const KaryakartaDashboard = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            
+
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-white p-5 rounded-2xl shadow-soft border border-border/40 space-y-1.5">
@@ -446,7 +446,7 @@ const KaryakartaDashboard = () => {
 
             {/* Search & Selection Filter Options */}
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-              
+
               {/* Search Yuvak input */}
               <div className="relative w-full md:flex-1 max-w-md group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
@@ -656,7 +656,7 @@ const KaryakartaDashboard = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 gap-4 pt-4">
-            <Button 
+            <Button
               onClick={() => {
                 setShowTypeSelection(false);
                 setShowYuvakDialog(true);
@@ -664,9 +664,9 @@ const KaryakartaDashboard = () => {
               className="h-20 rounded-2xl flex flex-col items-center justify-center gap-1.5 bg-primary text-white hover:bg-primary/95 text-base font-black shadow-md border-none"
             >
               <Users className="w-6 h-6" />
-              Log Yuvak Meet
+              Yuvak Meet
             </Button>
-            <Button 
+            <Button
               variant="outline"
               onClick={() => {
                 setShowTypeSelection(false);

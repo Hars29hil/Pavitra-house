@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,15 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { BookOpen, Video, Link as LinkIcon, Plus, Trash2, Send, Search, Users, Filter, Loader2, X } from 'lucide-react';
+import { BookOpen, Video, Link as LinkIcon, Plus, Trash2, Send, Search, Users, Filter, Loader2, X, Pencil, Copy } from 'lucide-react';
 import { toast } from 'sonner';
-import { getEducationResources, addEducationResource, deleteEducationResource, getStudents, getCategories, EducationResource, Karyakarta } from '@/lib/store';
+import { getEducationResources, addEducationResource, deleteEducationResource, updateEducationResource, getStudents, getCategories, EducationResource, Karyakarta } from '@/lib/store';
 import { Student } from '@/types';
 import api from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 
 export default function Education() {
+    const navigate = useNavigate();
     const { confirm } = useConfirm();
     const { adminName, adminRole } = useAuth();
     
@@ -40,6 +42,11 @@ export default function Education() {
     const [newType, setNewType] = useState<'video' | 'link'>('link');
     const [newUrl, setNewUrl] = useState("");
     const [newDesc, setNewDesc] = useState("");
+    const [newReference, setNewReference] = useState("");
+    const [editingResource, setEditingResource] = useState<EducationResource | null>(null);
+
+    // Details Popup State
+    const [detailedResource, setDetailedResource] = useState<EducationResource | null>(null);
 
     useEffect(() => {
         loadData();
@@ -70,22 +77,56 @@ export default function Education() {
             return;
         }
 
-        try {
-            const added = await addEducationResource({
-                title: newTitle,
-                type: newType,
-                url: newUrl,
-                description: newDesc
-            });
-            setResources([added, ...resources]);
-            setIsAddOpen(false);
-            setNewTitle("");
-            setNewUrl("");
-            setNewDesc("");
-            toast.success("Resource added");
-        } catch (error) {
-            toast.error("Failed to add resource");
+        if (editingResource) {
+            try {
+                const updated = await updateEducationResource(editingResource.id, {
+                    title: newTitle,
+                    type: newType,
+                    url: newUrl,
+                    description: newDesc,
+                    reference: newReference
+                });
+                setResources(resources.map(r => r.id === editingResource.id ? updated : r));
+                setIsAddOpen(false);
+                setEditingResource(null);
+                setNewTitle("");
+                setNewUrl("");
+                setNewDesc("");
+                setNewReference("");
+                toast.success("Resource updated");
+            } catch (error) {
+                toast.error("Failed to update resource");
+            }
+        } else {
+            try {
+                const added = await addEducationResource({
+                    title: newTitle,
+                    type: newType,
+                    url: newUrl,
+                    description: newDesc,
+                    reference: newReference
+                });
+                setResources([added, ...resources]);
+                setIsAddOpen(false);
+                setNewTitle("");
+                setNewUrl("");
+                setNewDesc("");
+                setNewReference("");
+                toast.success("Resource added");
+            } catch (error) {
+                toast.error("Failed to add resource");
+            }
         }
+    };
+
+    const handleStartEdit = (resource: EducationResource) => {
+        setEditingResource(resource);
+        setNewTitle(resource.title);
+        setNewType(resource.type);
+        setNewUrl(resource.url);
+        setNewDesc(resource.description || "");
+        setNewReference(resource.reference || "");
+        setIsAddOpen(true);
     };
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -159,6 +200,27 @@ export default function Education() {
     };
 
     const handleSend = async () => {
+        // Verify WhatsApp Connection Status first
+        try {
+            const statusRes = await api.get('/api/get-qr');
+            const statusData = statusRes.data;
+            const isConnected = statusData.success && statusData.message === "Already connected";
+            
+            if (!isConnected) {
+                toast.error("WhatsApp not connected", {
+                    description: "Please connect WhatsApp first to send resources.",
+                    action: {
+                        label: "Connect",
+                        onClick: () => navigate('/whatsapp')
+                    }
+                });
+                return;
+            }
+        } catch (error) {
+            toast.error("Could not verify WhatsApp connection status. Ensure the backend is running.");
+            return;
+        }
+
         const resource = resources.find(r => r.id === selectedResourceId);
         if (!resource || selectedStudentIds.size === 0) {
             toast.error("Select a resource and students");
@@ -205,19 +267,34 @@ export default function Education() {
             <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
 
                 {/* Left: Resources List */}
-                <div className={`${selectedResourceId ? 'lg:col-span-4' : 'lg:col-span-12'} space-y-4 flex flex-col h-[calc(100vh-8rem)] transition-all duration-300 ease-in-out`}>
+                <div className={`${selectedResourceId ? 'hidden lg:flex lg:col-span-4' : 'flex lg:col-span-12'} space-y-4 flex-col h-[calc(100vh-8rem)] transition-all duration-300 ease-in-out`}>
                     <div className="flex items-center justify-between">
                         <h2 className="text-xl font-bold flex items-center gap-2">
                             <BookOpen className="w-5 h-5 text-primary" />
                             Resources
                         </h2>
-                        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                        <Dialog open={isAddOpen} onOpenChange={(open) => {
+                            setIsAddOpen(open);
+                            if (!open) {
+                                setEditingResource(null);
+                                setNewTitle("");
+                                setNewUrl("");
+                                setNewDesc("");
+                                setNewReference("");
+                            }
+                        }}>
                             <DialogTrigger asChild>
-                                <Button size="sm" className="gap-1"><Plus className="w-4 h-4" /> Add</Button>
+                                <Button size="sm" className="gap-1" onClick={() => {
+                                    setEditingResource(null);
+                                    setNewTitle("");
+                                    setNewUrl("");
+                                    setNewDesc("");
+                                    setNewReference("");
+                                }}><Plus className="w-4 h-4" /> Add</Button>
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>Add Resource</DialogTitle>
+                                    <DialogTitle>{editingResource ? "Edit Resource" : "Add Resource"}</DialogTitle>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
                                     <div className="space-y-2">
@@ -256,6 +333,15 @@ export default function Education() {
                                     </div>
 
                                     <div className="space-y-2">
+                                        <Label>Reference <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                                        <Input
+                                            placeholder="e.g., CampusX, Coursera, tata"
+                                            value={newReference}
+                                            onChange={e => setNewReference(e.target.value)}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
                                         <Label>Description <span className="text-muted-foreground font-normal">(Optional)</span></Label>
                                         <Textarea
                                             placeholder="Add notes or details about this resource..."
@@ -267,7 +353,7 @@ export default function Education() {
                                     </div>
 
                                     <Button onClick={handleAdd} className="w-full gap-2">
-                                        <Plus className="w-4 h-4" /> Save to Library
+                                        {editingResource ? "Update Resource" : <><Plus className="w-4 h-4" /> Save to Library</>}
                                     </Button>
                                 </div>
                             </DialogContent>
@@ -287,7 +373,7 @@ export default function Education() {
                                             {resources.filter(r => r.type === 'video').map(res => (
                                                 <div
                                                     key={res.id}
-                                                    onClick={() => setSelectedResourceId(res.id)}
+                                                    onClick={() => setDetailedResource(res)}
                                                     className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md ${selectedResourceId === res.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'bg-white border-border/50'}`}
                                                 >
                                                     <div className="flex items-start justify-between">
@@ -295,9 +381,14 @@ export default function Education() {
                                                             <Video className="w-4 h-4 text-blue-500" />
                                                             <h3 className="font-semibold line-clamp-1">{res.title}</h3>
                                                         </div>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => handleDelete(res.id, e)}>
-                                                            <Trash2 className="w-3 h-3" />
-                                                        </Button>
+                                                        <div className="flex items-center gap-1">
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:bg-slate-100" onClick={(e) => { e.stopPropagation(); handleStartEdit(res); }}>
+                                                                <Pencil className="w-3 h-3" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); handleDelete(res.id, e); }}>
+                                                                <Trash2 className="w-3 h-3" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{res.description || res.url}</p>
                                                 </div>
@@ -314,7 +405,7 @@ export default function Education() {
                                             {resources.filter(r => r.type === 'link').map(res => (
                                                 <div
                                                     key={res.id}
-                                                    onClick={() => setSelectedResourceId(res.id)}
+                                                    onClick={() => setDetailedResource(res)}
                                                     className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md ${selectedResourceId === res.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'bg-white border-border/50'}`}
                                                 >
                                                     <div className="flex items-start justify-between">
@@ -322,9 +413,14 @@ export default function Education() {
                                                             <LinkIcon className="w-4 h-4 text-orange-500" />
                                                             <h3 className="font-semibold line-clamp-1">{res.title}</h3>
                                                         </div>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => handleDelete(res.id, e)}>
-                                                            <Trash2 className="w-3 h-3" />
-                                                        </Button>
+                                                        <div className="flex items-center gap-1">
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:bg-slate-100" onClick={(e) => { e.stopPropagation(); handleStartEdit(res); }}>
+                                                                <Pencil className="w-3 h-3" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); handleDelete(res.id, e); }}>
+                                                                <Trash2 className="w-3 h-3" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{res.description || res.url}</p>
                                                 </div>
@@ -338,7 +434,7 @@ export default function Education() {
 
                 {/* Right: Send Panel */}
                 {selectedResourceId && (
-                    <div className="lg:col-span-8 flex flex-col h-[calc(100vh-8rem)] glass-card rounded-2xl border-white/40 shadow-soft overflow-hidden animate-in slide-in-from-right-8 duration-300">
+                    <div className="col-span-12 lg:col-span-8 flex flex-col h-[calc(100vh-8rem)] glass-card rounded-2xl border-white/40 shadow-soft overflow-hidden animate-in slide-in-from-right-8 duration-300">
                         <div className="p-4 border-b bg-white/50 flex items-center justify-between">
                             <div>
                                 <h2 className="font-bold text-lg">Send Resource</h2>
@@ -358,6 +454,67 @@ export default function Education() {
                                 </Button>
                             </div>
                         </div>
+
+                        {/* Resource Details Section */}
+                        {(() => {
+                            const resource = resources.find(r => r.id === selectedResourceId);
+                            if (!resource) return null;
+                            return (
+                                <div className="p-5 border-b bg-muted/20 space-y-3">
+                                    <div className="flex justify-between items-start gap-4">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                {resource.type === 'video' ? (
+                                                    <Video className="w-5 h-5 text-blue-500 shrink-0" />
+                                                ) : (
+                                                    <LinkIcon className="w-5 h-5 text-orange-500 shrink-0" />
+                                                )}
+                                                <h3 className="font-black text-foreground text-base leading-tight">
+                                                    {resource.title}
+                                                    {resource.reference && (
+                                                        <Badge variant="outline" className="ml-2 border-primary/20 text-primary bg-primary/5 text-[9px] py-0.5 px-1.5 rounded-lg shrink-0 align-middle">
+                                                            Ref: {resource.reference}
+                                                        </Badge>
+                                                    )}
+                                                </h3>
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground">
+                                                Added on: {resource.created_at ? new Date(resource.created_at).toLocaleString() : 'N/A'}
+                                            </p>
+                                        </div>
+                                        <div className="flex gap-2 shrink-0">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleStartEdit(resource)}
+                                                className="h-8 px-3 rounded-lg text-xs font-bold bg-white"
+                                            >
+                                                Edit Details
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    
+                                    {resource.description && (
+                                        <div className="bg-white border border-border/40 rounded-xl p-3 shadow-sm">
+                                            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider text-[9px] mb-1">Description</p>
+                                            <p className="text-xs text-foreground whitespace-pre-line">{resource.description}</p>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                        <strong>Link:</strong>
+                                        <a
+                                            href={resource.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary hover:underline font-medium break-all truncate max-w-lg"
+                                        >
+                                            {resource.url}
+                                        </a>
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {/* Filters */}
                         <div className="p-4 flex gap-2 border-b bg-slate-50/50">
@@ -430,6 +587,108 @@ export default function Education() {
                     </div>
                 )}
             </main>
+
+            <Dialog open={detailedResource !== null} onOpenChange={(open) => { if (!open) setDetailedResource(null); }}>
+                <DialogContent className="max-w-md w-[92%] sm:max-w-lg rounded-3xl p-6 gap-6 overflow-y-auto max-h-[90vh]">
+                    {detailedResource && (
+                        <div className="space-y-6">
+                            <DialogHeader className="text-left">
+                                <div className="flex items-center gap-2 mb-2">
+                                    {detailedResource.type === 'video' ? (
+                                        <Badge className="bg-blue-500 hover:bg-blue-600 text-white gap-1 py-1 px-2.5 rounded-xl font-bold">
+                                            <Video className="w-3.5 h-3.5" /> Video
+                                        </Badge>
+                                    ) : (
+                                        <Badge className="bg-orange-500 hover:bg-orange-600 text-white gap-1 py-1 px-2.5 rounded-xl font-bold">
+                                            <LinkIcon className="w-3.5 h-3.5" /> Link / Doc
+                                        </Badge>
+                                    )}
+                                    {detailedResource.reference && (
+                                        <Badge variant="outline" className="border-primary/20 text-primary bg-primary/5 py-1 px-2.5 rounded-xl font-bold">
+                                            Ref: {detailedResource.reference}
+                                        </Badge>
+                                    )}
+                                </div>
+                                <DialogTitle className="text-xl sm:text-2xl font-black text-foreground leading-tight tracking-tight">
+                                    {detailedResource.title}
+                                </DialogTitle>
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                    Added on: {detailedResource.created_at ? new Date(detailedResource.created_at).toLocaleString() : 'N/A'}
+                                </p>
+                            </DialogHeader>
+
+                            <div className="space-y-4">
+                                {detailedResource.description && (
+                                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-sm">
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">Description</p>
+                                        <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                                            {detailedResource.description}
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="space-y-1.5">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Resource Link</p>
+                                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-2xl p-3 min-w-0">
+                                        <a
+                                            href={detailedResource.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm text-primary hover:underline font-semibold truncate flex-1 min-w-0"
+                                        >
+                                            {detailedResource.url}
+                                        </a>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-9 w-9 rounded-xl hover:bg-slate-200 shrink-0"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(detailedResource.url || "");
+                                                toast.success("Link copied to clipboard");
+                                            }}
+                                            title="Copy Link"
+                                        >
+                                            <Copy className="w-4 h-4 text-muted-foreground" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t w-full">
+                                <Button
+                                    className="flex-1 rounded-xl h-11 font-bold gap-2 w-full sm:w-auto"
+                                    onClick={() => {
+                                        setSelectedResourceId(detailedResource.id);
+                                        setDetailedResource(null);
+                                    }}
+                                >
+                                    <Send className="w-4 h-4" /> Share with Yuvaks
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="rounded-xl h-11 px-4 font-bold gap-2 w-full sm:w-auto justify-center"
+                                    onClick={() => {
+                                        handleStartEdit(detailedResource);
+                                        setDetailedResource(null);
+                                    }}
+                                >
+                                    <Pencil className="w-4 h-4" /> Edit
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    className="rounded-xl h-11 px-4 font-bold gap-2 w-full sm:w-auto justify-center"
+                                    onClick={(e) => {
+                                        handleDelete(detailedResource.id, e);
+                                        setDetailedResource(null);
+                                    }}
+                                >
+                                    <Trash2 className="w-4 h-4" /> Delete
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

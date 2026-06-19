@@ -1,4 +1,4 @@
-import { LogOut, Menu, UserPlus, RefreshCw, CheckSquare, FolderOpen, LayoutDashboard, Users, Cake, MessageCircle, BookOpen, ArrowLeft, Tag } from 'lucide-react';
+import { LogOut, Menu, UserPlus, RefreshCw, CheckSquare, FolderOpen, LayoutDashboard, Users, Cake, MessageCircle, BookOpen, ArrowLeft, Tag, X, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -7,6 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetClose,
 } from "@/components/ui/sheet";
 
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -25,19 +26,23 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
   const isAdmin = adminRole === 'admin';
 
   const menuItems = [
-    { path: '/dashboard', label: 'All Yuvak', icon: LayoutDashboard },
-    { path: '/birthdays', label: 'Birthdays', icon: Cake },
-    ...(isAdmin ? [
-      { path: '/update', label: 'Update', icon: RefreshCw },
-      { path: '/tasks', label: 'Tasks', icon: CheckSquare },
-      { path: '/categories', label: 'Karyakartas', icon: Users },
-      { path: '/education', label: 'Education', icon: BookOpen },
-      { path: '/whatsapp', label: 'Message', icon: MessageCircle },
-      { path: '/tags', label: 'TAG', icon: Tag },
+    ...(adminRole === 'yuvak' ? [
+      { path: '/profile', label: 'My Profile', icon: User }
     ] : [
-      { path: '/tasks', label: 'Tasks', icon: CheckSquare },
-      { path: '/education', label: 'Education', icon: BookOpen },
-      { path: '/whatsapp', label: 'Message', icon: MessageCircle },
+      { path: '/dashboard', label: 'All Yuvak', icon: LayoutDashboard },
+      { path: '/birthdays', label: 'Birthdays', icon: Cake },
+      ...(isAdmin ? [
+        { path: '/update', label: 'Update', icon: RefreshCw },
+        { path: '/tasks', label: 'Tasks', icon: CheckSquare },
+        { path: '/categories', label: 'Karyakartas', icon: Users },
+        { path: '/education', label: 'Education', icon: BookOpen },
+        { path: '/whatsapp', label: 'Message', icon: MessageCircle },
+        { path: '/tags', label: 'TAG', icon: Tag },
+      ] : [
+        { path: '/tasks', label: 'Tasks', icon: CheckSquare },
+        { path: '/education', label: 'Education', icon: BookOpen },
+        { path: '/whatsapp', label: 'Message', icon: MessageCircle },
+      ])
     ])
   ];
 
@@ -81,10 +86,19 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0 border-r border-border/40 shadow-soft-xl bg-white [&>button]:hidden">
-                <SheetHeader className="p-6 border-b border-border/10">
+                <SheetHeader className="p-6 border-b border-border/10 flex flex-row items-center justify-between">
                   <SheetTitle className="text-left text-2xl font-black text-foreground">
                     Pavitra House
                   </SheetTitle>
+                  <SheetClose asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl"
+                    >
+                      <X className="w-5 h-5" />
+                    </Button>
+                  </SheetClose>
                 </SheetHeader>
                 <div className="flex flex-col p-4 gap-2 h-full overflow-hidden">
                   <div className="flex-1 overflow-y-auto min-h-0 space-y-2">
@@ -152,7 +166,7 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
             src="/header-logo.png"
             alt="Logo"
             className="h-10 sm:h-14 w-auto object-contain cursor-pointer transition-transform hover:scale-110 active:scale-90 mix-blend-multiply"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(adminRole === 'yuvak' ? '/profile' : '/dashboard')}
           />
         </div >
 

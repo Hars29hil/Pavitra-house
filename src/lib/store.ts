@@ -20,6 +20,7 @@ export interface EducationResource {
     type: 'video' | 'link';
     url: string;
     description?: string;
+    reference?: string;
     created_at?: string;
 }
 
@@ -139,6 +140,8 @@ const fromDbTask = (db: any): Task => ({
         ? (db.show_to_karyakarta === '1' || db.show_to_karyakarta === 1 || db.show_to_karyakarta === true || db.show_to_karyakarta === 'true') 
         : true,
     createdBy: db.created_by || '',
+    notificationInterval: db.notification_interval || 'none',
+    lastNotifiedAt: db.last_notified_at || '',
 });
 
 const toDbTask = (task: Partial<Task>) => {
@@ -151,6 +154,8 @@ const toDbTask = (task: Partial<Task>) => {
     if (task.questionContent !== undefined) db.question_content = task.questionContent;
     if (task.showToKaryakarta !== undefined) db.show_to_karyakarta = task.showToKaryakarta ? 1 : 0;
     if (task.createdBy !== undefined) db.created_by = task.createdBy;
+    if (task.notificationInterval !== undefined) db.notification_interval = task.notificationInterval;
+    if (task.lastNotifiedAt !== undefined) db.last_notified_at = task.lastNotifiedAt;
  
     delete db.dueDate;
     delete db.assignedTo;
@@ -159,6 +164,8 @@ const toDbTask = (task: Partial<Task>) => {
     delete db.questionContent;
     delete db.showToKaryakarta;
     delete db.createdBy;
+    delete db.notificationInterval;
+    delete db.lastNotifiedAt;
     return db;
 };
 
@@ -370,6 +377,16 @@ export const deleteEducationResource = async (id: string) => {
         return true;
     } catch (error) {
         console.error('Error deleting resource:', error);
+        throw error;
+    }
+};
+
+export const updateEducationResource = async (id: string, updates: Partial<EducationResource>) => {
+    try {
+        const res = await api.put<EducationResource>(`/api/education_resources/${id}`, updates);
+        return res.data;
+    } catch (error) {
+        console.error('Error updating resource:', error);
         throw error;
     }
 };

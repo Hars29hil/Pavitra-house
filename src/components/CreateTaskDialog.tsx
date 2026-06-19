@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getStudents, getCategories, Karyakarta } from '@/lib/store';
 import { Student, Task } from '@/types';
 import { Search, User2, Calendar, ClipboardList, HelpCircle, Send, CheckCircle2 } from 'lucide-react';
@@ -41,6 +42,8 @@ export const CreateTaskDialog = ({
         description: '',
         dueDate: '',
         showToKaryakarta: true,
+        notificationInterval: 'none',
+        customHours: '',
     });
 
     // Fetch students and categories when dialog opens
@@ -56,16 +59,36 @@ export const CreateTaskDialog = ({
                     const assignedIds = (taskToEdit.assignedTo || '').split(',').map(id => id.trim());
                     const assignedStudents = currentStudents.filter(s => assignedIds.includes(s.id));
                     setSelectedStudents(assignedStudents);
+                    
+                    const interval = taskToEdit.notificationInterval || 'none';
+                    let selectVal = 'none';
+                    let customVal = '';
+                    if (['none', '1m', '1h', '24h'].includes(interval)) {
+                        selectVal = interval;
+                    } else if (interval.endsWith('h')) {
+                        selectVal = 'custom';
+                        customVal = interval.replace('h', '');
+                    }
+                    
                     setTaskData({
                         title: taskToEdit.title || '',
                         description: taskToEdit.description || '',
                         dueDate: taskToEdit.dueDate || '',
                         showToKaryakarta: taskToEdit.showToKaryakarta || false,
+                        notificationInterval: selectVal,
+                        customHours: customVal,
                     });
                 } else {
                     setStep(1);
                     setSelectedStudents([]);
-                    setTaskData({ title: '', description: '', dueDate: '', showToKaryakarta: true });
+                    setTaskData({ 
+                        title: '', 
+                        description: '', 
+                        dueDate: '', 
+                        showToKaryakarta: true, 
+                        notificationInterval: 'none',
+                        customHours: '',
+                    });
                 }
             });
         }
@@ -128,6 +151,16 @@ export const CreateTaskDialog = ({
             return;
         }
 
+        let finalInterval = taskData.notificationInterval;
+        if (taskData.notificationInterval === 'custom') {
+            const hrs = parseInt(taskData.customHours);
+            if (isNaN(hrs) || hrs <= 0) {
+                toast.error("Please enter a valid number of hours for custom interval");
+                return;
+            }
+            finalInterval = `${hrs}h`;
+        }
+
         if (taskToEdit && onTaskUpdate) {
             toast.message("Updating task...");
             try {
@@ -139,6 +172,7 @@ export const CreateTaskDialog = ({
                     showToKaryakarta: taskData.showToKaryakarta,
                     assignedTo: student.id,
                     assignedToName: student.name,
+                    notificationInterval: finalInterval,
                 };
                 await onTaskUpdate(taskToEdit.id, updates);
                 onOpenChange(false);
@@ -165,7 +199,8 @@ export const CreateTaskDialog = ({
                 assignedToName: student.name,
                 description: taskData.description,
                 showToKaryakarta: taskData.showToKaryakarta,
-                createdBy: adminName
+                createdBy: adminName,
+                notificationInterval: finalInterval
             };
 
             try {
@@ -404,6 +439,39 @@ export const CreateTaskDialog = ({
                                     onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })}
                                 />
                             </div>
+
+                            <div className="space-y-2">
+                                <Label>Reminder Notifications</Label>
+                                <Select
+                                    value={taskData.notificationInterval}
+                                    onValueChange={(val) => setTaskData({ ...taskData, notificationInterval: val })}
+                                >
+                                    <SelectTrigger className="w-full bg-background/50 h-11 rounded-xl">
+                                        <SelectValue placeholder="Select reminder interval" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-white border border-border rounded-xl">
+                                        <SelectItem value="none">No Reminders</SelectItem>
+                                        <SelectItem value="1m">Every Minute (Testing)</SelectItem>
+                                        <SelectItem value="1h">Every Hour</SelectItem>
+                                        <SelectItem value="24h">Every 24 Hours</SelectItem>
+                                        <SelectItem value="custom">Custom Hours...</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {taskData.notificationInterval === 'custom' && (
+                                <div className="space-y-2 animate-slide-in">
+                                    <Label>Custom Interval (Hours)</Label>
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        placeholder="e.g. 4"
+                                        value={taskData.customHours}
+                                        onChange={(e) => setTaskData({ ...taskData, customHours: e.target.value })}
+                                        className="h-11 rounded-xl"
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex gap-3">

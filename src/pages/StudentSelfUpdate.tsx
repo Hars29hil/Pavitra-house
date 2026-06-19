@@ -74,6 +74,7 @@ const StudentSelfUpdate = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -200,6 +201,14 @@ const StudentSelfUpdate = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentId) return;
+    if (!consent) {
+      toast({
+        title: "Consent Required",
+        description: "You must consent to the directory policies to update details.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -404,6 +413,21 @@ const StudentSelfUpdate = () => {
             })}
           </div>
 
+          {/* Consent Checkbox */}
+          <div className="flex items-start gap-3 bg-muted/30 border border-border/50 rounded-2xl p-4">
+            <input
+              id="consent-checkbox"
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => setConsent(e.target.checked)}
+              className="mt-1 w-4 h-4 text-primary focus:ring-primary border-border rounded cursor-pointer"
+              required
+            />
+            <label htmlFor="consent-checkbox" className="text-xs font-medium text-muted-foreground leading-normal cursor-pointer">
+              By checking this box, I consent to Pavitra Group / Hari-Saurabh Hostel collecting and storing my personal, academic, and professional details in the internal student/alumni directory. I understand my data is used solely for hostel tasks, administration, and alumni mentoring. Read our <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold">Privacy Policy</a> and <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold">Terms of Service</a>.
+            </label>
+          </div>
+
           <Button
             type="submit"
             size="lg"
@@ -414,6 +438,16 @@ const StudentSelfUpdate = () => {
             Submit Details
           </Button>
         </form>
+        
+        {/* Footer */}
+        <footer className="mt-12 pt-6 border-t border-border/50 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-muted-foreground font-semibold">
+          <span>&copy; {new Date().getFullYear()} Hari-Saurabh Hostel. All rights reserved.</span>
+          <div className="flex gap-4">
+            <a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a>
+            <span>&bull;</span>
+            <a href="/terms" className="hover:text-primary transition-colors">Terms of Service</a>
+          </div>
+        </footer>
       </main>
     </div>
   );

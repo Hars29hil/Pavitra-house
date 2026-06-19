@@ -36,6 +36,8 @@ export interface Task {
   questionContent?: string;
   showToKaryakarta?: boolean;
   createdBy?: string;
+  notificationInterval?: string;
+  lastNotifiedAt?: string;
 }
 
 export interface Category {

@@ -2,7 +2,7 @@
     "rewrites": [
         {
             "source": "/api/:match*",
-            "destination": "https://mediumspringgreen-elk-765003.hostingersite.com/api/:match*"
+            "destination": "https://lightgoldenrodyellow-stingray-297524.hostingersite.com/api/:match*"
         },
         {
             "source": "/(.*)",

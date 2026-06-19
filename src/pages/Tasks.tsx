@@ -122,7 +122,7 @@ const Tasks = () => {
 
     if (adminRole !== 'admin') {
       if (!task.assignedTo || !assignedStudentIds) return false;
-      
+
       const taskStudentIds = task.assignedTo.split(',').map(id => id.trim());
       const hasAssignedStudent = taskStudentIds.some(id => assignedStudentIds.includes(id));
       if (!hasAssignedStudent) return false;
@@ -294,7 +294,7 @@ const Tasks = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-1 gap-4 pt-4">
-              <Button 
+              <Button
                 onClick={() => {
                   setShowTypeSelection(false);
                   setShowYuvakDialog(true);
@@ -302,9 +302,9 @@ const Tasks = () => {
                 className="h-20 rounded-2xl flex flex-col items-center justify-center gap-1.5 bg-primary text-white hover:bg-primary/95 text-base font-black shadow-md border-none"
               >
                 <Users className="w-6 h-6" />
-                Log Yuvak Meet
+                Yuvak Meet
               </Button>
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => {
                   setShowTypeSelection(false);

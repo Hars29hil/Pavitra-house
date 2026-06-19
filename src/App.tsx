@@ -38,9 +38,9 @@ const ProtectedRoute = ({
     return <Navigate to="/login" replace />;
   }
 
-  // If the user's role is not in the allowed roles list, redirect to dashboard
+  // If the user's role is not in the allowed roles list, redirect based on role
   if (allowedRoles && !allowedRoles.includes(adminRole)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={adminRole === 'yuvak' ? "/profile" : "/dashboard"} replace />;
   }
 
   return <>{children}</>;
@@ -48,6 +48,9 @@ const ProtectedRoute = ({
 
 import StudentSelfUpdate from "./pages/StudentSelfUpdate";
 import StudentSelfRegister from "./pages/StudentSelfRegister";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import Profile from "./pages/Profile";
 
 // Layout component to wrap Auth and Global context components
 const AuthLayout = () => {
@@ -67,6 +70,8 @@ const router = createBrowserRouter(
       <Route path="/login" element={<LoginWrapper />} />
       <Route path="/self-update/:mobile" element={<StudentSelfUpdate />} />
       <Route path="/register" element={<StudentSelfRegister />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
       <Route path="/" element={<RootRedirect />} />
 
       {/* Protected Routes */}
@@ -83,6 +88,7 @@ const router = createBrowserRouter(
       <Route path="/whatsapp" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Whatsapp /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Tasks /></ProtectedRoute>} />
       <Route path="/tags" element={<ProtectedRoute allowedRoles={['admin']}><Tags /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta', 'yuvak']}><Profile /></ProtectedRoute>} />
 
       {/* 404 */}
       <Route path="*" element={<NotFound />} />
@@ -103,13 +109,19 @@ const router = createBrowserRouter(
 // BUT `LoginWrapper` needs `useAuth`. `RootRedirect` needs `useAuth`.
 
 function LoginWrapper() {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />;
+  const { isAuthenticated, adminRole } = useAuth();
+  if (isAuthenticated) {
+    return <Navigate to={adminRole === 'yuvak' ? "/profile" : "/dashboard"} replace />;
+  }
+  return <Login />;
 }
 
 function RootRedirect() {
-  const { isAuthenticated } = useAuth();
-  return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
+  const { isAuthenticated, adminRole } = useAuth();
+  if (isAuthenticated) {
+    return <Navigate to={adminRole === 'yuvak' ? "/profile" : "/dashboard"} replace />;
+  }
+  return <Navigate to="/login" replace />;
 }
 
 const App = () => (

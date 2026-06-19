@@ -31,7 +31,7 @@ export const CreateYuvakTaskDialog = ({
     const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
 
     // Form fields
-    const [description, setDescription] = useState('');
+    const [descriptions, setDescriptions] = useState<Record<string, string>>({});
     const [dueDate, setDueDate] = useState(() => new Date().toISOString().split('T')[0]);
 
     // Fetch students and categories when dialog opens
@@ -41,12 +41,31 @@ export const CreateYuvakTaskDialog = ({
                 setStudents(studentsData || []);
                 setCategories(categoriesData || []);
                 setSelectedStudents([]);
-                setDescription('');
+                setDescriptions({});
                 setDueDate(new Date().toISOString().split('T')[0]);
                 setSearchQuery('');
             });
         }
     }, [open]);
+
+    // Adjust descriptions when selectedStudents changes
+    useEffect(() => {
+        setDescriptions(prev => {
+            const next = { ...prev };
+            const selectedIds = selectedStudents.map(s => s.id);
+            Object.keys(next).forEach(key => {
+                if (!selectedIds.includes(key)) {
+                    delete next[key];
+                }
+            });
+            selectedStudents.forEach(student => {
+                if (next[student.id] === undefined) {
+                    next[student.id] = '';
+                }
+            });
+            return next;
+        });
+    }, [selectedStudents]);
 
     const myCategory = useMemo(() => {
         return categories.find(
@@ -94,8 +113,9 @@ export const CreateYuvakTaskDialog = ({
             return;
         }
 
-        if (!description.trim()) {
-            toast.error("Please enter a description of how you met the Yuvak(s)");
+        const emptyDescStudent = selectedStudents.find(s => !(descriptions[s.id] || '').trim());
+        if (emptyDescStudent) {
+            toast.error(`Please enter a meeting description for ${emptyDescStudent.name.split(' ')[0]}`);
             return;
         }
 
@@ -104,35 +124,26 @@ export const CreateYuvakTaskDialog = ({
             return;
         }
 
-        const names = selectedStudents.map(s => s.name.split(' ')[0]);
-        let formattedTitle = 'Yuvak Meet: ';
-        if (selectedStudents.length === 1) {
-            formattedTitle += selectedStudents[0].name;
-        } else if (selectedStudents.length === 2) {
-            formattedTitle += `${names[0]}, ${names[1]}`;
-        } else {
-            formattedTitle += `${names[0]}, ${names[1]} & ${selectedStudents.length - 2} more`;
-        }
-
-        const newTask = {
-            title: formattedTitle,
-            dueDate: dueDate,
-            status: 'pending', // Starts as pending, Karyakarta will mark it as done/complete
-            category: 'Yuvak',
-            assignedTo: selectedStudents.map(s => s.id).join(','),
-            assignedToName: selectedStudents.map(s => s.name).join(','),
-            description: description,
-            showToKaryakarta: true,
-            createdBy: adminName
-        };
-
         try {
-            await onTaskCreate(newTask);
-            toast.success(`✅ Yuvak meet logged successfully!`);
+            for (const student of selectedStudents) {
+                const newTask = {
+                    title: `Yuvak Meet: ${student.name}`,
+                    dueDate: dueDate,
+                    status: 'pending', // Starts as pending, Karyakarta will mark it as done/complete
+                    category: 'Yuvak',
+                    assignedTo: student.id,
+                    assignedToName: student.name,
+                    description: (descriptions[student.id] || '').trim(),
+                    showToKaryakarta: true,
+                    createdBy: adminName
+                };
+                await onTaskCreate(newTask);
+            }
+            toast.success(`✅ ${selectedStudents.length} Yuvak meet(s) logged successfully!`);
             onOpenChange(false);
         } catch (error) {
-            console.error("Failed to create Yuvak task:", error);
-            toast.error("Failed to log Yuvak task");
+            console.error("Failed to create Yuvak task(s):", error);
+            toast.error("Failed to log one or more Yuvak tasks");
         }
     };
 
@@ -140,7 +151,7 @@ export const CreateYuvakTaskDialog = ({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl p-6 border-none bg-white">
                 <DialogHeader>
-                    <DialogTitle>Log Yuvak Meet</DialogTitle>
+                    <DialogTitle>Yuvak Meet</DialogTitle>
                     <DialogDescription className="sr-only">Log how you met Yuvaks and keep track of interaction frequency.</DialogDescription>
                 </DialogHeader>
 
@@ -205,12 +216,12 @@ export const CreateYuvakTaskDialog = ({
                                 <p className="text-xs text-muted-foreground font-semibold">Selected Yuvaks ({selectedStudents.length})</p>
                                 <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto pr-1">
                                     {selectedStudents.map(student => (
-                                        <span 
-                                            key={student.id} 
+                                        <span
+                                            key={student.id}
                                             className="inline-flex items-center gap-1 bg-white border border-border/80 text-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-sm animate-scale-in"
                                         >
                                             {student.name}
-                                            <button 
+                                            <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleToggleStudent(student);
@@ -224,16 +235,27 @@ export const CreateYuvakTaskDialog = ({
                                 </div>
                             </div>
 
-                            {/* Description (how he meet the yuvak) */}
-                            <div className="space-y-2">
-                                <Label htmlFor="meet-desc" className="font-bold">How did you meet the Yuvak(s)?</Label>
-                                <Textarea
-                                    id="meet-desc"
-                                    placeholder="Write how you met the Yuvak(s)..."
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    className="min-h-[90px] rounded-xl"
-                                />
+                            {/* Descriptions (individual meeting notes for each selected Yuvak) */}
+                            <div className="space-y-4 border border-border/40 rounded-xl p-3 bg-muted/5 max-h-[220px] overflow-y-auto">
+                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">Meeting Notes</p>
+                                {selectedStudents.map(student => (
+                                    <div key={student.id} className="space-y-2 border-b border-border/20 pb-3 last:border-b-0 last:pb-0">
+                                        <Label htmlFor={`meet-desc-${student.id}`} className="font-bold text-xs flex items-center gap-1.5">
+                                            <span>How did you meet</span>
+                                            <span className="text-primary font-black">{student.name.split(' ')[0]}</span>?
+                                        </Label>
+                                        <Textarea
+                                            id={`meet-desc-${student.id}`}
+                                            placeholder={`Describe the meeting with ${student.name.split(' ')[0]}...`}
+                                            value={descriptions[student.id] || ''}
+                                            onChange={(e) => setDescriptions(prev => ({
+                                                ...prev,
+                                                [student.id]: e.target.value
+                                            }))}
+                                            className="min-h-[70px] rounded-xl text-xs"
+                                        />
+                                    </div>
+                                ))}
                             </div>
 
                             {/* Date (defaulting to today) */}
@@ -252,9 +274,9 @@ export const CreateYuvakTaskDialog = ({
 
                     <div className="flex gap-3 pt-2">
                         <Button variant="outline" className="flex-1 rounded-xl h-11" onClick={() => onOpenChange(false)}>Cancel</Button>
-                        <Button 
-                            disabled={selectedStudents.length === 0 || !description.trim()} 
-                            className="flex-1 bg-primary text-white hover:bg-primary/90 rounded-xl h-11" 
+                        <Button
+                            disabled={selectedStudents.length === 0 || selectedStudents.some(s => !(descriptions[s.id] || '').trim())}
+                            className="flex-1 bg-primary text-white hover:bg-primary/90 rounded-xl h-11"
                             onClick={handleSubmit}
                         >
                             <Send className="w-4 h-4 mr-2" />

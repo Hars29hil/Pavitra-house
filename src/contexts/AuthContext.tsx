@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '@/lib/api';
 import { getStudents, getCategories } from '@/lib/store';
+import { requestNotificationPermission } from '@/lib/firebase';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -8,6 +9,7 @@ interface AuthContextType {
   logout: () => void;
   adminName: string;
   adminRole: string;
+  studentId: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,16 +24,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [adminRole, setAdminRole] = useState<string>(() => {
     return localStorage.getItem('adminRole') || '';
   });
+  const [studentId, setStudentId] = useState<string>(() => {
+    return localStorage.getItem('studentId') || '';
+  });
+
+  useEffect(() => {
+    if (isAuthenticated && studentId) {
+      const email = adminRole === 'admin' ? 'admin@pavitra.com' : '';
+      requestNotificationPermission(studentId, email);
+    }
+  }, [isAuthenticated, studentId, adminRole]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
+    const cleanEmail = email.trim().toLowerCase();
+
     // 1. Hardcoded Admin Check (Overrides Backend)
-    if (email.trim().toLowerCase() === 'admin@pavitra.in' && password === 'Dasnadas') {
+    // Accept both admin@pavitra.in and admin@pavitra.com
+    if ((cleanEmail === 'admin@pavitra.in' || cleanEmail === 'admin@pavitra.com') && password === 'Dasnadas') {
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('adminName', 'Admin User');
       localStorage.setItem('adminRole', 'admin');
+      localStorage.setItem('studentId', 'admin');
       setIsAuthenticated(true);
       setAdminName('Admin User');
       setAdminRole('admin');
+      setStudentId('admin');
+      
+      setTimeout(() => {
+        requestNotificationPermission('admin', cleanEmail);
+      }, 1000);
+      
       return true;
     }
 
@@ -45,7 +67,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
 
       const student = students.find(s => 
-        s.email?.trim().toLowerCase() === email.trim().toLowerCase() && 
+        s.email?.trim().toLowerCase() === cleanEmail && 
         cleanMobile(s.mobile) === cleanMobile(password)
       );
 
@@ -54,19 +76,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Check if this student is assigned as a Karyakarta
         const karyakarta = categories.find(k => k.name === student.name);
 
-        if (karyakarta) {
-          const role = karyakarta.type === 'main' ? 'Karyakarta' : 'Sub-Karyakarta';
-          localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('adminName', student.name);
-          localStorage.setItem('adminRole', role);
-          setIsAuthenticated(true);
-          setAdminName(student.name);
-          setAdminRole(role);
-          return true;
-        }
+        const role = karyakarta 
+          ? (karyakarta.type === 'main' ? 'Karyakarta' : 'Sub-Karyakarta')
+          : 'yuvak';
+
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('adminName', student.name);
+        localStorage.setItem('adminRole', role);
+        localStorage.setItem('studentId', student.id);
+        
+        setIsAuthenticated(true);
+        setAdminName(student.name);
+        setAdminRole(role);
+        setStudentId(student.id);
+
+        setTimeout(() => {
+          requestNotificationPermission(student.id, student.email || '');
+        }, 1000);
+
+        return true;
       }
     } catch (error) {
       console.error('Karyakarta login check failed:', error);
+    }
+
+    try {
+      // 3. Fallback: Try Backend User Login (from database users table)
+      const res = await api.post('/api/login', { email: cleanEmail, password });
+      if (res.data && res.data.success) {
+        const adminData = res.data.admin;
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('adminName', adminData.name || 'Admin User');
+        localStorage.setItem('adminRole', adminData.role || 'admin');
+        localStorage.setItem('studentId', adminData.id || 'admin');
+        setIsAuthenticated(true);
+        setAdminName(adminData.name || 'Admin User');
+        setAdminRole(adminData.role || 'admin');
+        setStudentId(adminData.id || 'admin');
+
+        setTimeout(() => {
+          requestNotificationPermission(adminData.id || 'admin', cleanEmail);
+        }, 1000);
+
+        return true;
+      }
+    } catch (error) {
+      console.error('Backend login check failed:', error);
     }
 
     return false;
@@ -76,13 +131,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('adminName');
     localStorage.removeItem('adminRole');
+    localStorage.removeItem('studentId');
     setIsAuthenticated(false);
     setAdminName('Admin User');
     setAdminRole('');
+    setStudentId('');
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, adminName, adminRole }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, logout, adminName, adminRole, studentId }}>
       {children}
     </AuthContext.Provider>
   );

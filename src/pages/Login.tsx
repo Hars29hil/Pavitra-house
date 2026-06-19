@@ -119,10 +119,18 @@ const Login = () => {
           </form>
 
           {/* Footer */}
-          <div className="mt-10 flex flex-col items-center gap-2">
+          <div className="mt-10 flex flex-col items-center gap-3">
             <div className="h-px w-12 bg-border/50" />
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter text-center">
               Admin & Karyakarta Access
+            </p>
+            <div className="flex gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              <a href="/privacy" className="hover:text-primary transition-colors">Privacy</a>
+              <span>&bull;</span>
+              <a href="/terms" className="hover:text-primary transition-colors">Terms</a>
+            </div>
+            <p className="text-[10px] text-muted-foreground/60 text-center mt-1">
+              &copy; {new Date().getFullYear()} Hari-Saurabh Hostel
             </p>
           </div>
         </div>
