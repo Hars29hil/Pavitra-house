@@ -91,6 +91,7 @@ const fromDbStudent = (db: any): Student => ({
     designation: db.designation,
     jobPlace: db.job_place,
     livingPlace: db.living_place,
+    notifications_enabled: db.notifications_enabled === true || db.notifications_enabled === 1 || db.notifications_enabled === '1' || db.notifications_enabled === 'true',
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -106,6 +107,7 @@ const toDbStudent = (student: Partial<Student>) => {
     if (student.designation !== undefined) db.designation = student.designation;
     if (student.jobPlace !== undefined) db.job_place = student.jobPlace;
     if (student.livingPlace !== undefined) db.living_place = student.livingPlace;
+    if (student.notifications_enabled !== undefined) db.notifications_enabled = student.notifications_enabled ? 1 : 0;
 
     delete db.roomNo;
     delete db.isAlumni;
@@ -115,6 +117,7 @@ const toDbStudent = (student: Partial<Student>) => {
     delete db.countryCode;
     delete db.jobPlace;
     delete db.livingPlace;
+    delete db.notifications_enabled;
 
     // Remove empty ID to allow auto-generation
     if (!db.id || db.id === '') {
@@ -488,6 +491,26 @@ export const updateSetting = async (key: string, value: any) => {
     } catch (error) {
         console.error('Error updating setting:', error);
         throw error;
+    }
+};
+
+export interface NotificationLog {
+    id: string;
+    task_id: string;
+    recipient_name: string;
+    type: string;
+    status: string;
+    error_message: string | null;
+    sent_at: string;
+}
+
+export const getNotificationLogs = async (taskId: string): Promise<NotificationLog[]> => {
+    try {
+        const res = await api.get<NotificationLog[]>(`/api/tasks?action=logs&id=${taskId}`);
+        return res.data || [];
+    } catch (error) {
+        console.error('Error fetching notification logs:', error);
+        return [];
     }
 };
 

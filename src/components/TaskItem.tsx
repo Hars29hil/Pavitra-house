@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Calendar, Check, Tag, Edit2, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar, Check, Tag, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { Task } from '@/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,21 @@ interface TaskItemProps {
 export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) => {
   const { adminName } = useAuth();
   const [showDetails, setShowDetails] = useState(false);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  useEffect(() => {
+    if (showDetails && task.id) {
+      setLoadingLogs(true);
+      import('@/lib/store').then(({ getNotificationLogs }) => {
+        getNotificationLogs(task.id)
+          .then(data => setLogs(data))
+          .catch(err => console.error(err))
+          .finally(() => setLoadingLogs(false));
+      });
+    }
+  }, [showDetails, task.id]);
+
   const isPending = task.status === 'pending';
   const canToggle = !task.createdBy || task.createdBy.trim().toLowerCase() === adminName.trim().toLowerCase();
 
@@ -192,6 +207,43 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
                 </span>
               </div>
             )}
+
+            {/* Last 3 Notification Logs */}
+            <div className="pt-3 border-t border-border/50 space-y-2">
+              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Last 3 Notification Logs</label>
+              {loadingLogs ? (
+                <div className="text-xs text-muted-foreground py-2 flex items-center gap-1.5">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                  <span>Fetching logs...</span>
+                </div>
+              ) : logs.length > 0 ? (
+                <div className="space-y-2">
+                  {logs.map((log) => (
+                    <div key={log.id} className="p-2.5 rounded-xl border border-border/40 bg-slate-50/50 text-xs flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-700 truncate max-w-[150px]">{log.recipient_name}</span>
+                        <span className={`px-2 py-0.5 rounded font-bold uppercase text-[9px] ${
+                          log.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {log.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span className="capitalize font-medium">Channel: {log.type}</span>
+                        <span>{new Date(log.sent_at).toLocaleString('en-IN', { hour12: true })}</span>
+                      </div>
+                      {log.error_message && (
+                        <p className="text-[10px] text-red-500 bg-red-50/30 p-1.5 rounded border border-red-100/50 leading-relaxed font-mono whitespace-pre-wrap">
+                          Error: {log.error_message}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic py-1">No notification attempts logged yet.</p>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

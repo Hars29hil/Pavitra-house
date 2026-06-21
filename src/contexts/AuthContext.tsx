@@ -16,16 +16,25 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('isAuthenticated') === 'true';
+    const auth = localStorage.getItem('isAuthenticated');
+    if (auth === null) {
+      // First load, default to logged in as admin
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('adminName', 'Admin User');
+      localStorage.setItem('adminRole', 'admin');
+      localStorage.setItem('studentId', 'admin');
+      return true;
+    }
+    return auth === 'true';
   });
   const [adminName, setAdminName] = useState<string>(() => {
     return localStorage.getItem('adminName') || 'Admin User';
   });
   const [adminRole, setAdminRole] = useState<string>(() => {
-    return localStorage.getItem('adminRole') || '';
+    return localStorage.getItem('adminRole') || 'admin';
   });
   const [studentId, setStudentId] = useState<string>(() => {
-    return localStorage.getItem('studentId') || '';
+    return localStorage.getItem('studentId') || 'admin';
   });
 
   useEffect(() => {
@@ -128,7 +137,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
-    localStorage.removeItem('isAuthenticated');
+    localStorage.setItem('isAuthenticated', 'false');
     localStorage.removeItem('adminName');
     localStorage.removeItem('adminRole');
     localStorage.removeItem('studentId');

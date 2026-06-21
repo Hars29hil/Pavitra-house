@@ -253,6 +253,10 @@ export default function Whatsapp() {
     };
 
     const handleBulkSend = async () => {
+        if (!connected) {
+            toast.error("Please connect WhatsApp first!");
+            return;
+        }
         if (selectedIds.size === 0 || !message) {
             toast.error("Select Yuvaks and enter a message");
             return;
@@ -299,6 +303,10 @@ export default function Whatsapp() {
     };
 
     const handleGroupSend = async () => {
+        if (!connected) {
+            toast.error("Please connect WhatsApp first!");
+            return;
+        }
         if (!groupLink) {
             toast.error("Please enter a WhatsApp Group Link first");
             return;
@@ -354,6 +362,27 @@ export default function Whatsapp() {
             toast.error("Failed to save group link");
         } finally {
             setIsSavingGroup(false);
+        }
+    };
+
+    const handleToggleNotifications = async (studentId: string, currentStatus: boolean) => {
+        try {
+            // Update locally first for instant feedback
+            setStudents(prev => prev.map(s => s.id === studentId ? { ...s, notifications_enabled: !currentStatus } : s));
+
+            // Send API call to backend
+            const res = await api.put(`/api/students/${studentId}`, {
+                notifications_enabled: !currentStatus ? 1 : 0
+            });
+
+            if (res.data) {
+                toast.success(`Notifications ${!currentStatus ? 'enabled' : 'disabled'} for this Yuvak`);
+            }
+        } catch (error) {
+            console.error("Failed to toggle notifications:", error);
+            toast.error("Failed to update notification setting");
+            // Revert on error
+            setStudents(prev => prev.map(s => s.id === studentId ? { ...s, notifications_enabled: currentStatus } : s));
         }
     };
 
@@ -475,17 +504,38 @@ export default function Whatsapp() {
                                 filteredStudents.map(student => (
                                     <div
                                         key={student.id}
-                                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:bg-muted/50 ${selectedIds.has(student.id) ? "bg-primary/5 border-primary" : "border-transparent"}`}
+                                        className={`flex items-center justify-between gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:bg-muted/50 ${selectedIds.has(student.id) ? "bg-primary/5 border-primary" : "border-transparent"}`}
                                         onClick={() => toggleSelection(student.id)}
                                     >
-                                        <Checkbox checked={selectedIds.has(student.id)} onCheckedChange={() => toggleSelection(student.id)} />
-                                        <div className="flex-1">
-                                            <p className="font-semibold text-sm">{student.name}</p>
-                                            <div className="flex gap-2 text-xs text-muted-foreground">
-                                                <span>Room: {student.roomNo}</span>
-                                                <span>•</span>
-                                                <span>{student.mobile || "No Mobile"}</span>
+                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            <Checkbox checked={selectedIds.has(student.id)} onCheckedChange={() => toggleSelection(student.id)} />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-semibold text-sm truncate">{student.name}</p>
+                                                <div className="flex gap-2 text-xs text-muted-foreground">
+                                                    <span>Room: {student.roomNo}</span>
+                                                    <span>•</span>
+                                                    <span>{student.mobile || "No Mobile"}</span>
+                                                </div>
                                             </div>
+                                        </div>
+
+                                        {/* Notifications Tick/Checkbox */}
+                                        <div
+                                            className="flex items-center gap-2 pl-2 border-l border-slate-100 shrink-0"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleToggleNotifications(student.id, !!student.notifications_enabled);
+                                            }}
+                                            title={student.notifications_enabled ? "Disable Notifications" : "Enable Notifications"}
+                                        >
+                                            <span className="text-[10px] text-muted-foreground font-medium hidden sm:inline">
+                                                {student.notifications_enabled ? "Not Enabled" : "Not Disabled"}
+                                            </span>
+                                            <Checkbox
+                                                checked={!!student.notifications_enabled}
+                                                onCheckedChange={() => handleToggleNotifications(student.id, !!student.notifications_enabled)}
+                                                className={`h-4.5 w-4.5 rounded ${student.notifications_enabled ? "border-green-500 data-[state=checked]:bg-green-500 data-[state=checked]:text-white" : "border-slate-300"}`}
+                                            />
                                         </div>
                                     </div>
                                 ))
@@ -503,22 +553,79 @@ export default function Whatsapp() {
                 {/* Right Column: Connection & Message */}
                 <div className="space-y-6">
                     {/* Connection Status Card */}
-                    <div className="p-6 glass-card rounded-3xl shadow-soft border-white/40 bg-gradient-to-br from-amber-500/5 to-orange-500/5">
+                    <div className="p-6 glass-card rounded-3xl shadow-soft border-white/40">
                         <h3 className="font-bold text-lg mb-4">Connection Status</h3>
-                        <div className="flex flex-col items-center justify-center text-center p-6 bg-white/40 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm space-y-4">
-                            <div className="w-12 h-12 bg-amber-500/10 text-amber-600 rounded-full flex items-center justify-center animate-pulse">
-                                <Users className="w-6 h-6" />
+                        {loading ? (
+                            <div className="flex items-center gap-2 text-primary p-6 justify-center">
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <span className="font-medium text-sm">Processing...</span>
                             </div>
-                            <div className="space-y-1">
-                                <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-bold border-none px-3 py-1">
-                                    Coming Soon
-                                </Badge>
-                                <h4 className="font-bold text-slate-800 text-base mt-2">WhatsApp Notification Center</h4>
-                                <p className="text-xs text-slate-500 max-w-xs leading-relaxed mx-auto">
-                                    Automated check-ins, announcement notifications, and birthday greetings are being transitioned to a new high-speed delivery node.
-                                </p>
+                        ) : connected ? (
+                            <div className="space-y-4 p-4 bg-white/40 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm">
+                                <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-600 font-bold">
+                                    <CheckCircle2 className="w-6 h-6" />
+                                    <span>System Online & Ready</span>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full text-destructive border-destructive/20 hover:bg-destructive/10 rounded-xl h-11"
+                                    onClick={handleLogout}
+                                >
+                                    Logout / Disconnect
+                                </Button>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="space-y-4 p-4 bg-white/40 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm">
+                                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-600 font-semibold text-sm text-center">
+                                    Scan QR Code to Connect
+                                </div>
+                                {qr ? (
+                                    <div className="space-y-4">
+                                        <img src={qr} alt="QR Code" className="w-48 h-48 mx-auto object-contain rounded-xl border-4 border-white shadow-md bg-white" />
+                                        <div className="flex flex-col gap-2 w-full">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="w-full rounded-xl h-11"
+                                                onClick={handleReconnect}
+                                            >
+                                                Refresh QR / Reconnect
+                                            </Button>
+                                            <button
+                                                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors underline bg-transparent border-none cursor-pointer"
+                                                onClick={handleResetSession}
+                                            >
+                                                Stuck? Hard Reset Session
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4 text-center">
+                                        <div className="w-48 h-48 mx-auto flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
+                                            <Loader2 className="w-8 h-8 animate-spin text-slate-400 mb-2" />
+                                            <span className="text-xs text-slate-400">Loading QR...</span>
+                                        </div>
+                                        <div className="flex flex-col gap-2 w-full">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="w-full rounded-xl h-11"
+                                                onClick={handleReconnect}
+                                            >
+                                                Force Re-initialize
+                                            </Button>
+                                            <button
+                                                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors underline bg-transparent border-none cursor-pointer"
+                                                onClick={handleResetSession}
+                                            >
+                                                Still stuck? Reset Session
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Group Settings Card */}
@@ -597,7 +704,7 @@ export default function Whatsapp() {
                                 variant="outline"
                                 className="w-full text-base h-14 rounded-xl shadow-soft border-primary/20 text-primary hover:bg-primary/5 gap-2"
                                 onClick={handleGroupSend}
-                                disabled={sending || !connected || !message || !groupLink}
+                                disabled={sending || !message || !groupLink}
                             >
                                 {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Users className="w-5 h-5" />}
                                 Send to Group
@@ -606,14 +713,14 @@ export default function Whatsapp() {
                                 size="lg"
                                 className="w-full text-base h-14 rounded-xl shadow-soft hover:shadow-soft-lg gap-2"
                                 onClick={handleBulkSend}
-                                disabled={sending || !connected || selectedIds.size === 0 || !message}
+                                disabled={sending || selectedIds.size === 0 || !message}
                             >
                                 {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                                 Send to {selectedIds.size} Students
                             </Button>
                         </div>
                         {!connected && (
-                            <p className="text-xs text-center text-amber-600 font-medium">WhatsApp notification feature is coming soon!</p>
+                            <p className="text-xs text-center text-amber-600 font-medium">Please scan the QR code above to connect your WhatsApp first.</p>
                         )}
                     </div>
                 </div>

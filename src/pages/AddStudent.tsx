@@ -110,6 +110,7 @@ const AddStudent = () => {
     designation: '',
     jobPlace: '',
     livingPlace: '',
+    notifications_enabled: false,
   });
 
   const [isWorking, setIsWorking] = useState(false);
@@ -186,6 +187,7 @@ const AddStudent = () => {
               designation: student.designation || '',
               jobPlace: student.jobPlace || '',
               livingPlace: student.livingPlace || '',
+              notifications_enabled: student.notifications_enabled !== undefined ? student.notifications_enabled : false,
             });
             const studentIsWorking = Boolean(student.job || student.designation || student.jobPlace);
             setIsWorking(studentIsWorking);
@@ -401,6 +403,7 @@ const AddStudent = () => {
     { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music' },
     { name: 'linkedin', label: 'LinkedIn URL', type: 'text', placeholder: 'https://linkedin.com/in/username' },
     { name: 'socialLink', label: 'Social Media URL (Instagram, Facebook, X, etc.)', type: 'text', placeholder: 'https://instagram.com/username' },
+    { name: 'notifications_enabled', label: 'Enable Notifications', type: 'notifications_toggle', placeholder: '' },
   ];
 
   return (
@@ -559,6 +562,20 @@ const AddStudent = () => {
                       />
                       <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                         {isWorking ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                  ) : field.type === 'notifications_toggle' ? (
+                    <div className="flex items-center space-x-2 h-11 sm:h-12">
+                      <Switch
+                        id={field.name}
+                        checked={formData.notifications_enabled}
+                        onCheckedChange={(checked) => {
+                          setIsDirty(true);
+                          setFormData(prev => ({ ...prev, notifications_enabled: checked }));
+                        }}
+                      />
+                      <span className="text-xs sm:text-sm font-medium text-muted-foreground">
+                        {formData.notifications_enabled ? 'Enabled' : 'Disabled'}
                       </span>
                     </div>
                   ) : (
