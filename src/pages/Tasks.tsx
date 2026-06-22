@@ -33,25 +33,36 @@ const Tasks = () => {
   // Fetch Tasks from DB and setup polling
   useEffect(() => {
     const fetchTasks = async (isInitial = false) => {
+      console.log(`[Tasks.tsx] fetchTasks started (isInitial: ${isInitial})`);
       if (isInitial) setLoading(true);
       try {
+        console.log(`[Tasks.tsx] Triggering Promise.all for tasks, students, categories...`);
         const [tasksData, studentsData, categoriesData] = await Promise.all([
           getTasks(),
           getStudents(),
           getCategories()
         ]);
+        console.log(`[Tasks.tsx] Promise.all completed successfully!`, {
+          tasksDataCount: tasksData?.length,
+          studentsDataCount: studentsData?.length,
+          categoriesDataCount: categoriesData?.length
+        });
         setTasks(tasksData || []);
         setStudents(studentsData || []);
         setCategories(categoriesData || []);
       } catch (error) {
-        console.error("Error fetching tasks:", error);
+        console.error("[Tasks.tsx] Error in fetchTasks:", error);
         if (isInitial) {
           setTasks([]);
           setStudents([]);
           setCategories([]);
         }
       } finally {
-        if (isInitial) setLoading(false);
+        console.log(`[Tasks.tsx] fetchTasks finally block reached (isInitial: ${isInitial})`);
+        if (isInitial) {
+          setLoading(false);
+          console.log(`[Tasks.tsx] setLoading(false) called`);
+        }
       }
     };
 

@@ -16,25 +16,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    const auth = localStorage.getItem('isAuthenticated');
-    if (auth === null) {
-      // First load, default to logged in as admin
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('adminName', 'Admin User');
-      localStorage.setItem('adminRole', 'admin');
-      localStorage.setItem('studentId', 'admin');
-      return true;
-    }
-    return auth === 'true';
+    return localStorage.getItem('isAuthenticated') === 'true';
   });
   const [adminName, setAdminName] = useState<string>(() => {
     return localStorage.getItem('adminName') || 'Admin User';
   });
   const [adminRole, setAdminRole] = useState<string>(() => {
-    return localStorage.getItem('adminRole') || 'admin';
+    return localStorage.getItem('adminRole') || '';
   });
   const [studentId, setStudentId] = useState<string>(() => {
-    return localStorage.getItem('studentId') || 'admin';
+    return localStorage.getItem('studentId') || '';
   });
 
   useEffect(() => {
@@ -85,9 +76,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Check if this student is assigned as a Karyakarta
         const karyakarta = categories.find(k => k.name === student.name);
 
-        const role = karyakarta 
-          ? (karyakarta.type === 'main' ? 'Karyakarta' : 'Sub-Karyakarta')
-          : 'yuvak';
+        if (!karyakarta) {
+          // Normal yuvak is not allowed to log in (only Karyakartas / Sub-Karyakartas)
+          return false;
+        }
+
+        const role = karyakarta.type === 'main' ? 'Karyakarta' : 'Sub-Karyakarta';
 
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('adminName', student.name);
