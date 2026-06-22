@@ -22,6 +22,7 @@ export interface Student {
   jobPlace?: string;
   livingPlace?: string;
   notifications_enabled?: boolean;
+  notificationStatus?: string;
 }
 
 export interface Task {

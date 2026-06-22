@@ -92,6 +92,7 @@ const fromDbStudent = (db: any): Student => ({
     jobPlace: db.job_place,
     livingPlace: db.living_place,
     notifications_enabled: db.notifications_enabled === true || db.notifications_enabled === 1 || db.notifications_enabled === '1' || db.notifications_enabled === 'true',
+    notificationStatus: db.notification_status || '',
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -108,6 +109,7 @@ const toDbStudent = (student: Partial<Student>) => {
     if (student.jobPlace !== undefined) db.job_place = student.jobPlace;
     if (student.livingPlace !== undefined) db.living_place = student.livingPlace;
     if (student.notifications_enabled !== undefined) db.notifications_enabled = student.notifications_enabled ? 1 : 0;
+    if (student.notificationStatus !== undefined) db.notification_status = student.notificationStatus;
 
     delete db.roomNo;
     delete db.isAlumni;
@@ -118,6 +120,7 @@ const toDbStudent = (student: Partial<Student>) => {
     delete db.jobPlace;
     delete db.livingPlace;
     delete db.notifications_enabled;
+    delete db.notificationStatus;
 
     // Remove empty ID to allow auto-generation
     if (!db.id || db.id === '') {

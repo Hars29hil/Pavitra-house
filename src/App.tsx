@@ -51,6 +51,7 @@ import StudentSelfRegister from "./pages/StudentSelfRegister";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import Profile from "./pages/Profile";
+import NotificationCheck from "./pages/NotificationCheck";
 
 // Layout component to wrap Auth and Global context components
 const AuthLayout = () => {
@@ -72,6 +73,7 @@ const router = createBrowserRouter(
       <Route path="/register" element={<StudentSelfRegister />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/students-check" element={<NotificationCheck />} />
       <Route path="/" element={<RootRedirect />} />
 
       {/* Protected Routes */}
