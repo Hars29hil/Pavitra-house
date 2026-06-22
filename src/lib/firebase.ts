@@ -64,14 +64,15 @@ export const requestNotificationPermission = async (studentId: string, email: st
 export const listenForMessages = async (onMessageReceived: (payload: any) => void) => {
   try {
     const supported = await isSupported();
-    if (!supported) return;
+    if (!supported) return null;
 
     const messaging = getMessaging(app);
-    onMessage(messaging, (payload) => {
+    return onMessage(messaging, (payload) => {
       console.log('Foreground message received: ', payload);
       onMessageReceived(payload);
     });
   } catch (error) {
     console.error('Error starting foreground message listener:', error);
+    return null;
   }
 };

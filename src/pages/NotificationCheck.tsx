@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Bell, BellOff, CheckCircle2, ShieldAlert, Loader2, Send, Check, X, ArrowLeft } from 'lucide-react';
-import { requestNotificationPermission } from '@/lib/firebase';
+import { requestNotificationPermission, listenForMessages } from '@/lib/firebase';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +27,71 @@ export default function NotificationCheck() {
   const [notificationEnabled, setNotificationEnabled] = useState(false);
   const [testSent, setTestSent] = useState(false);
   const [finalStatus, setFinalStatus] = useState<'received' | 'not_received' | null>(null);
+  const [receivedInForeground, setReceivedInForeground] = useState(false);
+
+  // Listen for foreground FCM messages
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+
+    const setupListener = async () => {
+      const unsub = await listenForMessages((payload) => {
+        console.log('Foreground FCM received in NotificationCheck:', payload);
+        const title = payload?.notification?.title || 'Test Notification 🔔';
+        const body = payload?.notification?.body || '';
+
+        // 1. Trigger native notification banner if permission granted
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification(title, {
+              body: body,
+              icon: '/header-logo.png'
+            });
+          } catch (e) {
+            console.error('Failed to show native foreground notification:', e);
+          }
+        }
+
+        // 2. Play a subtle notification beep sound using Web Audio API
+        try {
+          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(587.33, audioContext.currentTime); // D5 note
+          gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + 0.15);
+        } catch (e) {
+          // ignore audio context failures (e.g. user interaction required)
+        }
+
+        // 3. Show a prominent toast
+        toast.success(`🔔 ${title}`, {
+          description: body,
+          duration: 10000,
+        });
+
+        // 4. Mark as received and advance step
+        setReceivedInForeground(true);
+        setTestSent(true);
+        setStep('feedback');
+      });
+
+      if (unsub) {
+        unsubscribe = unsub;
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []);
 
   const handleMobileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,6 +204,7 @@ export default function NotificationCheck() {
     setNotificationEnabled(false);
     setTestSent(false);
     setFinalStatus(null);
+    setReceivedInForeground(false);
   };
 
   return (
@@ -269,14 +335,24 @@ export default function NotificationCheck() {
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   We have triggered a test push notification to this device. Please check your system tray/banners.
                 </p>
+                {receivedInForeground && (
+                  <div className="p-4 bg-green-50 border border-green-200 text-green-800 text-sm font-semibold rounded-2xl flex items-center justify-center gap-2 animate-scale-in mt-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                    <span>Detected: Notification received on this tab!</span>
+                  </div>
+                )}
                 <p className="text-base font-black text-foreground mt-4">Did you receive the notification?</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <Button
                   onClick={() => handleFeedback(true)}
-                  variant="outline"
-                  className="h-14 rounded-2xl text-base font-bold border-green-500/30 text-green-600 hover:bg-green-50 hover:text-green-700 bg-white shadow-soft transition-all flex items-center justify-center gap-2"
+                  variant={receivedInForeground ? 'default' : 'outline'}
+                  className={`h-14 rounded-2xl text-base font-bold shadow-soft transition-all flex items-center justify-center gap-2 ${
+                    receivedInForeground 
+                      ? 'bg-green-600 hover:bg-green-700 text-white animate-pulse border-none' 
+                      : 'border-green-500/30 text-green-600 hover:bg-green-50 hover:text-green-700 bg-white'
+                  }`}
                   disabled={loading}
                 >
                   <Check className="w-5 h-5" />
