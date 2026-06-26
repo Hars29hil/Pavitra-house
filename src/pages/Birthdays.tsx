@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Cake, Sparkles, Send, Settings, Clock, Power, Users, ChevronDown, GraduationCap } from 'lucide-react';
+import { Cake, Sparkles, Send, Settings, Clock, Power, Users, ChevronDown, GraduationCap, CheckSquare } from 'lucide-react';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { getStudents, getSetting, updateSetting, getCategories, Karyakarta } from '@/lib/store';
@@ -40,6 +40,7 @@ const Birthdays = () => {
     const [meetingDate, setMeetingDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [markCompleted, setMarkCompleted] = useState(true);
     const [savingMeetup, setSavingMeetup] = useState(false);
+    const [completedMeetupIds, setCompletedMeetupIds] = useState<string[]>([]);
 
     // Media Upload states
     const [showUploadPrompt, setShowUploadPrompt] = useState(false);
@@ -86,6 +87,9 @@ const Birthdays = () => {
             if (res.data && res.data.success) {
                 toast.success("Meetup details saved!");
                 setShowMeetupDialog(false);
+                
+                // Add student ID to completed meetup list (case-insensitive checking later)
+                setCompletedMeetupIds(prev => [...prev, meetupStudent.id]);
 
                 if (markCompleted) {
                     // Trigger upload flow directly to the Birthday folder
@@ -150,12 +154,16 @@ const Birthdays = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [studentsData, categoriesData] = await Promise.all([
+                const [studentsData, categoriesData, completedData] = await Promise.all([
                     getStudents(),
-                    getCategories()
+                    getCategories(),
+                    api.get('/api/gallery?action=check_completed_meetups').then(res => res.data).catch(() => ({ success: false }))
                 ]);
                 setStudents(studentsData || []);
                 setCategories(categoriesData || []);
+                if (completedData && completedData.success) {
+                    setCompletedMeetupIds(completedData.completed_ids || []);
+                }
             } catch (error) {
                 setStudents([]);
                 setCategories([]);
@@ -559,55 +567,67 @@ const Birthdays = () => {
 
                     <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 pb-safe">
                         {birthdayStudents.length > 0 ? (
-                            birthdayStudents.map((student, index) => (
-                                <div
-                                    key={student.id}
-                                    className="animate-slide-in w-full flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-white border border-border/50 rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg gap-4"
-                                    style={{ animationDelay: `${index * 50}ms` }}
-                                >
+                            birthdayStudents.map((student, index) => {
+                                const isCompleted = completedMeetupIds.some(
+                                    id => id.toLowerCase() === student.id.toLowerCase()
+                                );
+                                return (
                                     <div
-                                        className="flex items-center gap-4 flex-1 cursor-pointer min-w-0"
-                                        onClick={() => navigate(`/students/${student.id}`)}
-                                    >
-                                        {student.isAlumni ? (
-                                            <div className="w-14 h-14 rounded-2xl bg-accent/20 flex flex-col items-center justify-center shadow-soft shrink-0 text-accent border border-accent/10">
-                                                <GraduationCap className="w-6 h-6" />
-                                                <span className="font-bold text-[9px] uppercase tracking-tighter mt-0.5">Alumni</span>
-                                            </div>
-                                        ) : (
-                                            <div className="w-14 h-14 rounded-2xl bg-primary flex flex-col items-center justify-center shadow-soft shrink-0">
-                                                <span className="text-white font-bold text-lg leading-none">{student.roomNo}</span>
-                                                <span className="text-white/70 font-bold text-[10px] uppercase tracking-tighter mt-0.5">Room</span>
-                                            </div>
+                                        key={student.id}
+                                        className={cn(
+                                            "animate-slide-in w-full flex flex-col sm:flex-row sm:items-center justify-between p-5 border rounded-2xl shadow-soft transition-all duration-300 hover:shadow-soft-lg gap-4",
+                                            isCompleted ? "bg-emerald-50/70 border-emerald-200/60 animate-none hover:shadow-soft" : "bg-white border-border/50"
                                         )}
-                                        <div className="overflow-hidden flex-1 min-w-0">
-                                            <h3 className="font-bold text-lg text-foreground truncate">{student.name}</h3>
-                                            <div className="flex items-center gap-2.5 mt-1 flex-wrap">
-                                                <p className="text-xs font-semibold text-muted-foreground truncate">{student.mobile || 'No Mobile'}</p>
-                                                {student.mobile && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="secondary"
-                                                        className="h-6 rounded-lg text-[10px] font-bold px-2 gap-1 bg-primary/10 text-primary hover:bg-primary/20 border-none shrink-0"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setMeetupStudent(student);
-                                                            setMeetingDesc("");
-                                                            setMeetingDate(new Date().toISOString().split('T')[0]);
-                                                            setMarkCompleted(true);
-                                                            setShowMeetupDialog(true);
-                                                        }}
-                                                    >
-                                                        <Users className="w-3 h-3 text-primary" /> Meet Up
-                                                    </Button>
-                                                )}
+                                        style={{ animationDelay: `${index * 50}ms` }}
+                                    >
+                                        <div
+                                            className="flex items-center gap-4 flex-1 cursor-pointer min-w-0"
+                                            onClick={() => navigate(`/students/${student.id}`)}
+                                        >
+                                            {student.isAlumni ? (
+                                                <div className="w-14 h-14 rounded-2xl bg-accent/20 flex flex-col items-center justify-center shadow-soft shrink-0 text-accent border border-accent/10">
+                                                    <GraduationCap className="w-6 h-6" />
+                                                    <span className="font-bold text-[9px] uppercase tracking-tighter mt-0.5">Alumni</span>
+                                                </div>
+                                            ) : (
+                                                <div className="w-14 h-14 rounded-2xl bg-primary flex flex-col items-center justify-center shadow-soft shrink-0">
+                                                    <span className="text-white font-bold text-lg leading-none">{student.roomNo}</span>
+                                                    <span className="text-white/70 font-bold text-[10px] uppercase tracking-tighter mt-0.5">Room</span>
+                                                </div>
+                                            )}
+                                            <div className="overflow-hidden flex-1 min-w-0">
+                                                <h3 className="font-bold text-lg text-foreground truncate">{student.name}</h3>
+                                                <div className="flex items-center gap-2.5 mt-1 flex-wrap">
+                                                    <p className="text-xs font-semibold text-muted-foreground truncate">{student.mobile || 'No Mobile'}</p>
+                                                    {student.mobile && (
+                                                        isCompleted ? (
+                                                            <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 px-2.5 py-1.5 rounded-xl text-[10px] font-bold shrink-0 shadow-sm border border-emerald-500/10 select-none">
+                                                                <CheckSquare className="w-3.5 h-3.5 text-emerald-600" /> Meet Done
+                                                            </div>
+                                                        ) : (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                className="h-6 rounded-lg text-[10px] font-bold px-2 gap-1 bg-primary/10 text-primary hover:bg-primary/20 border-none shrink-0"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setMeetupStudent(student);
+                                                                    setMeetingDesc("");
+                                                                    setMeetingDate(new Date().toISOString().split('T')[0]);
+                                                                    setMarkCompleted(true);
+                                                                    setShowMeetupDialog(true);
+                                                                }}
+                                                            >
+                                                                <Users className="w-3 h-3 text-primary" /> Meet Up
+                                                            </Button>
+                                                        )
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-
-
-                                </div>
-                            ))
+                                );
+                            })
                         ) : (
                             <div className="text-center py-20 glass-card border-dashed border-2 border-border/50 rounded-3xl animate-fade-in flex flex-col items-center justify-center gap-4 col-span-full">
                                 <div className="w-20 h-20 bg-gradient-to-br from-primary/10 to-blue-500/10 rounded-full flex items-center justify-center animate-pulse">
