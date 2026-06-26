@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Cake, Sparkles, Send, Settings, Clock, Power, Users, ChevronDown, GraduationCap, CheckSquare } from 'lucide-react';
+import { Cake, Sparkles, Send, Settings, Clock, Power, Users, ChevronDown, GraduationCap, CheckSquare, X } from 'lucide-react';
+import { useConfirm } from '@/contexts/ConfirmationContext';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { getStudents, getSetting, updateSetting, getCategories, Karyakarta } from '@/lib/store';
@@ -41,6 +42,7 @@ const Birthdays = () => {
     const [markCompleted, setMarkCompleted] = useState(true);
     const [savingMeetup, setSavingMeetup] = useState(false);
     const [completedMeetupIds, setCompletedMeetupIds] = useState<string[]>([]);
+    const { confirm } = useConfirm();
 
     // Media Upload states
     const [showUploadPrompt, setShowUploadPrompt] = useState(false);
@@ -170,6 +172,36 @@ const Birthdays = () => {
             toast.error("Upload failed");
         } finally {
             setUploading(false);
+        }
+    };
+
+    const handleUndoMeetup = async (student: Student) => {
+        const isConfirmed = await confirm({
+            title: "Undo Meetup?",
+            message: `Are you sure you want to undo the meetup for ${student.name}? This will delete the meetup note.`,
+            confirmText: "Undo",
+            cancelText: "Cancel",
+            variant: "destructive"
+        });
+        if (!isConfirmed) return;
+
+        try {
+            const birthdayFolder = `Birthday ${new Date().getFullYear()}`;
+            const res = await api.post('/api/gallery?action=delete_file', {
+                student_id: student.id,
+                folder_name: birthdayFolder,
+                file_name: 'anandswami say note.txt'
+            });
+
+            if (res.data && res.data.success) {
+                toast.success("Meetup status reset!");
+                setCompletedMeetupIds(prev => prev.filter(id => id.toLowerCase() !== student.id.toLowerCase()));
+            } else {
+                toast.error("Failed to reset meetup status");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to reset meetup status");
         }
     };
 
@@ -623,9 +655,19 @@ const Birthdays = () => {
                                                     <p className="text-xs font-semibold text-muted-foreground truncate">{student.mobile || 'No Mobile'}</p>
                                                     {student.mobile && (
                                                         isCompleted ? (
-                                                            <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 px-2.5 py-1.5 rounded-xl text-[10px] font-bold shrink-0 shadow-sm border border-emerald-500/10 select-none">
-                                                                <CheckSquare className="w-3.5 h-3.5 text-emerald-600" /> Meet Done
-                                                            </div>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleUndoMeetup(student);
+                                                                }}
+                                                                className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-red-500/10 text-emerald-600 hover:text-red-600 px-2.5 py-1.5 rounded-xl text-[10px] font-bold shrink-0 shadow-sm border border-emerald-500/10 hover:border-red-500/15 transition-all group"
+                                                                title="Click to undo meetup"
+                                                            >
+                                                                <CheckSquare className="w-3.5 h-3.5 text-emerald-600 group-hover:hidden" />
+                                                                <X className="w-3.5 h-3.5 text-red-600 hidden group-hover:block animate-in zoom-in-50 duration-200" />
+                                                                <span className="group-hover:hidden">Meet Done</span>
+                                                                <span className="hidden group-hover:inline">Undo Meet</span>
+                                                            </button>
                                                         ) : (
                                                             <Button
                                                                 size="sm"
