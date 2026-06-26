@@ -11,6 +11,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+import { Calendar, UploadCloud, Loader2, FolderPlus, FolderOpen } from 'lucide-react';
 
 const Birthdays = () => {
     const navigate = useNavigate();
@@ -28,6 +33,24 @@ const Birthdays = () => {
     const [isEditingSettings, setIsEditingSettings] = useState(false);
     const [lastSentDate, setLastSentDate] = useState<string | null>(null);
 
+    // Meetup states
+    const [meetupStudent, setMeetupStudent] = useState<Student | null>(null);
+    const [showMeetupDialog, setShowMeetupDialog] = useState(false);
+    const [meetingDesc, setMeetingDesc] = useState("");
+    const [meetingDate, setMeetingDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [markCompleted, setMarkCompleted] = useState(true);
+    const [savingMeetup, setSavingMeetup] = useState(false);
+
+    // Media Upload states
+    const [showUploadPrompt, setShowUploadPrompt] = useState(false);
+    const [uploadFolderMode, setUploadFolderMode] = useState<'select' | 'create'>('select');
+    const [existingFolders, setExistingFolders] = useState<string[]>([]);
+    const [selectedFolder, setSelectedFolder] = useState<string>("");
+    const [newFolderName, setNewFolderName] = useState<string>("");
+    const [uploadFile, setUploadFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [uploadStep, setUploadStep] = useState<'ask' | 'upload'>('ask');
+
     // Helpers for rendering 12hr time UI
     const [timeHourStr, timeMinuteStr] = (autoSendTime || "09:00").split(':');
     const hourNum = parseInt(timeHourStr, 10);
@@ -40,6 +63,104 @@ const Birthdays = () => {
         if (pm && h24 !== 12) h24 += 12;
         if (!pm && h24 === 12) h24 = 0;
         setAutoSendTime(`${String(h24).padStart(2, '0')}:${newMin}`);
+    };
+
+    const handleMeetupSubmit = async () => {
+        if (!meetupStudent || !meetingDesc.trim()) {
+            toast.error("Please enter a meetup description");
+            return;
+        }
+
+        try {
+            setSavingMeetup(true);
+            const newTask = {
+                title: `Yuvak Meet: ${meetupStudent.name}`,
+                dueDate: meetingDate,
+                status: markCompleted ? 'done' : 'pending',
+                category: 'Yuvak',
+                assignedTo: meetupStudent.id,
+                assignedToName: meetupStudent.name,
+                description: meetingDesc.trim(),
+                showToKaryakarta: 1,
+                createdBy: adminName
+            };
+
+            const res = await api.post('/api/tasks', newTask);
+            
+            if (res.data && res.data.success) {
+                toast.success("Meetup logged successfully!");
+                setShowMeetupDialog(false);
+
+                if (markCompleted) {
+                    // Trigger upload flow
+                    setUploadStep('ask');
+                    setShowUploadPrompt(true);
+                    setSelectedFolder("");
+                    setNewFolderName("Meetups");
+                    setUploadFile(null);
+                    setExistingFolders([]);
+                    
+                    try {
+                        const foldersRes = await api.get(`/api/gallery?action=list_folders&student_id=${meetupStudent.id}`);
+                        if (foldersRes.data.success && foldersRes.data.folders && foldersRes.data.folders.length > 0) {
+                            setExistingFolders(foldersRes.data.folders);
+                            setSelectedFolder(foldersRes.data.folders[0]);
+                            setUploadFolderMode('select');
+                        } else {
+                            setUploadFolderMode('create');
+                        }
+                    } catch (err) {
+                        setUploadFolderMode('create');
+                    }
+                }
+            } else {
+                toast.error("Failed to save meetup");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to save meetup");
+        } finally {
+            setSavingMeetup(false);
+        }
+    };
+
+    const handleUploadSubmit = async () => {
+        if (!meetupStudent || !uploadFile) {
+            toast.error("Please select a file to upload");
+            return;
+        }
+
+        const folderName = uploadFolderMode === 'select' ? selectedFolder : newFolderName.trim();
+        if (!folderName) {
+            toast.error("Please specify a folder name");
+            return;
+        }
+
+        try {
+            setUploading(true);
+            const formData = new FormData();
+            formData.append("student_id", meetupStudent.id);
+            formData.append("folder_name", folderName);
+            formData.append("file", uploadFile);
+
+            const res = await api.post("/api/gallery?action=upload", formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data"
+                }
+            });
+
+            if (res.data.success) {
+                toast.success("Photo/Video uploaded successfully!");
+                setShowUploadPrompt(false);
+            } else {
+                toast.error(res.data.error || "Upload failed");
+            }
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.response?.data?.error || "Upload failed");
+        } finally {
+            setUploading(false);
+        }
     };
 
     useEffect(() => {
@@ -475,9 +596,28 @@ const Birthdays = () => {
                                                 <span className="text-white/70 font-bold text-[10px] uppercase tracking-tighter mt-0.5">Room</span>
                                             </div>
                                         )}
-                                        <div className="overflow-hidden">
+                                        <div className="overflow-hidden flex-1 min-w-0">
                                             <h3 className="font-bold text-lg text-foreground truncate">{student.name}</h3>
-                                            <p className="text-sm font-medium text-muted-foreground truncate">{student.mobile || 'No Mobile'}</p>
+                                            <div className="flex items-center gap-2.5 mt-1 flex-wrap">
+                                                <p className="text-xs font-semibold text-muted-foreground truncate">{student.mobile || 'No Mobile'}</p>
+                                                {student.mobile && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        className="h-6 rounded-lg text-[10px] font-bold px-2 gap-1 bg-primary/10 text-primary hover:bg-primary/20 border-none shrink-0"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setMeetupStudent(student);
+                                                            setMeetingDesc("");
+                                                            setMeetingDate(new Date().toISOString().split('T')[0]);
+                                                            setMarkCompleted(true);
+                                                            setShowMeetupDialog(true);
+                                                        }}
+                                                    >
+                                                        <Users className="w-3 h-3 text-primary" /> Meet Up
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -497,7 +637,221 @@ const Birthdays = () => {
                         )}
                     </div>
                 </section>
-            </main>
+                {/* LOG MEETUP DIALOG */}
+        <Dialog open={showMeetupDialog} onOpenChange={setShowMeetupDialog}>
+          <DialogContent className="sm:max-w-md rounded-3xl p-6 border-none bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black text-foreground">Log Meetup</DialogTitle>
+              <DialogDescription>
+                Log a meeting with <span className="font-bold text-foreground">{meetupStudent?.name}</span>
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Meeting Description</Label>
+                <Textarea
+                  placeholder="What did you discuss during the meeting?"
+                  value={meetingDesc}
+                  onChange={(e) => setMeetingDesc(e.target.value)}
+                  className="min-h-[100px] rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Meeting Date</Label>
+                <Input
+                  type="date"
+                  value={meetingDate}
+                  onChange={(e) => setMeetingDate(e.target.value)}
+                  className="h-11 rounded-xl"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <Checkbox
+                  id="mark-completed"
+                  checked={markCompleted}
+                  onCheckedChange={(checked) => setMarkCompleted(!!checked)}
+                />
+                <label
+                  htmlFor="mark-completed"
+                  className="text-sm font-bold text-foreground cursor-pointer select-none"
+                >
+                  Mark as Completed (Done)
+                </label>
+              </div>
+            </div>
+
+            <DialogFooter className="mt-6 flex gap-2">
+              <Button
+                variant="outline"
+                className="rounded-xl flex-1 font-bold h-11"
+                onClick={() => setShowMeetupDialog(false)}
+                disabled={savingMeetup}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="rounded-xl flex-1 font-bold h-11 bg-primary hover:bg-primary/95 text-white"
+                onClick={handleMeetupSubmit}
+                disabled={savingMeetup || !meetingDesc.trim()}
+              >
+                {savingMeetup ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving...
+                  </>
+                ) : (
+                  "Log Meetup"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* GALLERY UPLOAD PROMPT DIALOG */}
+        <Dialog open={showUploadPrompt} onOpenChange={setShowUploadPrompt}>
+          <DialogContent className="sm:max-w-md rounded-3xl p-6 border-none bg-white">
+            {uploadStep === 'ask' ? (
+              <>
+                <DialogHeader className="text-center">
+                  <DialogTitle className="text-xl font-black text-foreground flex items-center justify-center gap-2">
+                    <Sparkles className="w-5 h-5 text-amber-500 fill-amber-500" />
+                    Upload Meetup Media?
+                  </DialogTitle>
+                  <DialogDescription className="pt-2 text-sm text-muted-foreground text-center">
+                    Would you like to upload a photo or video for your meetup with <span className="font-bold text-foreground">{meetupStudent?.name}</span>?
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex gap-3 pt-6">
+                  <Button
+                    variant="outline"
+                    className="flex-1 rounded-xl font-bold h-11"
+                    onClick={() => setShowUploadPrompt(false)}
+                  >
+                    No, Skip
+                  </Button>
+                  <Button
+                    className="flex-1 rounded-xl font-bold h-11 bg-primary hover:bg-primary/95 text-white"
+                    onClick={() => setUploadStep('upload')}
+                  >
+                    Yes, Upload
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-black text-foreground flex items-center gap-2">
+                    <UploadCloud className="w-5 h-5 text-primary" />
+                    Upload Media
+                  </DialogTitle>
+                  <DialogDescription className="sr-only">Choose a folder and file to upload</DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 pt-4">
+                  {/* Folder Selection Mode */}
+                  <div className="flex gap-2 p-1 bg-muted/40 rounded-xl border border-border/30">
+                    <button
+                      onClick={() => setUploadFolderMode('select')}
+                      disabled={existingFolders.length === 0}
+                      className={cn(
+                        "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all",
+                        uploadFolderMode === 'select'
+                          ? "bg-white text-primary shadow-sm"
+                          : "text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      )}
+                    >
+                      Select Folder
+                    </button>
+                    <button
+                      onClick={() => setUploadFolderMode('create')}
+                      className={cn(
+                        "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all",
+                        uploadFolderMode === 'create'
+                          ? "bg-white text-primary shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Create Folder
+                    </button>
+                  </div>
+
+                  {uploadFolderMode === 'select' ? (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Select Folder</label>
+                      <select
+                        value={selectedFolder}
+                        onChange={(e) => setSelectedFolder(e.target.value)}
+                        className="w-full h-11 px-3 border border-border/50 rounded-xl bg-white focus:outline-none focus:ring-2 ring-primary/20 text-sm font-semibold text-foreground"
+                      >
+                        {existingFolders.map((f) => (
+                          <option key={f} value={f}>{f}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Folder Name</label>
+                      <Input
+                        placeholder="e.g. Meetups, Birthday"
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        className="h-11 rounded-xl"
+                      />
+                    </div>
+                  )}
+
+                  {/* File Selection */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Select Photo/Video</label>
+                    <div className="border border-dashed border-border/80 rounded-2xl p-4 bg-muted/10 flex flex-col items-center justify-center text-center relative group hover:bg-muted/20 transition-all cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        disabled={uploading}
+                      />
+                      <UploadCloud className="w-8 h-8 text-muted-foreground mb-2 group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-bold text-foreground">
+                        {uploadFile ? uploadFile.name : "Click to select file"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground mt-0.5">
+                        {uploadFile ? `${(uploadFile.size / (1024 * 1024)).toFixed(2)} MB` : "Photos or Videos (Max 50MB)"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <DialogFooter className="mt-6 flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="rounded-xl flex-1 font-bold h-11"
+                    onClick={() => setUploadStep('ask')}
+                    disabled={uploading}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    className="rounded-xl flex-1 font-bold h-11 bg-primary hover:bg-primary/95 text-white"
+                    onClick={handleUploadSubmit}
+                    disabled={uploading || !uploadFile || (uploadFolderMode === 'create' && !newFolderName.trim()) || (uploadFolderMode === 'select' && !selectedFolder)}
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" /> Uploading...
+                      </>
+                    ) : (
+                      "Upload"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      </main>
         </div >
     );
 };
