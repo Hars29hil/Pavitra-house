@@ -23,9 +23,10 @@ interface Student {
 interface MediaFile {
     name: string;
     url: string;
-    type: "image" | "video";
+    type: "image" | "video" | "note";
     size: number;
     date: number;
+    content?: string;
 }
 
 export default function Photos() {
@@ -48,6 +49,12 @@ export default function Photos() {
     const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
     const [newFolderName, setNewFolderName] = useState("");
     const [creatingFolder, setCreatingFolder] = useState(false);
+
+    // Note Creation Dialog state
+    const [showCreateNoteDialog, setShowCreateNoteDialog] = useState(false);
+    const [noteTitle, setNoteTitle] = useState("");
+    const [noteContent, setNoteContent] = useState("");
+    const [savingNote, setSavingNote] = useState(false);
 
     // Upload state
     const [uploading, setUploading] = useState(false);
@@ -253,6 +260,34 @@ export default function Photos() {
         }
     };
 
+    // Note creation handler
+    const handleCreateNote = async () => {
+        if (!selectedStudent || !selectedFolder || !noteTitle.trim() || !noteContent.trim()) return;
+        try {
+            setSavingNote(true);
+            const res = await api.post("/api/gallery?action=save_note", {
+                student_id: selectedStudent.id,
+                folder_name: selectedFolder,
+                filename: noteTitle.trim(),
+                content: noteContent.trim()
+            });
+            if (res.data.success) {
+                toast.success("Note saved successfully!");
+                setNoteTitle("");
+                setNoteContent("");
+                setShowCreateNoteDialog(false);
+                loadFiles(selectedFolder);
+            } else {
+                toast.error(res.data.error || "Failed to save note");
+            }
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.response?.data?.error || "Failed to save note");
+        } finally {
+            setSavingNote(false);
+        }
+    };
+
     // Filter students by query
     const filteredStudents = students.filter(s => 
         (s.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -311,7 +346,7 @@ export default function Photos() {
                     )}
 
                     {view === "files" && (
-                        <div className="relative">
+                        <div className="flex flex-wrap gap-2">
                             <input 
                                 type="file" 
                                 id="gallery-file-input" 
@@ -334,6 +369,17 @@ export default function Photos() {
                                         <UploadCloud className="w-4 h-4" /> Upload Photo/Video
                                     </>
                                 )}
+                            </Button>
+                            <Button 
+                                variant="outline"
+                                className="rounded-xl font-bold gap-2 shadow-soft border-border/50 hover:bg-muted/50"
+                                onClick={() => {
+                                    setNoteTitle("");
+                                    setNoteContent("");
+                                    setShowCreateNoteDialog(true);
+                                }}
+                            >
+                                <FileText className="w-4 h-4" /> Create Note
                             </Button>
                         </div>
                     )}
@@ -461,14 +507,15 @@ export default function Photos() {
                                             >
                                                 {/* Thumbnail representation */}
                                                 <div className="flex-1 bg-slate-50 flex items-center justify-center overflow-hidden relative">
-                                                    {file.type === "image" ? (
+                                                    {file.type === "image" && (
                                                         <img 
                                                             src={file.url} 
                                                             alt={file.name}
                                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                             loading="lazy"
                                                         />
-                                                    ) : (
+                                                    )}
+                                                    {file.type === "video" && (
                                                         <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-white p-3 text-center">
                                                             <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-2 text-white">
                                                                 <Play className="w-6 h-6 fill-white" />
@@ -478,12 +525,23 @@ export default function Photos() {
                                                             </span>
                                                         </div>
                                                     )}
+                                                    {file.type === "note" && (
+                                                        <div className="w-full h-full bg-amber-50/50 flex flex-col p-4 text-left overflow-hidden">
+                                                            <FileText className="w-8 h-8 text-amber-600 mb-2 shrink-0" />
+                                                            <span className="text-[9px] uppercase font-extrabold tracking-widest text-amber-700/80 mb-1.5 shrink-0">
+                                                                Text Note
+                                                            </span>
+                                                            <p className="text-xs text-slate-600 font-medium line-clamp-4 leading-relaxed break-all select-none">
+                                                                {file.content || ""}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Info Bar */}
                                                 <div className="p-3 border-t bg-white flex items-center justify-between gap-2 shrink-0">
                                                     <span className="text-xs font-bold text-foreground truncate flex-1 leading-none">
-                                                        {file.name.substring(file.name.indexOf('_') + 1)}
+                                                        {file.name.substring(file.name.indexOf('_') + 1).replace('.txt', '')}
                                                     </span>
                                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <a 
@@ -566,6 +624,53 @@ export default function Photos() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+ 
+            {/* DIALOG: CREATE NOTE */}
+            <Dialog open={showCreateNoteDialog} onOpenChange={setShowCreateNoteDialog}>
+                <DialogContent className="sm:max-w-md rounded-3xl p-6 border-none bg-white">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black">Create Note</DialogTitle>
+                        <DialogDescription className="sr-only">Enter note details to save in this folder</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-3">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Note Title</label>
+                            <Input 
+                                placeholder="e.g. Anandswami Say Note, Meetup details"
+                                value={noteTitle}
+                                onChange={e => setNoteTitle(e.target.value)}
+                                className="h-11 rounded-xl focus-visible:ring-primary/20"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Note Content</label>
+                            <textarea 
+                                placeholder="Type note content here..."
+                                value={noteContent}
+                                onChange={e => setNoteContent(e.target.value)}
+                                className="w-full h-32 p-4 rounded-xl border bg-muted/30 focus:ring-2 ring-primary/20 outline-none resize-none text-sm"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="mt-6 flex gap-2">
+                        <Button 
+                            variant="outline" 
+                            className="rounded-xl flex-1 font-bold h-11"
+                            onClick={() => setShowCreateNoteDialog(false)}
+                            disabled={savingNote}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            className="rounded-xl flex-1 font-bold h-11 bg-primary hover:bg-primary/95 text-white"
+                            onClick={handleCreateNote}
+                            disabled={savingNote || !noteTitle.trim() || !noteContent.trim()}
+                        >
+                            {savingNote ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Note"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* PREVIEW LIGHTBOX DIALOG */}
             {previewFile && (
@@ -584,13 +689,14 @@ export default function Photos() {
                         className="max-w-5xl max-h-[85vh] w-full flex flex-col items-center justify-center relative gap-3"
                         onClick={e => e.stopPropagation()} // Prevent close on body click
                     >
-                        {previewFile.type === "image" ? (
+                        {previewFile.type === "image" && (
                             <img 
                                 src={previewFile.url} 
                                 alt={previewFile.name}
                                 className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl"
                             />
-                        ) : (
+                        )}
+                        {previewFile.type === "video" && (
                             <video 
                                 src={previewFile.url}
                                 controls
@@ -598,10 +704,23 @@ export default function Photos() {
                                 className="max-w-full max-h-[75vh] rounded-2xl shadow-2xl"
                             />
                         )}
-
+                        {previewFile.type === "note" && (
+                            <div className="bg-white text-slate-800 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl border-none max-h-[70vh] overflow-y-auto relative flex flex-col text-left">
+                                <div className="flex items-center gap-2 border-b pb-3 mb-4 shrink-0">
+                                    <FileText className="w-5 h-5 text-amber-600" />
+                                    <h3 className="text-base font-black text-slate-900 leading-none">
+                                        {previewFile.name.substring(previewFile.name.indexOf('_') + 1).replace('.txt', '')}
+                                    </h3>
+                                </div>
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap flex-1 text-slate-600 font-medium font-mono bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                    {previewFile.content || ""}
+                                </p>
+                            </div>
+                        )}
+ 
                         <div className="flex items-center gap-4 justify-between w-full max-w-2xl px-2">
                             <span className="text-white font-bold truncate text-sm">
-                                {previewFile.name.substring(previewFile.name.indexOf('_') + 1)}
+                                {previewFile.name.substring(previewFile.name.indexOf('_') + 1).replace('.txt', '')}
                             </span>
                             <div className="flex gap-2">
                                 <a 

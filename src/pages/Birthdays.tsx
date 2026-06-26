@@ -73,52 +73,36 @@ const Birthdays = () => {
 
         try {
             setSavingMeetup(true);
-            const newTask = {
-                title: `Yuvak Meet: ${meetupStudent.name}`,
-                dueDate: meetingDate,
-                status: markCompleted ? 'done' : 'pending',
-                category: 'Yuvak',
-                assignedTo: meetupStudent.id,
-                assignedToName: meetupStudent.name,
-                description: meetingDesc.trim(),
-                showToKaryakarta: 1,
-                createdBy: adminName
-            };
+            const birthdayFolder = `Birthday ${new Date().getFullYear()}`;
 
-            const res = await api.post('/api/tasks', newTask);
+            // Save the meetup details directly as a text note in the student's Birthday folder
+            const res = await api.post('/api/gallery?action=save_note', {
+                student_id: meetupStudent.id,
+                folder_name: birthdayFolder,
+                filename: 'anandswami say note.txt',
+                content: meetingDesc.trim()
+            });
             
             if (res.data && res.data.success) {
-                toast.success("Meetup logged successfully!");
+                toast.success("Meetup details saved!");
                 setShowMeetupDialog(false);
 
                 if (markCompleted) {
-                    // Trigger upload flow
+                    // Trigger upload flow directly to the Birthday folder
                     setUploadStep('ask');
                     setShowUploadPrompt(true);
-                    setSelectedFolder("");
-                    setNewFolderName("Meetups");
+                    setSelectedFolder(birthdayFolder);
+                    setNewFolderName(birthdayFolder);
+                    setUploadFolderMode('select');
                     setUploadFile(null);
-                    setExistingFolders([]);
-                    
-                    try {
-                        const foldersRes = await api.get(`/api/gallery?action=list_folders&student_id=${meetupStudent.id}`);
-                        if (foldersRes.data.success && foldersRes.data.folders && foldersRes.data.folders.length > 0) {
-                            setExistingFolders(foldersRes.data.folders);
-                            setSelectedFolder(foldersRes.data.folders[0]);
-                            setUploadFolderMode('select');
-                        } else {
-                            setUploadFolderMode('create');
-                        }
-                    } catch (err) {
-                        setUploadFolderMode('create');
-                    }
+                    setExistingFolders([birthdayFolder]);
                 }
             } else {
-                toast.error("Failed to save meetup");
+                toast.error("Failed to save meetup details");
             }
         } catch (error) {
             console.error(error);
-            toast.error("Failed to save meetup");
+            toast.error("Failed to save meetup details");
         } finally {
             setSavingMeetup(false);
         }
@@ -750,57 +734,11 @@ const Birthdays = () => {
                 </DialogHeader>
 
                 <div className="space-y-4 pt-4">
-                  {/* Folder Selection Mode */}
-                  <div className="flex gap-2 p-1 bg-muted/40 rounded-xl border border-border/30">
-                    <button
-                      onClick={() => setUploadFolderMode('select')}
-                      disabled={existingFolders.length === 0}
-                      className={cn(
-                        "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all",
-                        uploadFolderMode === 'select'
-                          ? "bg-white text-primary shadow-sm"
-                          : "text-muted-foreground hover:text-foreground disabled:opacity-40"
-                      )}
-                    >
-                      Select Folder
-                    </button>
-                    <button
-                      onClick={() => setUploadFolderMode('create')}
-                      className={cn(
-                        "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all",
-                        uploadFolderMode === 'create'
-                          ? "bg-white text-primary shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      Create Folder
-                    </button>
+                  <div className="p-3 bg-primary/5 border border-primary/10 rounded-2xl">
+                    <p className="text-xs text-primary font-bold">
+                      📁 Saving to folder: <span className="underline">{selectedFolder}</span>
+                    </p>
                   </div>
-
-                  {uploadFolderMode === 'select' ? (
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Select Folder</label>
-                      <select
-                        value={selectedFolder}
-                        onChange={(e) => setSelectedFolder(e.target.value)}
-                        className="w-full h-11 px-3 border border-border/50 rounded-xl bg-white focus:outline-none focus:ring-2 ring-primary/20 text-sm font-semibold text-foreground"
-                      >
-                        {existingFolders.map((f) => (
-                          <option key={f} value={f}>{f}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Folder Name</label>
-                      <Input
-                        placeholder="e.g. Meetups, Birthday"
-                        value={newFolderName}
-                        onChange={(e) => setNewFolderName(e.target.value)}
-                        className="h-11 rounded-xl"
-                      />
-                    </div>
-                  )}
 
                   {/* File Selection */}
                   <div className="space-y-1.5">
@@ -836,7 +774,7 @@ const Birthdays = () => {
                   <Button
                     className="rounded-xl flex-1 font-bold h-11 bg-primary hover:bg-primary/95 text-white"
                     onClick={handleUploadSubmit}
-                    disabled={uploading || !uploadFile || (uploadFolderMode === 'create' && !newFolderName.trim()) || (uploadFolderMode === 'select' && !selectedFolder)}
+                    disabled={uploading || !uploadFile}
                   >
                     {uploading ? (
                       <>
