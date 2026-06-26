@@ -223,36 +223,53 @@ export default function Photos() {
     // File upload handler
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!selectedStudent || !selectedFolder || !e.target.files || e.target.files.length === 0) return;
-        const file = e.target.files[0];
+        const filesArray = Array.from(e.target.files);
 
-        // Size check: e.g. 50MB limit
-        if (file.size > 50 * 1024 * 1024) {
-            toast.error("File is too large. Max size is 50MB.");
+        // Size check: e.g. 50MB limit per file
+        const oversized = filesArray.some(file => file.size > 50 * 1024 * 1024);
+        if (oversized) {
+            toast.error("One or more files are too large. Max size is 50MB per file.");
             return;
         }
 
         try {
             setUploading(true);
-            const formData = new FormData();
-            formData.append("student_id", selectedStudent.id);
-            formData.append("folder_name", selectedFolder);
-            formData.append("file", file);
+            let successCount = 0;
+            let failCount = 0;
 
-            const res = await api.post("/api/gallery?action=upload", formData, {
-                headers: {
-                    "Content-Type": "multipart/form-data"
+            for (const file of filesArray) {
+                const formData = new FormData();
+                formData.append("student_id", selectedStudent.id);
+                formData.append("folder_name", selectedFolder);
+                formData.append("file", file);
+
+                try {
+                    const res = await api.post("/api/gallery?action=upload", formData, {
+                        headers: {
+                            "Content-Type": "multipart/form-data"
+                        }
+                    });
+
+                    if (res.data.success) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                } catch (err) {
+                    failCount++;
                 }
-            });
-
-            if (res.data.success) {
-                toast.success("File uploaded successfully!");
-                loadFiles(selectedFolder);
-            } else {
-                toast.error(res.data.error || "Upload failed");
             }
+
+            if (successCount > 0) {
+                toast.success(`Successfully uploaded ${successCount} file(s)!`);
+            }
+            if (failCount > 0) {
+                toast.error(`Failed to upload ${failCount} file(s).`);
+            }
+            loadFiles(selectedFolder);
         } catch (error: any) {
             console.error(error);
-            toast.error(error.response?.data?.error || "Upload failed");
+            toast.error("Upload failed");
         } finally {
             setUploading(false);
             // Reset input value
@@ -352,6 +369,7 @@ export default function Photos() {
                                 id="gallery-file-input" 
                                 className="hidden" 
                                 accept="image/*,video/*"
+                                multiple
                                 onChange={handleFileUpload}
                                 disabled={uploading}
                             />

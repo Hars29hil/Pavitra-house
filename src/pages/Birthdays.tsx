@@ -48,7 +48,7 @@ const Birthdays = () => {
     const [existingFolders, setExistingFolders] = useState<string[]>([]);
     const [selectedFolder, setSelectedFolder] = useState<string>("");
     const [newFolderName, setNewFolderName] = useState<string>("");
-    const [uploadFile, setUploadFile] = useState<File | null>(null);
+    const [uploadFiles, setUploadFiles] = useState<File[]>([]);
     const [uploading, setUploading] = useState(false);
     const [uploadStep, setUploadStep] = useState<'ask' | 'upload'>('ask');
 
@@ -98,7 +98,7 @@ const Birthdays = () => {
                     setSelectedFolder(birthdayFolder);
                     setNewFolderName(birthdayFolder);
                     setUploadFolderMode('select');
-                    setUploadFile(null);
+                    setUploadFiles([]);
                     setExistingFolders([birthdayFolder]);
                 }
             } else {
@@ -113,8 +113,8 @@ const Birthdays = () => {
     };
 
     const handleUploadSubmit = async () => {
-        if (!meetupStudent || !uploadFile) {
-            toast.error("Please select a file to upload");
+        if (!meetupStudent || uploadFiles.length === 0) {
+            toast.error("Please select files to upload");
             return;
         }
 
@@ -124,28 +124,50 @@ const Birthdays = () => {
             return;
         }
 
+        const oversized = uploadFiles.some(file => file.size > 50 * 1024 * 1024);
+        if (oversized) {
+            toast.error("One or more files are too large. Max size is 50MB per file.");
+            return;
+        }
+
         try {
             setUploading(true);
-            const formData = new FormData();
-            formData.append("student_id", meetupStudent.id);
-            formData.append("folder_name", folderName);
-            formData.append("file", uploadFile);
+            let successCount = 0;
+            let failCount = 0;
 
-            const res = await api.post("/api/gallery?action=upload", formData, {
-                headers: {
-                    "Content-Type": "multipart/form-data"
+            for (const file of uploadFiles) {
+                const formData = new FormData();
+                formData.append("student_id", meetupStudent.id);
+                formData.append("folder_name", folderName);
+                formData.append("file", file);
+
+                try {
+                    const res = await api.post("/api/gallery?action=upload", formData, {
+                        headers: {
+                            "Content-Type": "multipart/form-data"
+                        }
+                    });
+
+                    if (res.data.success) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                } catch (err) {
+                    failCount++;
                 }
-            });
-
-            if (res.data.success) {
-                toast.success("Photo/Video uploaded successfully!");
-                setShowUploadPrompt(false);
-            } else {
-                toast.error(res.data.error || "Upload failed");
             }
+
+            if (successCount > 0) {
+                toast.success(`Successfully uploaded ${successCount} file(s)!`);
+            }
+            if (failCount > 0) {
+                toast.error(`Failed to upload ${failCount} file(s).`);
+            }
+            setShowUploadPrompt(false);
         } catch (error: any) {
             console.error(error);
-            toast.error(error.response?.data?.error || "Upload failed");
+            toast.error("Upload failed");
         } finally {
             setUploading(false);
         }
@@ -762,23 +784,36 @@ const Birthdays = () => {
 
                   {/* File Selection */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Select Photo/Video</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Select Photos/Videos</label>
                     <div className="border border-dashed border-border/80 rounded-2xl p-4 bg-muted/10 flex flex-col items-center justify-center text-center relative group hover:bg-muted/20 transition-all cursor-pointer">
                       <input
                         type="file"
                         accept="image/*,video/*"
-                        onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                        multiple
+                        onChange={(e) => setUploadFiles(Array.from(e.target.files || []))}
                         className="absolute inset-0 opacity-0 cursor-pointer"
                         disabled={uploading}
                       />
                       <UploadCloud className="w-8 h-8 text-muted-foreground mb-2 group-hover:scale-110 transition-transform" />
                       <span className="text-xs font-bold text-foreground">
-                        {uploadFile ? uploadFile.name : "Click to select file"}
+                        {uploadFiles.length > 0 ? `${uploadFiles.length} file(s) selected` : "Click to select files"}
                       </span>
                       <span className="text-[10px] text-muted-foreground mt-0.5">
-                        {uploadFile ? `${(uploadFile.size / (1024 * 1024)).toFixed(2)} MB` : "Photos or Videos (Max 50MB)"}
+                        {uploadFiles.length > 0 
+                          ? `${(uploadFiles.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)).toFixed(2)} MB total` 
+                          : "Photos or Videos (Max 50MB per file)"}
                       </span>
                     </div>
+                    {uploadFiles.length > 0 && (
+                      <div className="mt-2 max-h-32 overflow-y-auto space-y-1">
+                        {uploadFiles.map((file, i) => (
+                          <div key={i} className="flex justify-between items-center text-[10px] bg-slate-50 border border-slate-100 rounded-lg p-1.5 px-2.5 font-bold">
+                            <span className="truncate max-w-[250px]">{file.name}</span>
+                            <span className="text-muted-foreground">{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -794,7 +829,7 @@ const Birthdays = () => {
                   <Button
                     className="rounded-xl flex-1 font-bold h-11 bg-primary hover:bg-primary/95 text-white"
                     onClick={handleUploadSubmit}
-                    disabled={uploading || !uploadFile}
+                    disabled={uploading || uploadFiles.length === 0}
                   >
                     {uploading ? (
                       <>
@@ -810,7 +845,7 @@ const Birthdays = () => {
           </DialogContent>
         </Dialog>
       </main>
-        </div >
+        </div>
     );
 };
 
