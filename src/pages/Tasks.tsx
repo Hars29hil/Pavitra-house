@@ -132,29 +132,6 @@ const Tasks = () => {
     // Update DB
     try {
       await updateTask(taskId, { status: newStatus });
-      if (newStatus === 'done' && task.assignedTo) {
-        const studentId = task.assignedTo.split(',')[0].trim();
-        setTaskForUpload(task);
-        setUploadStep('ask');
-        setShowUploadPrompt(true);
-        setSelectedFolder("");
-        setNewFolderName("Meetups");
-        setUploadFile(null);
-        setExistingFolders([]);
-        
-        try {
-          const res = await api.get(`/api/gallery?action=list_folders&student_id=${studentId}`);
-          if (res.data.success && res.data.folders && res.data.folders.length > 0) {
-            setExistingFolders(res.data.folders);
-            setSelectedFolder(res.data.folders[0]);
-            setUploadFolderMode('select');
-          } else {
-            setUploadFolderMode('create');
-          }
-        } catch (err) {
-          setUploadFolderMode('create');
-        }
-      }
     } catch (e) {
       // Revert on error
       setTasks(prev =>
