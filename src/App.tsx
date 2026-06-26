@@ -19,6 +19,7 @@ import Tasks from "./pages/Tasks";
 import NotFound from "./pages/NotFound";
 import Whatsapp from "./pages/Whatsapp";
 import Tags from "./pages/Tags";
+import Photos from "./pages/Photos";
 
 import { TaskNotificationManager } from "@/components/TaskNotificationManager";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -88,6 +89,7 @@ const router = createBrowserRouter(
       <Route path="/categories" element={<ProtectedRoute allowedRoles={['admin']}><Categories /></ProtectedRoute>} />
       <Route path="/education" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Education /></ProtectedRoute>} />
       <Route path="/whatsapp" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Whatsapp /></ProtectedRoute>} />
+      <Route path="/photos" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Photos /></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta']}><Tasks /></ProtectedRoute>} />
       <Route path="/tags" element={<ProtectedRoute allowedRoles={['admin']}><Tags /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute allowedRoles={['admin', 'Karyakarta', 'Sub-Karyakarta', 'yuvak']}><Profile /></ProtectedRoute>} />

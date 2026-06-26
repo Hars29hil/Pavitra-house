@@ -169,7 +169,14 @@ const Birthdays = () => {
             }
 
             try {
-                const message = messageTemplate.replace('{name}', student.name);
+                const message = messageTemplate
+                    .replace(/{name}/gi, student.name || "")
+                    .replace(/{room}/gi, student.roomNo || "")
+                    .replace(/{mobile}/gi, student.mobile || "")
+                    .replace(/{dob}/gi, student.dob || "")
+                    .replace(/{birthday}/gi, student.dob || "")
+                    .replace(/{birthdate}/gi, student.dob || "")
+                    .replace(/{birth_date}/gi, student.dob || "");
                 await api.post('/api/send', {
                     number: student.mobile,
                     message: message
@@ -191,7 +198,14 @@ const Birthdays = () => {
         if (groupLink) {
             try {
                 const names = birthdayStudents.map(s => s.name).join(', ');
-                const groupMsg = messageTemplate.replace('{name}', names);
+                const groupMsg = messageTemplate
+                    .replace(/{name}/gi, names)
+                    .replace(/{room}/gi, "")
+                    .replace(/{mobile}/gi, "")
+                    .replace(/{dob}/gi, "")
+                    .replace(/{birthday}/gi, "")
+                    .replace(/{birthdate}/gi, "")
+                    .replace(/{birth_date}/gi, "");
                 await api.post('/api/send-group', {
                     groupLink: groupLink,
                     message: groupMsg
@@ -467,56 +481,7 @@ const Birthdays = () => {
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                                        <Button
-                                            onClick={async (e) => {
-                                                e.stopPropagation();
-                                                if (!groupLink) {
-                                                    toast.error("Please configure the WhatsApp Group Link in settings first (Clock icon)");
-                                                    return;
-                                                }
-                                                try {
-                                                    const message = messageTemplate.replace('{name}', student.name);
-                                                    toast.info(`Sending wish for ${student.name} to group...`);
-                                                    await api.post('/api/send-group', {
-                                                        groupLink: groupLink,
-                                                        message: message
-                                                    });
-                                                    toast.success(`Birthday wish for ${student.name} sent to group!`);
-                                                } catch (error) {
-                                                    toast.error(`Failed to send wish to group`);
-                                                }
-                                            }}
-                                            className="flex-1 sm:flex-none rounded-xl font-bold gap-2 border shadow-sm"
-                                            variant="outline"
-                                        >
-                                            <Users className="w-4 h-4" /> Send to Group
-                                        </Button>
-                                        <Button
-                                            onClick={async (e) => {
-                                                e.stopPropagation();
-                                                if (!student.mobile) {
-                                                    toast.error("No mobile number found");
-                                                    return;
-                                                }
-                                                try {
-                                                    const message = messageTemplate.replace('{name}', student.name);
-                                                    toast.info(`Sending wish to ${student.name}...`);
 
-                                                    await api.post('/api/send', {
-                                                        number: student.mobile,
-                                                        message: message
-                                                    });
-                                                    toast.success(`Birthday wish sent to ${student.name}!`);
-                                                } catch (error) {
-                                                    toast.error(`Failed to send wish to ${student.name}`);
-                                                }
-                                            }}
-                                            className="flex-1 sm:flex-none rounded-xl font-bold gap-2 bg-primary text-white hover:bg-primary/90 shadow-md"
-                                        >
-                                            <Send className="w-4 h-4" /> Send Wish
-                                        </Button>
-                                    </div>
                                 </div>
                             ))
                         ) : (

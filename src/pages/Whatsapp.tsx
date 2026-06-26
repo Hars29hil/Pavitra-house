@@ -46,6 +46,43 @@ export default function Whatsapp() {
     const [groupLink, setGroupLink] = useState("");
     const [isSavingGroup, setIsSavingGroup] = useState(false);
 
+    // Pairing Code Connection States
+    const [phoneNumber, setPhoneNumber] = useState("");
+    const [pairingCode, setPairingCode] = useState<string | null>(null);
+    const [requestingCode, setRequestingCode] = useState(false);
+
+    const handleGetPairingCode = async () => {
+        if (!phoneNumber) {
+            toast.error("Please enter a phone number");
+            return;
+        }
+        try {
+            setRequestingCode(true);
+            setPairingCode(null);
+            const res = await api.post('/api/connect', { phoneNumber });
+            if (res.data.success && res.data.pairingCode) {
+                setPairingCode(res.data.pairingCode);
+                toast.success("Pairing code generated successfully!");
+            } else if (res.data.success && res.data.message === "Session is already connected.") {
+                setConnected(true);
+                toast.success("Session is already connected!");
+            } else {
+                toast.error(res.data.error || "Failed to generate pairing code");
+            }
+        } catch (error: any) {
+            console.error("Pairing Code Error:", error);
+            const errMsg = error.response?.data?.error || "Error connecting to server";
+            toast.error(errMsg);
+        } finally {
+            setRequestingCode(false);
+        }
+    };
+
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPhoneNumber(e.target.value);
+        if (pairingCode) setPairingCode(null);
+    };
+
     const handleReconnect = async () => {
         try {
             setLoading(true);
@@ -278,11 +315,14 @@ export default function Whatsapp() {
             try {
                 const formLink = student.mobile ? `https://pavitra-house.vercel.app/self-update/${student.mobile.trim()}` : "";
                 const personalizedMessage = message
-                    .replace(/{name}/g, student.name || "")
-                    .replace(/{room}/g, student.roomNo || "")
-                    .replace(/{mobile}/g, student.mobile || "")
-                    .replace(/{dob}/g, student.dob || "")
-                    .replace(/{form_link}/g, formLink);
+                    .replace(/{name}/gi, student.name || "")
+                    .replace(/{room}/gi, student.roomNo || "")
+                    .replace(/{mobile}/gi, student.mobile || "")
+                    .replace(/{dob}/gi, student.dob || "")
+                    .replace(/{birthday}/gi, student.dob || "")
+                    .replace(/{birthdate}/gi, student.dob || "")
+                    .replace(/{birth_date}/gi, student.dob || "")
+                    .replace(/{form_link}/gi, formLink);
 
                 const res = await api.post('/api/send', {
                     number: student.mobile,
@@ -326,11 +366,14 @@ export default function Whatsapp() {
                 if (student) {
                     const formLink = student.mobile ? `https://pavitra-house.vercel.app/self-update/${student.mobile.trim()}` : "";
                     finalMessage = message
-                        .replace(/{name}/g, student.name || "")
-                        .replace(/{room}/g, student.roomNo || "")
-                        .replace(/{mobile}/g, student.mobile || "")
-                        .replace(/{dob}/g, student.dob || "")
-                        .replace(/{form_link}/g, formLink);
+                        .replace(/{name}/gi, student.name || "")
+                        .replace(/{room}/gi, student.roomNo || "")
+                        .replace(/{mobile}/gi, student.mobile || "")
+                        .replace(/{dob}/gi, student.dob || "")
+                        .replace(/{birthday}/gi, student.dob || "")
+                        .replace(/{birthdate}/gi, student.dob || "")
+                        .replace(/{birth_date}/gi, student.dob || "")
+                        .replace(/{form_link}/gi, formLink);
                 }
             }
 
@@ -577,90 +620,50 @@ export default function Whatsapp() {
                             </div>
                         ) : (
                             <div className="space-y-4 p-4 bg-white/40 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm">
-                                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-600 font-semibold text-sm text-center">
-                                    Scan QR Code to Connect
+                                {/* Option 1: Link with Phone Number (Pairing Code) */}
+                                <div className="space-y-3">
+                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                                        Link with Phone Number (Pairing Code)
+                                    </Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            type="text"
+                                            placeholder="e.g. 919773134116"
+                                            value={phoneNumber}
+                                            onChange={handlePhoneChange}
+                                            disabled={requestingCode}
+                                            className="rounded-xl h-11"
+                                        />
+                                        <Button
+                                            onClick={handleGetPairingCode}
+                                            disabled={requestingCode || !phoneNumber}
+                                            className="rounded-xl h-11"
+                                        >
+                                            {requestingCode ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                "Get Code"
+                                            )}
+                                        </Button>
+                                    </div>
+                                    {pairingCode && (
+                                        <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl text-center space-y-2">
+                                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                                                Your Pairing Code
+                                            </p>
+                                            <p className="text-2xl font-mono font-bold tracking-widest text-primary">
+                                                {pairingCode}
+                                            </p>
+                                            <p className="text-[10px] text-muted-foreground leading-normal px-2">
+                                                Open WhatsApp &gt; Linked Devices &gt; Link a Device &gt; Link with phone number instead, then enter this code.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
-                                {qr ? (
-                                    <div className="space-y-4">
-                                        <img src={qr} alt="QR Code" className="w-48 h-48 mx-auto object-contain rounded-xl border-4 border-white shadow-md bg-white" />
-                                        <div className="flex flex-col gap-2 w-full">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="w-full rounded-xl h-11"
-                                                onClick={handleReconnect}
-                                            >
-                                                Refresh QR / Reconnect
-                                            </Button>
-                                            <button
-                                                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors underline bg-transparent border-none cursor-pointer"
-                                                onClick={handleResetSession}
-                                            >
-                                                Stuck? Hard Reset Session
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4 text-center">
-                                        <div className="w-48 h-48 mx-auto flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
-                                            <Loader2 className="w-8 h-8 animate-spin text-slate-400 mb-2" />
-                                            <span className="text-xs text-slate-400">Loading QR...</span>
-                                        </div>
-                                        <div className="flex flex-col gap-2 w-full">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="w-full rounded-xl h-11"
-                                                onClick={handleReconnect}
-                                            >
-                                                Force Re-initialize
-                                            </Button>
-                                            <button
-                                                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors underline bg-transparent border-none cursor-pointer"
-                                                onClick={handleResetSession}
-                                            >
-                                                Still stuck? Reset Session
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         )}
                     </div>
 
-                    {/* Group Settings Card */}
-                    <div className="p-6 glass-card rounded-3xl shadow-soft border-white/40">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-lg flex items-center gap-2">
-                                <Users className="w-5 h-5 text-primary" />
-                                Group Settings
-                            </h3>
-                        </div>
-                        <div className="space-y-3">
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">WhatsApp Group Link</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        placeholder="https://chat.whatsapp.com/..."
-                                        value={groupLink}
-                                        onChange={(e) => setGroupLink(e.target.value)}
-                                        className="h-11 rounded-xl bg-white/50"
-                                    />
-                                    <Button
-                                        size="sm"
-                                        className="rounded-xl h-11 px-4"
-                                        onClick={saveGroupLinkSetting}
-                                        disabled={isSavingGroup}
-                                    >
-                                        {isSavingGroup ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
-                                    </Button>
-                                </div>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground px-1">
-                                Enter the invite link of the group you want to send messages to.
-                            </p>
-                        </div>
-                    </div>
 
                     {/* Compose Message */}
                     <div className="p-6 glass-card rounded-3xl shadow-soft border-white/40 flex flex-col gap-4">

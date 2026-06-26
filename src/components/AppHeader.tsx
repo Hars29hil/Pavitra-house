@@ -31,6 +31,7 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
     ] : [
       { path: '/dashboard', label: 'All Yuvak', icon: LayoutDashboard },
       { path: '/birthdays', label: 'Birthdays', icon: Cake },
+      { path: '/photos', label: 'Photos', icon: FolderOpen },
       ...(isAdmin ? [
         { path: '/update', label: 'Update', icon: RefreshCw },
         { path: '/tasks', label: 'Tasks', icon: CheckSquare },
