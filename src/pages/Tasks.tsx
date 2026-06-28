@@ -7,7 +7,7 @@ import { Task, Student } from '@/types';
 import { Input } from '@/components/ui/input';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { CreateYuvakTaskDialog } from '@/components/CreateYuvakTaskDialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { getTasks, addTask, updateTask, deleteTask, getStudents, getCategories, Karyakarta } from '@/lib/store';
@@ -314,6 +314,7 @@ const Tasks = () => {
               >
                 <TaskItem
                   task={task}
+                  students={students}
                   onToggle={() => toggleTask(task.id)}
                   onEdit={() => {
                     setTaskToEdit(task);

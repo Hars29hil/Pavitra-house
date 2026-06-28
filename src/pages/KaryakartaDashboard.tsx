@@ -514,7 +514,7 @@ const KaryakartaDashboard = () => {
 
             {/* Collapsible Filters Panel */}
             {showFilters && (
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-muted/10 p-4 rounded-2xl border border-border/20 animate-slide-down">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-muted/10 p-4 rounded-2xl border border-border/20 animate-slide-down">
                 {/* College Filter */}
                 <div className="col-span-1">
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 block">Filter by College</label>

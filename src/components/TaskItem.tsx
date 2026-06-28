@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Check, Tag, Edit2, Trash2, Loader2 } from 'lucide-react';
-import { Task } from '@/types';
+import { Task, Student } from '@/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,10 +17,11 @@ interface TaskItemProps {
   onToggle?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  students?: Student[];
 }
 
-export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) => {
-  const { adminName } = useAuth();
+export const TaskItem = ({ task, onToggle, onEdit, onDelete, students }: TaskItemProps) => {
+  const { adminName, adminRole } = useAuth();
   const [showDetails, setShowDetails] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
@@ -39,6 +40,54 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
 
   const isPending = task.status === 'pending';
   const canToggle = !task.createdBy || task.createdBy.trim().toLowerCase() === adminName.trim().toLowerCase();
+
+  const formatName = (name: string) => {
+    if (!name) return '';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 3) {
+      const last = parts.shift();
+      return [...parts, last].join(' ');
+    }
+    return name;
+  };
+
+  const isYuvakMeet = task.title.startsWith('Yuvak Meet:');
+  let displayTitle = task.title;
+  let showCreator = !!task.createdBy;
+  let customBadge = null;
+  let formattedAssignedToName = task.assignedToName ? formatName(task.assignedToName) : '';
+
+  if (isYuvakMeet) {
+    const parts = task.title.split(': ');
+    if (parts.length > 1) {
+      const originalName = parts[1];
+      const formattedName = formatName(originalName);
+      
+      if (adminRole === 'admin') {
+        displayTitle = `Yuvak Meet: ${formattedName}`;
+      } else {
+        displayTitle = 'Yuvak Meet';
+        showCreator = false;
+
+        let roomNo = '';
+        if (students && task.assignedTo) {
+          const assignedIds = task.assignedTo.split(',').map(id => id.trim());
+          const student = students.find(s => s.id === assignedIds[0]);
+          if (student) {
+            roomNo = student.roomNo;
+          }
+        }
+        
+        customBadge = (
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 uppercase tracking-tight whitespace-nowrap">
+              👤 {formattedName} {roomNo ? `(${roomNo})` : ''}
+            </span>
+          </div>
+        );
+      }
+    }
+  }
 
   return (
     <>
@@ -74,9 +123,10 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
               !isPending ? "text-muted-foreground line-through decoration-muted-foreground/30" : "text-foreground"
             )}
           >
-            {task.title}
+            {displayTitle}
           </h3>
-          {task.createdBy && (
+          {customBadge}
+          {showCreator && !customBadge && (
             <div className="flex items-center gap-1.5 mt-1">
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-tight whitespace-nowrap">
                 ✍️ By: {task.createdBy}
@@ -142,7 +192,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
           <div className="space-y-4 pt-3">
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Title</label>
-              <h4 className="text-lg font-black text-foreground mt-0.5">{task.title}</h4>
+              <h4 className="text-lg font-black text-foreground mt-0.5">{displayTitle}</h4>
             </div>
 
             {task.description && (
@@ -190,7 +240,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
               <div>
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1">Assigned Yuvaks</label>
                 <div className="flex flex-wrap gap-1.5 mt-1">
-                  {task.assignedToName.split(',').map((name, idx) => (
+                  {formattedAssignedToName.split(',').map((name, idx) => (
                     <span key={idx} className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
                       👤 {name.trim()}
                     </span>

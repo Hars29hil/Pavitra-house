@@ -517,7 +517,7 @@ export default function Education() {
                         })()}
 
                         {/* Filters */}
-                        <div className="p-4 flex gap-2 border-b bg-slate-50/50">
+                        <div className="p-4 flex flex-col sm:flex-row gap-2 border-b bg-slate-50/50">
                             <div className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 <Input placeholder="Search students..." className="pl-9 h-9" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
