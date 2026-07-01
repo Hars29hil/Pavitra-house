@@ -13,7 +13,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useToast } from '@/hooks/use-toast';
-import { getStudents, addStudent, updateStudent, upsertStudents, getCategories, updateCategory } from '@/lib/store';
+import { getStudents, addStudent, updateStudent, upsertStudents, getCategories, updateCategory, deleteStudent } from '@/lib/store';
 import { Student } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { BulkUpdate } from '@/components/BulkUpdate';
@@ -645,9 +645,14 @@ const AddStudent = () => {
                 }]}
                 onUpdate={async (newStudents) => {
                   try {
+                    toast({
+                      title: "Updating database...",
+                      description: "Please wait while the data is being updated.",
+                    });
+
                     await upsertStudents(newStudents);
                     toast({
-                      title: "Bulk Add Successful",
+                      title: "Bulk Update Successful",
                       description: `Added/Updated ${newStudents.length} Yuvaks.`,
                     });
                     navigate('/dashboard');

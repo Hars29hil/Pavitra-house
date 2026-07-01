@@ -9,9 +9,10 @@ import { Student } from '@/types';
 import { StudentListItem } from '@/components/StudentListItem';
 import { BulkUpdate } from '@/components/BulkUpdate';
 import { toast } from 'sonner';
-import { getStudents, deleteStudent, upsertStudents } from '@/lib/store';
+import { getStudents, deleteStudent, upsertStudents, getAllStudentResults } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { useConfirm } from '@/contexts/ConfirmationContext';
+import { Sparkles, Loader2 } from 'lucide-react';
 
 const Update = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const Update = () => {
   const [activeTab, setActiveTab] = useState('single');
   const [searchQuery, setSearchQuery] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
+  const [isCleaning, setIsCleaning] = useState(false);
 
   const [showAlumni, setShowAlumni] = useState(false);
 
@@ -80,12 +82,103 @@ const Update = () => {
 
   const handleBulkUpdate = async (updatedStudents: Student[]) => {
     try {
+      const toastId = toast.loading('Updating database... this may take a moment.');
       await upsertStudents(updatedStudents);
-      setStudents(updatedStudents); // Ideally fetch fresh
+      await fetchStudents(); 
       setActiveTab('single');
-      toast.success('List updated. Switched to view mode.');
+      toast.success('Database updated successfully. Switched to view mode.', { id: toastId });
     } catch (error) {
-      toast.error('Failed to bulk update');
+      toast.error('Failed to update database');
+    }
+  };
+
+  const handleCleanDuplicates = async () => {
+    const isConfirmed = await confirm({
+      title: "Clean Duplicates?",
+      message: "This will scan for duplicate students (same name and room number) and remove the empty ones, keeping the one with result history. This action cannot be undone.",
+      confirmText: "Clean Now",
+      cancelText: "Cancel",
+      variant: "destructive"
+    });
+
+    if (!isConfirmed) return;
+
+    try {
+      setIsCleaning(true);
+      const toastId = toast.loading('Analyzing duplicates...');
+      
+      // 1. Fetch all results to know who has results
+      const allResults = await getAllStudentResults();
+      const studentsWithResults = new Set(allResults.map(r => r.studentId));
+
+      // 2. Group students by name + roomNo
+      const groups = new Map<string, Student[]>();
+      for (const s of students) {
+        // use mobile as fallback if name is somehow missing
+        const key = `${s.name?.trim().toLowerCase() || s.mobile}-${s.roomNo?.trim().toLowerCase()}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(s);
+      }
+
+      // 3. Find duplicates
+      const toDelete: string[] = [];
+      
+      for (const group of groups.values()) {
+        if (group.length > 1) {
+          // Sort them so the "best" one is first
+          group.sort((a, b) => {
+            const aHasResult = studentsWithResults.has(a.id) ? 1 : 0;
+            const bHasResult = studentsWithResults.has(b.id) ? 1 : 0;
+            if (aHasResult !== bHasResult) {
+               return bHasResult - aHasResult; // descending
+            }
+            
+            // If neither has results (or both have), keep the one with a profileImage or mobile
+            const aScore = (a.mobile ? 1 : 0) + (a.profileImage ? 1 : 0) + (a.email ? 1 : 0);
+            const bScore = (b.mobile ? 1 : 0) + (b.profileImage ? 1 : 0) + (b.email ? 1 : 0);
+            if (aScore !== bScore) {
+               return bScore - aScore;
+            }
+            // fallback to createdAt
+            return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+          });
+          
+          // The first one is kept, the rest are marked for deletion
+          for (let i = 1; i < group.length; i++) {
+            toDelete.push(group[i].id);
+          }
+        }
+      }
+
+      if (toDelete.length === 0) {
+        toast.success('No duplicates found!', { id: toastId });
+        setIsCleaning(false);
+        return;
+      }
+
+      toast.loading(`Found ${toDelete.length} duplicates. Deleting carefully to avoid server overload...`, { id: toastId });
+
+      // 4. Delete sequentially with delay
+      let deletedCount = 0;
+      for (const id of toDelete) {
+        try {
+          await deleteStudent(id);
+          deletedCount++;
+          if (deletedCount % 5 === 0) {
+             toast.loading(`Deleted ${deletedCount} of ${toDelete.length}...`, { id: toastId });
+          }
+          await new Promise(r => setTimeout(r, 200)); // 200ms delay to avoid 500 error
+        } catch(e) {
+          console.error("Failed to delete", id, e);
+        }
+      }
+
+      await fetchStudents();
+      toast.success(`Successfully removed ${deletedCount} duplicate records!`, { id: toastId });
+    } catch (error) {
+      toast.error('An error occurred while cleaning duplicates');
+    } finally {
+      setIsCleaning(false);
     }
   };
 
@@ -95,12 +188,24 @@ const Update = () => {
 
       <main className="p-4 md:p-6 space-y-8 max-w-5xl mx-auto">
         {/* Header Section */}
-        <div className="space-y-1">
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
-            <Database className="w-8 h-8 text-primary" />
-            Update
-          </h2>
-          <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs">Update or remove hostel records</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
+              <Database className="w-8 h-8 text-primary" />
+              Update
+            </h2>
+            <p className="text-muted-foreground font-medium uppercase tracking-widest text-xs">Update or remove hostel records</p>
+          </div>
+          
+          <Button 
+            onClick={handleCleanDuplicates}
+            disabled={isCleaning}
+            variant="outline"
+            className="rounded-xl border-primary/20 text-primary hover:bg-primary/5 shadow-sm"
+          >
+            {isCleaning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+            Clean Duplicates
+          </Button>
         </div>
 
         <Tabs defaultValue="single" value={activeTab} onValueChange={setActiveTab} className="w-full">

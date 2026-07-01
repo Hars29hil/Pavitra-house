@@ -129,7 +129,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, students }: TaskIte
           {showCreator && !customBadge && (
             <div className="flex items-center gap-1.5 mt-1">
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-tight whitespace-nowrap">
-                ✍️ By: {task.createdBy}
+                ✍️ By: {task.createdBy ? task.createdBy.trim().split(' ')[0] : ''} {adminRole === 'admin' && task.assignedToName ? `To: ${task.assignedToName.split(',').map(n => n.trim().split(' ')[0]).join(', ')}` : ''}
               </span>
             </div>
           )}
@@ -253,7 +253,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, students }: TaskIte
               <div>
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1">Created By</label>
                 <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 uppercase tracking-tight">
-                  ✍️ {task.createdBy}
+                  ✍️ {task.createdBy.trim().split(' ')[0]}
                 </span>
               </div>
             )}

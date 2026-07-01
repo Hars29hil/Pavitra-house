@@ -18,8 +18,8 @@ export const BulkUpdate = ({ students, onUpdate }: BulkUpdateProps) => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Students');
 
-        // Exclude 'id' and 'createdAt' fields from export
-        const excludedFields = ['id', 'createdAt'];
+        // Exclude 'createdAt' fields from export, keep 'id' to prevent duplicates on upload
+        const excludedFields = ['createdAt'];
 
         // Dynamically create columns from the first student object if available
         if (students.length > 0) {
@@ -141,8 +141,18 @@ export const BulkUpdate = ({ students, onUpdate }: BulkUpdateProps) => {
                     return;
                 }
 
-                // Auto-generate id, createdAt, and calculate age for each student
+                // Auto-generate id (if missing), createdAt, and calculate age for each student
                 const processedData = data.map((student) => {
+                    // Try to find existing student by mobile, email, or name to prevent duplicates from old Excel files
+                    const existingStudent = students.find(s => 
+                        (s.id && student.id && s.id === student.id) ||
+                        (s.mobile && student.mobile && s.mobile === student.mobile) ||
+                        (s.email && student.email && s.email === student.email) ||
+                        (s.name && student.name && s.name === student.name && s.roomNo === student.roomNo)
+                    );
+                    
+                    const studentId = existingStudent ? existingStudent.id : (student.id || crypto.randomUUID());
+
                     // Normalize DOB if it's a Date object from Excel
                     let dobStr = student.dob;
                     if (student.dob instanceof Date) {
@@ -155,8 +165,8 @@ export const BulkUpdate = ({ students, onUpdate }: BulkUpdateProps) => {
                     return {
                         ...student,
                         dob: dobStr,
-                        id: crypto.randomUUID(),
-                        createdAt: new Date().toISOString(),
+                        id: studentId,
+                        createdAt: existingStudent ? existingStudent.createdAt : new Date().toISOString(),
                         age: age,
                     };
                 });
