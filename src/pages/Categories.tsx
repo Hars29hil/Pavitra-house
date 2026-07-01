@@ -120,28 +120,40 @@ const Categories = () => {
     return ranges;
   }, [students]);
 
+  const resolvedKaryakartas = useMemo(() => {
+    return karyakartas.map(cat => {
+      if (cat.studentId) {
+        const student = students.find(s => s.id === cat.studentId);
+        if (student) {
+          return { ...cat, name: student.name };
+        }
+      }
+      return cat;
+    });
+  }, [karyakartas, students]);
+
   const filteredStudentsForSearch = useMemo(() => {
     if (!selectedKaryakartaForDetail) return [];
 
     let availableStudents = students;
 
     const allMainKaryakartaNames = new Set(
-      karyakartas.filter(k => k.type === 'main').map(k => k.name.trim().toLowerCase())
+      resolvedKaryakartas.filter(k => k.type === 'main').map(k => k.name.trim().toLowerCase())
     );
 
     const allSubKaryakartaNames = new Set(
-      karyakartas.filter(k => k.type === 'sub').map(k => k.name.trim().toLowerCase())
+      resolvedKaryakartas.filter(k => k.type === 'sub').map(k => k.name.trim().toLowerCase())
     );
 
     if (selectedKaryakartaForDetail.type === 'sub') {
       // For Sub Karyakarta: Only show Yuvaks assigned to their parent Main Karyakarta
-      const parent = karyakartas.find(k => k.id === selectedKaryakartaForDetail.parentId);
+      const parent = resolvedKaryakartas.find(k => k.id === selectedKaryakartaForDetail.parentId);
       const parentStudentIds = parent?.studentIds || [];
       availableStudents = availableStudents.filter(student => parentStudentIds.includes(student.id));
 
       // AND filter out Yuvaks already assigned to any Sub Karyakarta
       const allSubStudentIds = new Set<string>();
-      karyakartas.forEach(k => {
+      resolvedKaryakartas.forEach(k => {
         if (k.type === 'sub') {
           (k.studentIds || []).forEach(id => allSubStudentIds.add(id));
         }
@@ -158,7 +170,7 @@ const Categories = () => {
       // A Yuvak can only be assigned to ONE Main Karyakarta.
       // Filter out students who are already assigned to ANY Main Karyakarta
       const allMainStudentIds = new Set<string>();
-      karyakartas.forEach(k => {
+      resolvedKaryakartas.forEach(k => {
         if (k.type === 'main') {
           (k.studentIds || []).forEach(id => allMainStudentIds.add(id));
         }
@@ -168,7 +180,7 @@ const Categories = () => {
       // Filter out Main Karyakartas (Wing Commanders)
       // Filter out Sub-Karyakartas (Sub-Wing Commanders) EXCEPT those who belong to this Main Karyakarta
       const mySubKaryakartaNames = new Set(
-        karyakartas
+        resolvedKaryakartas
           .filter(k => k.type === 'sub' && k.parentId === selectedKaryakartaForDetail.id)
           .map(k => k.name.trim().toLowerCase())
       );
@@ -196,27 +208,34 @@ const Categories = () => {
         return selectedRoomRange.rooms.includes(room);
       }
     });
-  }, [students, karyakartas, selectedKaryakartaForDetail, selectedRoomRange]);
+  }, [students, resolvedKaryakartas, selectedKaryakartaForDetail, selectedRoomRange]);
 
   // Filtered students for adding a new Main Karyakarta
   // Should not show anyone who is already a Main Karyakarta or Sub-Karyakarta
   const studentsAvailableForMainKaryakarta = useMemo(() => {
-    const existingNames = new Set(karyakartas.map(k => k.name.trim().toLowerCase()));
+    const existingNames = new Set(resolvedKaryakartas.map(k => k.name.trim().toLowerCase()));
     return students.filter(student => !existingNames.has(student.name.trim().toLowerCase()));
-  }, [students, karyakartas]);
+  }, [students, resolvedKaryakartas]);
 
   // Filtered students for adding a new Sub-Karyakarta
   // Should not show anyone who is already a Main Karyakarta or Sub-Karyakarta
   const studentsAvailableForSubKaryakarta = useMemo(() => {
-    const existingNames = new Set(karyakartas.map(k => k.name.trim().toLowerCase()));
+    const existingNames = new Set(resolvedKaryakartas.map(k => k.name.trim().toLowerCase()));
     return students.filter(student => !existingNames.has(student.name.trim().toLowerCase()));
-  }, [students, karyakartas]);
+  }, [students, resolvedKaryakartas]);
 
   // Tasks related to the selected Karyakarta (for both detail view and tasks modal)
   const karyakartaTasks = useMemo(() => {
     if (!selectedKaryakartaForDetail) return [];
     const assignedIds = selectedKaryakartaForDetail.studentIds || [];
-    const nameLower = selectedKaryakartaForDetail.name.trim().toLowerCase();
+    
+    // Resolve name from student database dynamically if linked
+    let catName = selectedKaryakartaForDetail.name;
+    if (selectedKaryakartaForDetail.studentId) {
+      const student = students.find(s => s.id === selectedKaryakartaForDetail.studentId);
+      if (student) catName = student.name;
+    }
+    const nameLower = catName.trim().toLowerCase();
     
     return tasks.filter(task => {
       const isCreatedBy = task.createdBy && task.createdBy.trim().toLowerCase() === nameLower;
@@ -224,7 +243,7 @@ const Categories = () => {
       const isAssignedToTheirYuvak = taskStudentIds.some(id => assignedIds.includes(id));
       return isCreatedBy || isAssignedToTheirYuvak;
     });
-  }, [selectedKaryakartaForDetail, tasks]);
+  }, [selectedKaryakartaForDetail, tasks, students]);
 
   // Fetch Data on mount and setup polling
   useEffect(() => {
@@ -281,6 +300,7 @@ const Categories = () => {
     const newKaryakarta: Karyakarta = {
       id: crypto.randomUUID(),
       name: selectedMainStudent.name,
+      studentId: selectedMainStudent.id,
       studentIds: [],
       type: 'main'
     };
@@ -310,6 +330,7 @@ const Categories = () => {
     const newKaryakarta: Karyakarta = {
       id: crypto.randomUUID(),
       name: selectedSubStudent.name,
+      studentId: selectedSubStudent.id,
       studentIds: [],
       type: 'sub',
       parentId: selectedParentId
@@ -634,7 +655,7 @@ const Categories = () => {
                   <h3 className="font-bold text-2xl text-foreground mt-8 mb-4 border-b pb-2">Karyakartas</h3>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {mainKaryakartas.map((main) => {
-                      const subs = karyakartas.filter(k => k.parentId === main.id);
+                      const subs = resolvedKaryakartas.filter(k => k.parentId === main.id);
 
                       return (
                         <div
@@ -651,7 +672,7 @@ const Categories = () => {
                               <div>
                                 <h4 className="text-xl font-bold text-foreground group-hover/main:text-primary transition-colors">{main.name}</h4>
                                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mt-1">
-                                  Main Karyakarta • {main.studentIds?.length || 0} Yuvaks
+                                  Main Karyakarta • {main.studentIds ? main.studentIds.filter(id => students.some(s => s.id === id)).length : 0} Yuvaks
                                 </p>
                               </div>
                             </div>
@@ -687,7 +708,7 @@ const Categories = () => {
                                       <div>
                                         <h5 className="font-bold text-foreground group-hover/sub:text-primary transition-colors">{sub.name}</h5>
                                         <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                                          Sub Karyakarta • {sub.studentIds?.length || 0} Yuvaks
+                                          Sub Karyakarta • {sub.studentIds ? sub.studentIds.filter(id => students.some(s => s.id === id)).length : 0} Yuvaks
                                         </p>
                                       </div>
                                     </div>

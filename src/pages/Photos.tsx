@@ -18,6 +18,7 @@ interface Student {
     room_no: string;
     mobile: string;
     is_alumni: boolean;
+    profileImage?: string;
 }
 
 interface MediaFile {
@@ -435,15 +436,31 @@ export default function Photos() {
                                                 className="p-4 bg-white border border-border/50 rounded-2xl shadow-soft hover:shadow-soft-lg transition-all duration-300 flex items-center justify-between cursor-pointer group hover:border-primary/20"
                                             >
                                                 <div className="flex items-center gap-3.5 min-w-0">
-                                                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex flex-col items-center justify-center shrink-0">
-                                                        <span className="text-primary font-bold text-sm leading-none">{student.room_no || 'N/A'}</span>
-                                                        <span className="text-primary/70 font-bold text-[8px] uppercase mt-0.5">Room</span>
-                                                    </div>
+                                                    {student.profileImage ? (
+                                                        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 shadow-soft">
+                                                            <img 
+                                                                src={student.profileImage} 
+                                                                alt={student.name} 
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => {
+                                                                    // Fallback if image fails to load
+                                                                    (e.target as HTMLImageElement).src = '';
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex flex-col items-center justify-center shrink-0">
+                                                            <span className="text-primary font-bold text-sm leading-none">{student.room_no || 'N/A'}</span>
+                                                            <span className="text-primary/70 font-bold text-[8px] uppercase mt-0.5">Room</span>
+                                                        </div>
+                                                    )}
                                                     <div className="min-w-0">
                                                         <p className="font-bold text-base text-foreground truncate group-hover:text-primary transition-colors">
                                                             {student.name}
                                                         </p>
-                                                        <p className="text-xs text-muted-foreground truncate">{student.mobile || "No Mobile"}</p>
+                                                        <p className="text-xs text-muted-foreground truncate">
+                                                            {student.mobile || "No Mobile"} • Room {student.room_no || 'N/A'}
+                                                        </p>
                                                     </div>
                                                 </div>
                                                 <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-all shrink-0 group-hover:translate-x-1" />

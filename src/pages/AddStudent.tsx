@@ -403,7 +403,6 @@ const AddStudent = () => {
     { name: 'interest', label: 'Interests', type: 'text', placeholder: 'Sports, Music' },
     { name: 'linkedin', label: 'LinkedIn URL', type: 'text', placeholder: 'https://linkedin.com/in/username' },
     { name: 'socialLink', label: 'Social Media URL (Instagram, Facebook, X, etc.)', type: 'text', placeholder: 'https://instagram.com/username' },
-    { name: 'notifications_enabled', label: 'Enable Notifications', type: 'notifications_toggle', placeholder: '' },
   ];
 
   return (

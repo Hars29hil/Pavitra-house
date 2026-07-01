@@ -34,23 +34,29 @@ const WHATSAPP_ENDPOINTS = [
     '/api/send-custom-bulk'
 ];
 
-// Add request interceptor to dynamically add ngrok header and route WhatsApp requests
+// Add request interceptor to route WhatsApp requests
 api.interceptors.request.use(
     (config) => {
         const url = config.url || "";
-        const baseURL = config.baseURL || "";
         
         // If the URL is one of the WhatsApp endpoints, route it to the darkslateblue domain
         const isWhatsappEndpoint = WHATSAPP_ENDPOINTS.some(endpoint => url.startsWith(endpoint));
         if (isWhatsappEndpoint) {
             config.baseURL = "https://darkslateblue-sandpiper-851386.hostingersite.com";
+            
+            // Append session parameter for multi-session support
+            const adminName = localStorage.getItem('adminName') || 'default';
+            const adminRole = localStorage.getItem('adminRole') || '';
+            const sessionName = adminRole === 'admin' ? 'admin' : adminName.trim().replace(/\s+/g, '_');
+            
+            config.params = {
+                ...config.params,
+                session: sessionName
+            };
         } else {
             config.baseURL = import.meta.env.VITE_API_URL || "https://lightgoldenrodyellow-stingray-297524.hostingersite.com";
         }
 
-        if (url.includes("ngrok") || baseURL.includes("ngrok") || config.baseURL.includes("ngrok")) {
-            config.headers["ngrok-skip-browser-warning"] = "true";
-        }
         return config;
     },
     (error) => {

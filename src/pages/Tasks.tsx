@@ -26,6 +26,8 @@ const Tasks = () => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [karyakartaFilter, setKaryakartaFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'yuvak_meet' | 'general'>('all');
 
   // Gallery Upload Prompt States
   const [taskForUpload, setTaskForUpload] = useState<Task | null>(null);
@@ -182,19 +184,60 @@ const Tasks = () => {
     }
   };
 
+  const uniqueKaryakartas = useMemo(() => {
+    const names = new Set<string>();
+    
+    // Add Admin User
+    names.add("Admin User");
+    
+    // Add all categories (Karyakartas & Sub-Karyakartas)
+    categories.forEach(cat => {
+      if (cat.name) {
+        names.add(cat.name);
+      }
+    });
+
+    // Add any other task creators
+    tasks.forEach(task => {
+      if (task.createdBy) {
+        names.add(task.createdBy);
+      }
+    });
+
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [categories, tasks]);
+
   const filteredTasks = tasks.filter(task => {
     const matchesFilter = filter === 'all' ? true : task.status === filter;
     const matchesSearch = (task.title || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     if (adminRole !== 'admin') {
-      if (!task.assignedTo || !assignedStudentIds) return false;
+      const isCreatedByMe = task.createdBy === adminName;
 
-      const taskStudentIds = task.assignedTo.split(',').map(id => id.trim());
-      const hasAssignedStudent = taskStudentIds.some(id => assignedStudentIds.includes(id));
-      if (!hasAssignedStudent) return false;
+      let isAssignedToMyYuvak = false;
+      if (task.assignedTo && assignedStudentIds) {
+        const taskStudentIds = task.assignedTo.split(',').map(id => id.trim());
+        isAssignedToMyYuvak = taskStudentIds.some(id => assignedStudentIds.includes(id));
+      }
+
+      if (!isCreatedByMe && !isAssignedToMyYuvak) {
+        return false;
+      }
 
       // Filter out tasks that should not be visible to Karyakarta
       if (task.showToKaryakarta === false) return false;
+    }
+
+    if (karyakartaFilter !== 'all' && task.createdBy !== karyakartaFilter) {
+      return false;
+    }
+
+    const isYuvakMeet = task.category === 'Yuvak' || task.title?.toLowerCase().includes('yuvak meet');
+    if (typeFilter === 'yuvak_meet' && !isYuvakMeet) {
+      return false;
+    }
+    if (typeFilter === 'general' && isYuvakMeet) {
+      return false;
     }
 
     return matchesFilter && matchesSearch;
@@ -298,6 +341,75 @@ const Tasks = () => {
                 {f}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Additional Filters: Karyakarta and Task Type */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white/40 backdrop-blur-sm p-4 rounded-3xl border border-border/40 shadow-sm">
+          {/* Karyakarta Filter */}
+          {adminRole === 'admin' && (
+            <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">
+                Filter by Karyakarta / Sub-Karyakarta
+              </span>
+              <select
+                value={karyakartaFilter}
+                onChange={(e) => setKaryakartaFilter(e.target.value)}
+                className="h-11 px-4 bg-white border border-border/50 rounded-xl focus:ring-primary/20 focus:border-primary text-sm outline-none w-full shadow-soft"
+              >
+                <option value="all">All Karyakartas / Sub-Karyakartas</option>
+                {uniqueKaryakartas.map((karyakarta) => (
+                  <option key={karyakarta} value={karyakarta}>
+                    {karyakarta}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Task Type Filter */}
+          <div className="flex flex-col gap-1.5 flex-1 min-w-[250px]">
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">
+              Filter by Task Type
+            </span>
+            <div className="flex p-1 bg-muted/40 rounded-xl border border-border/40 h-11 w-full">
+              <button
+                type="button"
+                onClick={() => setTypeFilter('all')}
+                className={cn(
+                  "flex-1 px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                  typeFilter === 'all'
+                    ? "bg-white text-primary shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter('yuvak_meet')}
+                className={cn(
+                  "flex-1 px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap",
+                  typeFilter === 'yuvak_meet'
+                    ? "bg-white text-primary shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Yuvak Meet
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter('general')}
+                className={cn(
+                  "flex-1 px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap",
+                  typeFilter === 'general'
+                    ? "bg-white text-primary shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                General Task
+              </button>
+            </div>
           </div>
         </div>
 

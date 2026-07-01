@@ -9,6 +9,7 @@ import { Student, Task } from '@/types';
 export interface Karyakarta {
     id: string;
     name: string;
+    studentId?: string;
     studentIds: string[];
     type: 'main' | 'sub';
     parentId?: string;
@@ -179,6 +180,7 @@ const toDbTask = (task: Partial<Task>) => {
 const fromDbCategory = (db: any): Karyakarta => ({
     id: db.id,
     name: db.name,
+    studentId: db.student_id,
     type: db.type,
     parentId: db.parent_id,
     studentIds: db.student_ids || [],
@@ -189,9 +191,11 @@ const toDbCategory = (cat: Partial<Karyakarta>) => {
     const db: any = { ...cat };
     if (cat.parentId !== undefined) db.parent_id = cat.parentId;
     if (cat.studentIds !== undefined) db.student_ids = cat.studentIds;
+    if (cat.studentId !== undefined) db.student_id = cat.studentId;
 
     delete db.parentId;
     delete db.studentIds;
+    delete db.studentId;
     return db;
 };
 

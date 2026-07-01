@@ -51,11 +51,20 @@ export const useTaskNotifications = (tasks: Task[]) => {
 
                 // For this demo, we'll notify on mount. 
                 if (!hasChecked.current) {
-                    new Notification(`Task Deadline: ${task.title}`, {
-                        body: `Task assigned to ${task.assignedToName || 'Student'} is due today! Please checks.`,
-                        icon: '/pwa-192x192.png',
-                        tag: `task-${task.id}` // Prevents duplicate notifications for same task
-                    });
+                    const isYuvakMeet = task.category === 'Yuvak' || task.title?.toLowerCase().includes('yuvak meet');
+                    if (isYuvakMeet) {
+                        new Notification(`Yuvak Meet Deadline`, {
+                            body: `Reminder of Yuvak Meet: Meet the Yuvak ${task.assignedToName || 'Student'}`,
+                            icon: '/pwa-192x192.png',
+                            tag: `task-${task.id}` // Prevents duplicate notifications for same task
+                        });
+                    } else {
+                        new Notification(`Task Deadline: ${task.title}`, {
+                            body: `Task assigned to ${task.assignedToName || 'Student'} is due today! Please checks.`,
+                            icon: '/pwa-192x192.png',
+                            tag: `task-${task.id}` // Prevents duplicate notifications for same task
+                        });
+                    }
                 }
             }
         });
@@ -68,11 +77,20 @@ export const useTaskNotifications = (tasks: Task[]) => {
             const currentToday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
             tasks.forEach(task => {
                 if (task.status === 'pending' && task.dueDate === currentToday) {
-                    new Notification(`Task Deadline: ${task.title}`, {
-                        body: `Task assigned to ${task.assignedToName || 'Student'} is due today!`,
-                        icon: '/pwa-192x192.png',
-                        tag: `task-${task.id}`
-                    });
+                    const isYuvakMeet = task.category === 'Yuvak' || task.title?.toLowerCase().includes('yuvak meet');
+                    if (isYuvakMeet) {
+                        new Notification(`Yuvak Meet Deadline`, {
+                            body: `Reminder of Yuvak Meet: Meet the Yuvak ${task.assignedToName || 'Student'}`,
+                            icon: '/pwa-192x192.png',
+                            tag: `task-${task.id}`
+                        });
+                    } else {
+                        new Notification(`Task Deadline: ${task.title}`, {
+                            body: `Task assigned to ${task.assignedToName || 'Student'} is due today!`,
+                            icon: '/pwa-192x192.png',
+                            tag: `task-${task.id}`
+                        });
+                    }
                 }
             });
         }, 60 * 60 * 1000); // Check every hour

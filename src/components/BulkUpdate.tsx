@@ -8,13 +8,113 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { calculateAge } from '@/lib/dateUtils';
 
+function parseCSV(text: string): any[] {
+    const lines: string[] = [];
+    let currentLine = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+            currentLine += char;
+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+            if (char === '\r' && text[i + 1] === '\n') {
+                i++;
+            }
+            lines.push(currentLine);
+            currentLine = '';
+        } else {
+            currentLine += char;
+        }
+    }
+    if (currentLine) {
+        lines.push(currentLine);
+    }
+
+    if (lines.length === 0) return [];
+
+    const parseCSVLine = (line: string): string[] => {
+        const result: string[] = [];
+        let currentCell = '';
+        let insideQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                if (insideQuotes && line[i + 1] === '"') {
+                    currentCell += '"';
+                    i++;
+                } else {
+                    insideQuotes = !insideQuotes;
+                }
+            } else if (char === ',' && !insideQuotes) {
+                result.push(currentCell.trim());
+                currentCell = '';
+            } else {
+                currentCell += char;
+            }
+        }
+        result.push(currentCell.trim());
+        return result;
+    };
+
+    const headers = parseCSVLine(lines[0]);
+    const data: any[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        const cells = parseCSVLine(line);
+        const rowData: any = {};
+        let hasData = false;
+
+        headers.forEach((header, colIndex) => {
+            if (header) {
+                let val: any = cells[colIndex];
+                if (val !== undefined && val !== null) {
+                    val = val.trim();
+                    if (val.startsWith('"') && val.endsWith('"')) {
+                        val = val.substring(1, val.length - 1);
+                    }
+                    if (val.toLowerCase() === 'true') val = true;
+                    else if (val.toLowerCase() === 'false') val = false;
+                    else if (!isNaN(Number(val)) && val !== '') val = Number(val);
+                } else {
+                    val = null;
+                }
+                rowData[header] = val;
+                hasData = true;
+            }
+        });
+
+        if (hasData) {
+            data.push(rowData);
+        }
+    }
+
+    return data;
+}
+
 interface BulkUpdateProps {
     students: Student[];
     onUpdate: (students: Student[]) => void;
 }
 
 export const BulkUpdate = ({ students, onUpdate }: BulkUpdateProps) => {
+    const [extractFilter, setExtractFilter] = React.useState<string>('all');
+
     const handleDownload = async () => {
+        let filtered = [...students];
+        if (extractFilter === 'alumni') {
+            filtered = filtered.filter(s => s.isAlumni);
+        } else if (extractFilter === 'job') {
+            filtered = filtered.filter(s => !!s.job && s.job.trim() !== '');
+        } else if (extractFilter === 'current_no_job') {
+            filtered = filtered.filter(s => !s.isAlumni && (!s.job || s.job.trim() === ''));
+        }
+
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Students');
 
@@ -33,7 +133,7 @@ export const BulkUpdate = ({ students, onUpdate }: BulkUpdateProps) => {
         }
 
         // Add rows with excluded fields removed
-        const rowsData = students.map(student => {
+        const rowsData = filtered.map(student => {
             const row: any = {};
             Object.keys(student).forEach(key => {
                 if (!excludedFields.includes(key)) {
@@ -49,7 +149,13 @@ export const BulkUpdate = ({ students, onUpdate }: BulkUpdateProps) => {
 
         // Create blob and save
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, 'hostel_students_data.xlsx');
+        
+        let filename = 'hostel_students_all.xlsx';
+        if (extractFilter === 'alumni') filename = 'hostel_students_alumni.xlsx';
+        else if (extractFilter === 'job') filename = 'hostel_students_with_job.xlsx';
+        else if (extractFilter === 'current_no_job') filename = 'hostel_students_current_no_job.xlsx';
+
+        saveAs(blob, filename);
 
         toast.success("Excel file downloaded successfully");
     };
@@ -58,130 +164,199 @@ export const BulkUpdate = ({ students, onUpdate }: BulkUpdateProps) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-            toast.error("Please upload a valid Excel file (.xlsx or .xls)");
+        const isCSV = file.name.endsWith('.csv');
+        const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+
+        if (!isCSV && !isExcel) {
+            toast.error("Please upload a valid file (.xlsx, .xls, or .csv)");
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = async (evt) => {
-            try {
-                const buffer = evt.target?.result as ArrayBuffer;
-                const workbook = new ExcelJS.Workbook();
-                await workbook.xlsx.load(buffer);
+        const processLoadedData = (data: any[]) => {
+            const cleanMobile = (num: any) => {
+                if (!num) return '';
+                const cleaned = String(num).replace(/\D/g, '');
+                if (cleaned.length === 12 && cleaned.startsWith('91')) {
+                    return cleaned.substring(2);
+                }
+                return cleaned;
+            };
 
-                const worksheet = workbook.getWorksheet(1);
+            return data.map((student) => {
+                const cleanMobileVal = cleanMobile(student.mobile);
+                const cleanEmailVal = student.email ? String(student.email).trim().toLowerCase() : '';
+                const cleanNameVal = student.name ? String(student.name).trim().toLowerCase() : '';
+                const cleanRoomVal = student.roomNo || student.room_no ? String(student.roomNo || student.room_no).trim().toLowerCase() : '';
 
-                if (!worksheet) {
-                    toast.error("The uploaded file is empty or invalid");
-                    return;
+                // Try to find existing student by ID, mobile, email, or name to prevent duplicates from old Excel files
+                const existingStudent = students.find(s => {
+                    const sId = s.id ? String(s.id).trim().toLowerCase() : '';
+                    const studId = student.id ? String(student.id).trim().toLowerCase() : '';
+                    if (sId && studId && sId === studId) return true;
+
+                    const sMobile = cleanMobile(s.mobile);
+                    if (sMobile && cleanMobileVal && sMobile === cleanMobileVal) return true;
+
+                    const sEmail = s.email ? String(s.email).trim().toLowerCase() : '';
+                    if (sEmail && cleanEmailVal && sEmail === cleanEmailVal) return true;
+
+                    const sName = s.name ? String(s.name).trim().toLowerCase() : '';
+                    const sRoom = s.roomNo ? String(s.roomNo).trim().toLowerCase() : '';
+                    if (sName && cleanNameVal && sName === cleanNameVal && sRoom === cleanRoomVal) return true;
+
+                    return false;
+                });
+                
+                const studentId = existingStudent ? existingStudent.id : (student.id || crypto.randomUUID());
+
+                // Normalize DOB if it's a Date object from Excel
+                let dobStr = student.dob;
+                if (student.dob instanceof Date) {
+                    const d = student.dob;
+                    dobStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                } else if (typeof student.dob === 'string') {
+                    // Normalize standard DD-MM-YYYY or DD/MM/YYYY into YYYY-MM-DD
+                    const ddmmyyyyRegex = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/;
+                    const match = student.dob.trim().match(ddmmyyyyRegex);
+                    if (match) {
+                        const [, day, month, year] = match;
+                        dobStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                    }
                 }
 
-                // Convert worksheet to JSON manually
-                const data: any[] = [];
-                const headers: string[] = [];
+                const age = dobStr ? calculateAge(dobStr) : (student.age || 0);
 
-                worksheet.eachRow((row, rowNumber) => {
-                    if (rowNumber === 1) {
-                        // Capture headers
-                        row.eachCell((cell, colNumber) => {
-                            headers[colNumber] = String(cell.value);
-                        });
-                    } else {
-                        // Capture data
-                        const rowData: any = {};
-                        let hasData = false;
-                        // Helper to safely extract cell value
-                        const getCellValue = (cell: ExcelJS.Cell): any => {
-                            const value = cell.value;
+                // Normalize boolean types
+                const isAlumni = student.isAlumni === true || student.isAlumni === 'true' || student.isAlumni === 1 || student.isAlumni === '1' || student.is_alumni === true || student.is_alumni === 'true' || student.is_alumni === 1 || student.is_alumni === '1';
+                const notificationsEnabled = student.notifications_enabled === true || student.notifications_enabled === 'true' || student.notifications_enabled === 1 || student.notifications_enabled === '1' || student.notificationsEnabled === true || student.notificationsEnabled === 'true';
 
-                            if (value && typeof value === 'object') {
-                                // Handle formula cells
-                                if ('formula' in value) {
-                                    // If result is available, use it (check for undefined to strictly verify existence)
-                                    if ((value as any).result !== undefined) {
-                                        return (value as any).result;
-                                    }
-                                    // Fallback for simple boolean formulas (common in some Excel exports)
-                                    const formula = (value as any).formula;
-                                    if (formula === 'FALSE()') return false;
-                                    if (formula === 'TRUE()') return true;
-
-                                    // If we can't resolve the value, return null to avoid sending an object to the DB
-                                    return null;
-                                }
-                                // Handle hyperlink cells
-                                if ('text' in value) {
-                                    return (value as any).text;
-                                }
-                                // Handle rich text cells
-                                if ('richText' in value && Array.isArray((value as any).richText)) {
-                                    return (value as any).richText.map((rt: any) => rt.text).join('');
-                                }
-                            }
-
-                            return value;
-                        };
-
-                        row.eachCell((cell, colNumber) => {
-                            const header = headers[colNumber];
-                            if (header) {
-                                rowData[header] = getCellValue(cell);
-                                hasData = true;
-                            }
-                        });
-                        if (hasData) {
-                            data.push(rowData);
-                        }
-                    }
-                });
-
-                if (data.length === 0) {
-                    toast.error("The uploaded file is empty");
-                    return;
-                }
-
-                // Auto-generate id (if missing), createdAt, and calculate age for each student
-                const processedData = data.map((student) => {
-                    // Try to find existing student by mobile, email, or name to prevent duplicates from old Excel files
-                    const existingStudent = students.find(s => 
-                        (s.id && student.id && s.id === student.id) ||
-                        (s.mobile && student.mobile && s.mobile === student.mobile) ||
-                        (s.email && student.email && s.email === student.email) ||
-                        (s.name && student.name && s.name === student.name && s.roomNo === student.roomNo)
-                    );
-                    
-                    const studentId = existingStudent ? existingStudent.id : (student.id || crypto.randomUUID());
-
-                    // Normalize DOB if it's a Date object from Excel
-                    let dobStr = student.dob;
-                    if (student.dob instanceof Date) {
-                        const d = student.dob;
-                        dobStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                    }
-
-                    const age = dobStr ? calculateAge(dobStr) : (student.age || 0);
-
-                    return {
-                        ...student,
-                        dob: dobStr,
-                        id: studentId,
-                        createdAt: existingStudent ? existingStudent.createdAt : new Date().toISOString(),
-                        age: age,
-                    };
-                });
-
-                onUpdate(processedData as Student[]);
-                toast.success(`Successfully loaded ${processedData.length} students records`);
-            } catch (error) {
-                console.error("Excel processing error:", error);
-                toast.error("Failed to process Excel file");
-            }
+                return {
+                    ...student,
+                    roomNo: student.roomNo || student.room_no || '',
+                    isAlumni,
+                    notifications_enabled: notificationsEnabled,
+                    dob: dobStr,
+                    id: studentId,
+                    createdAt: existingStudent ? existingStudent.createdAt : new Date().toISOString(),
+                    age: age,
+                };
+            });
         };
-        reader.readAsArrayBuffer(file);
+
+        const reader = new FileReader();
+
+        if (isCSV) {
+            reader.onload = async (evt) => {
+                try {
+                    const text = evt.target?.result as string;
+                    const data = parseCSV(text);
+
+                    if (data.length === 0) {
+                        toast.error("The uploaded CSV file is empty");
+                        return;
+                    }
+
+                    const processedData = processLoadedData(data);
+                    onUpdate(processedData as Student[]);
+                    toast.success(`Successfully loaded ${processedData.length} students records from CSV`);
+                } catch (error) {
+                    console.error("CSV processing error:", error);
+                    toast.error("Failed to process CSV file");
+                }
+            };
+            reader.readAsText(file);
+        } else {
+            reader.onload = async (evt) => {
+                try {
+                    const buffer = evt.target?.result as ArrayBuffer;
+                    const workbook = new ExcelJS.Workbook();
+                    await workbook.xlsx.load(buffer);
+
+                    const worksheet = workbook.getWorksheet(1);
+
+                    if (!worksheet) {
+                        toast.error("The uploaded file is empty or invalid");
+                        return;
+                    }
+
+                    // Convert worksheet to JSON manually
+                    const data: any[] = [];
+                    const headers: string[] = [];
+
+                    worksheet.eachRow((row, rowNumber) => {
+                        if (rowNumber === 1) {
+                            // Capture headers
+                            row.eachCell((cell, colNumber) => {
+                                headers[colNumber] = String(cell.value);
+                            });
+                        } else {
+                            // Capture data
+                            const rowData: any = {};
+                            let hasData = false;
+                            // Helper to safely extract cell value
+                            const getCellValue = (cell: ExcelJS.Cell): any => {
+                                const value = cell.value;
+
+                                if (value && typeof value === 'object') {
+                                    // Handle formula cells
+                                    if ('formula' in value) {
+                                        // If result is available, use it (check for undefined to strictly verify existence)
+                                        if ((value as any).result !== undefined) {
+                                            return (value as any).result;
+                                        }
+                                        // Fallback for simple boolean formulas (common in some Excel exports)
+                                        const formula = (value as any).formula;
+                                        if (formula === 'FALSE()') return false;
+                                        if (formula === 'TRUE()') return true;
+
+                                        // If we can't resolve the value, return null to avoid sending an object to the DB
+                                        return null;
+                                    }
+                                    // Handle hyperlink cells
+                                    if ('text' in value) {
+                                        return (value as any).text;
+                                    }
+                                    // Handle rich text cells
+                                    if ('richText' in value && Array.isArray((value as any).richText)) {
+                                        return (value as any).richText.map((rt: any) => rt.text).join('');
+                                    }
+                                }
+
+                                return value;
+                            };
+
+                            row.eachCell((cell, colNumber) => {
+                                const header = headers[colNumber];
+                                if (header) {
+                                    rowData[header] = getCellValue(cell);
+                                    hasData = true;
+                                }
+                            });
+                            if (hasData) {
+                                data.push(rowData);
+                            }
+                        }
+                    });
+
+                    if (data.length === 0) {
+                        toast.error("The uploaded Excel file is empty");
+                        return;
+                    }
+
+                    const processedData = processLoadedData(data);
+                    onUpdate(processedData as Student[]);
+                    toast.success(`Successfully loaded ${processedData.length} students records`);
+                } catch (error) {
+                    console.error("Excel processing error:", error);
+                    toast.error("Failed to process Excel file");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
         // Reset input value to allow uploading same file again
         e.target.value = '';
-    }, [onUpdate]);
+    }, [onUpdate, students]);
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -191,30 +366,46 @@ export const BulkUpdate = ({ students, onUpdate }: BulkUpdateProps) => {
                         <FileSpreadsheet className="w-10 h-10 text-white" />
                     </div>
                     <div className="space-y-1">
-                        <h3 className="font-extrabold text-xl sm:text-2xl text-foreground tracking-tight">Excel Integration</h3>
+                        <h3 className="font-extrabold text-xl sm:text-2xl text-foreground tracking-tight">Data Integration</h3>
 
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                    <Button
-                        variant="outline"
-                        className="h-auto py-8 flex flex-col items-center gap-4 glass-card border-2 border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/5 rounded-3xl transition-all group shadow-soft hover:shadow-soft-lg"
-                        onClick={handleDownload}
-                    >
-                        <div className="p-4 gradient-primary rounded-2xl group-hover:scale-110 transition-transform shadow-soft">
-                            <Download className="w-8 h-8 text-white" />
+                    <div className="flex flex-col gap-4 p-6 glass-card border border-primary/20 rounded-3xl hover:border-primary/40 transition-all shadow-soft bg-slate-50/50">
+                        <div className="flex flex-col gap-1.5 text-left">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                                Extraction Filter
+                            </label>
+                            <select
+                                value={extractFilter}
+                                onChange={(e) => setExtractFilter(e.target.value)}
+                                className="h-11 px-3 rounded-xl border border-border bg-white text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer w-full"
+                            >
+                                <option value="all">All Yuvaks</option>
+                                <option value="alumni">Alumni</option>
+                                <option value="job">With Job</option>
+                                <option value="current_no_job">Current Yuvaks Without Job</option>
+                            </select>
                         </div>
-                        <div className="text-center">
-                            <span className="font-extrabold text-lg block text-foreground">Extract Data</span>
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 block">Download current database</span>
-                        </div>
-                    </Button>
+
+                        <Button
+                            variant="outline"
+                            className="h-auto py-5 flex flex-col items-center gap-2 hover:bg-primary/5 rounded-2xl transition-all group border border-primary/20 bg-white"
+                            onClick={handleDownload}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Download className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
+                                <span className="font-extrabold text-base text-foreground">Extract Data</span>
+                            </div>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">Download filtered database</span>
+                        </Button>
+                    </div>
 
                     <div className="relative group">
                         <input
                             type="file"
-                            accept=".xlsx,.xls"
+                            accept=".xlsx,.xls,.csv"
                             onChange={handleFileUpload}
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                         />

@@ -19,9 +19,23 @@ interface AppHeaderProps {
 }
 
 export const AppHeader = ({ title }: AppHeaderProps) => {
-  const { logout, adminRole } = useAuth();
+  const { logout, adminRole, studentId, adminName } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (studentId && studentId !== 'admin') {
+      import('@/lib/store').then(({ getStudents }) => {
+        getStudents().then(students => {
+          const student = students?.find(s => s.id === studentId);
+          if (student?.profileImage) {
+            setProfileImage(student.profileImage);
+          }
+        });
+      });
+    }
+  }, [studentId]);
 
   const isAdmin = adminRole === 'admin';
 
@@ -171,15 +185,31 @@ export const AppHeader = ({ title }: AppHeaderProps) => {
           />
         </div >
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all rounded-xl z-10"
-          onClick={logout}
-          title="Logout"
-        >
-          <LogOut className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {(adminRole === 'Karyakarta' || adminRole === 'Sub-Karyakarta') && (
+            <button
+              onClick={() => navigate('/profile')}
+              className="w-8 h-8 rounded-full overflow-hidden border border-border/50 hover:scale-105 active:scale-95 transition-all shadow-sm flex items-center justify-center bg-primary/10 text-primary font-bold text-xs shrink-0 z-10"
+              title="View Profile"
+            >
+              {profileImage ? (
+                <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span>{(adminName || 'K').charAt(0)}</span>
+              )}
+            </button>
+          )}
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all rounded-xl z-10"
+            onClick={logout}
+            title="Logout"
+          >
+            <LogOut className="w-5 h-5" />
+          </Button>
+        </div>
       </div >
     </header >
   );

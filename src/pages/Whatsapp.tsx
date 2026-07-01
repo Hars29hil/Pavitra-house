@@ -571,9 +571,6 @@ export default function Whatsapp() {
                                             }}
                                             title={student.notifications_enabled ? "Disable Notifications" : "Enable Notifications"}
                                         >
-                                            <span className="text-[10px] text-muted-foreground font-medium hidden sm:inline">
-                                                {student.notifications_enabled ? "Not Enabled" : "Not Disabled"}
-                                            </span>
                                             <Checkbox
                                                 checked={!!student.notifications_enabled}
                                                 onCheckedChange={() => handleToggleNotifications(student.id, !!student.notifications_enabled)}
