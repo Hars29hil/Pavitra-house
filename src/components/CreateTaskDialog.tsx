@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getStudents, getCategories, Karyakarta } from '@/lib/store';
 import { Student, Task } from '@/types';
 import { Search, User2, Calendar, ClipboardList, HelpCircle, Send, CheckCircle2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, isSameName } from '@/lib/utils';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -95,9 +95,7 @@ export const CreateTaskDialog = ({
     }, [open, taskToEdit]);
 
     const myCategory = useMemo(() => {
-        return categories.find(
-            c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
-        );
+        return categories.find(c => isSameName(c.name, adminName));
     }, [categories, adminName]);
 
     const myAssignedStudents = useMemo(() => {

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { CreateYuvakTaskDialog } from '@/components/CreateYuvakTaskDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
+import { cn, isSameName } from '@/lib/utils';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { getTasks, addTask, updateTask, deleteTask, getStudents, getCategories, Karyakarta } from '@/lib/store';
 import { toast } from 'sonner';
@@ -92,9 +92,7 @@ const Tasks = () => {
   }, [refetchTrigger]);
 
   const myCategory = useMemo(() => {
-    return categories.find(
-      c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
-    );
+    return categories.find(c => isSameName(c.name, adminName));
   }, [categories, adminName]);
 
   const assignedStudentIds = useMemo(() => {

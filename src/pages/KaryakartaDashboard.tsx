@@ -30,7 +30,7 @@ import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { CreateYuvakTaskDialog } from '@/components/CreateYuvakTaskDialog';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { cn } from '@/lib/utils';
+import { cn, isSameName } from '@/lib/utils';
 
 const KaryakartaDashboard = () => {
   const navigate = useNavigate();
@@ -110,9 +110,7 @@ const KaryakartaDashboard = () => {
 
   // 1. Find the logged-in Karyakarta's category
   const myCategory = useMemo(() => {
-    return categories.find(
-      c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
-    );
+    return categories.find(c => isSameName(c.name, adminName));
   }, [categories, adminName]);
 
   // 2. Find all Sub-Karyakartas if the logged-in user is a Main Karyakarta

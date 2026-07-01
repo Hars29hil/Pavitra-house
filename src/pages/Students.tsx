@@ -19,7 +19,7 @@ import {
 import { getStudents, updateStudent, getCategories, Karyakarta, getAllStudentResults } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import { Student } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, isSameName } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -63,9 +63,7 @@ const Students = () => {
   };
 
   const myCategory = useMemo(() => {
-    return categories.find(
-      c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
-    );
+    return categories.find(c => isSameName(c.name, adminName));
   }, [categories, adminName]);
 
   const myAssignedStudents = useMemo(() => {

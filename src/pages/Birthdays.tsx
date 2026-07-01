@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
+import { cn, isSameName } from '@/lib/utils';
 import { Calendar, UploadCloud, Loader2, FolderPlus, FolderOpen } from 'lucide-react';
 
 const Birthdays = () => {
@@ -43,6 +43,7 @@ const Birthdays = () => {
     const [savingMeetup, setSavingMeetup] = useState(false);
     const [completedMeetupIds, setCompletedMeetupIds] = useState<string[]>([]);
     const { confirm } = useConfirm();
+    const [isWhatsappConnected, setIsWhatsappConnected] = useState(false);
 
     // Media Upload states
     const [showUploadPrompt, setShowUploadPrompt] = useState(false);
@@ -205,6 +206,37 @@ const Birthdays = () => {
         }
     };
 
+    const sendIndividualBirthdayWish = async (student: Student) => {
+        if (!student.mobile) {
+            toast.error("Yuvak has no mobile number");
+            return;
+        }
+
+        const messageText = `Jai Swaminarayan\nDas Na Das\n\nMany Many Happy Returns of the Day\n\nHappy Birthday\nMr. ${student.name}`;
+
+        if (isWhatsappConnected) {
+            const toastId = toast.loading(`Sending birthday wish to ${student.name}...`);
+            try {
+                await api.post('/api/send', {
+                    number: student.mobile,
+                    message: messageText
+                });
+                toast.success(`🎉 Birthday wish sent to ${student.name}!`, { id: toastId });
+            } catch (error) {
+                console.error("Failed to send automatic WhatsApp", error);
+                toast.error("Failed to send WhatsApp message. Opening redirect link instead...", { id: toastId });
+                const encodedMsg = encodeURIComponent(messageText);
+                const url = `https://wa.me/${student.mobile}?text=${encodedMsg}`;
+                window.open(url, '_blank');
+            }
+        } else {
+            const encodedMsg = encodeURIComponent(messageText);
+            const url = `https://wa.me/${student.mobile}?text=${encodedMsg}`;
+            window.open(url, '_blank');
+            toast.info("WhatsApp not connected. Redirecting to WhatsApp Web/App...");
+        }
+    };
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -223,13 +255,24 @@ const Birthdays = () => {
                 setCategories([]);
             }
         };
+        const checkWhatsapp = async () => {
+            try {
+                const res = await api.get('/api/get-qr');
+                if (res.data && res.data.success && res.data.message === "Already connected") {
+                    setIsWhatsappConnected(true);
+                } else {
+                    setIsWhatsappConnected(false);
+                }
+            } catch (error) {
+                console.error("Failed to check WhatsApp status", error);
+            }
+        };
         fetchData();
+        checkWhatsapp();
     }, []);
 
     const myCategory = useMemo(() => {
-        return categories.find(
-            c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
-        );
+        return categories.find(c => isSameName(c.name, adminName));
     }, [categories, adminName]);
 
     const myAssignedStudents = useMemo(() => {
@@ -654,37 +697,50 @@ const Birthdays = () => {
                                                 <div className="flex items-center gap-2.5 mt-1 flex-wrap">
                                                     <p className="text-xs font-semibold text-muted-foreground truncate">{student.mobile || 'No Mobile'}</p>
                                                     {student.mobile && (
-                                                        isCompleted ? (
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleUndoMeetup(student);
-                                                                }}
-                                                                className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-red-500/10 text-emerald-600 hover:text-red-600 px-2.5 py-1.5 rounded-xl text-[10px] font-bold shrink-0 shadow-sm border border-emerald-500/10 hover:border-red-500/15 transition-all group"
-                                                                title="Click to undo meetup"
-                                                            >
-                                                                <CheckSquare className="w-3.5 h-3.5 text-emerald-600 group-hover:hidden" />
-                                                                <X className="w-3.5 h-3.5 text-red-600 hidden group-hover:block animate-in zoom-in-50 duration-200" />
-                                                                <span className="group-hover:hidden">Meet Done</span>
-                                                                <span className="hidden group-hover:inline">Undo Meet</span>
-                                                            </button>
-                                                        ) : (
+                                                        <>
                                                             <Button
                                                                 size="sm"
-                                                                variant="secondary"
-                                                                className="h-6 rounded-lg text-[10px] font-bold px-2 gap-1 bg-primary/10 text-primary hover:bg-primary/20 border-none shrink-0"
+                                                                variant="outline"
+                                                                className="h-6 rounded-lg text-[10px] font-bold px-2 gap-1 border-primary/20 hover:bg-primary/10 text-primary shrink-0"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    setMeetupStudent(student);
-                                                                    setMeetingDesc("");
-                                                                    setMeetingDate(new Date().toISOString().split('T')[0]);
-                                                                    setMarkCompleted(true);
-                                                                    setShowMeetupDialog(true);
+                                                                    sendIndividualBirthdayWish(student);
                                                                 }}
                                                             >
-                                                                <Users className="w-3 h-3 text-primary" /> Meet Up
+                                                                <Send className="w-3 h-3 text-primary" /> WhatsApp
                                                             </Button>
-                                                        )
+                                                            {isCompleted ? (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleUndoMeetup(student);
+                                                                    }}
+                                                                    className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-red-500/10 text-emerald-600 hover:text-red-600 px-2.5 py-1.5 rounded-xl text-[10px] font-bold shrink-0 shadow-sm border border-emerald-500/10 hover:border-red-500/15 transition-all group"
+                                                                    title="Click to undo meetup"
+                                                                >
+                                                                    <CheckSquare className="w-3.5 h-3.5 text-emerald-600 group-hover:hidden" />
+                                                                    <X className="w-3.5 h-3.5 text-red-600 hidden group-hover:block animate-in zoom-in-50 duration-200" />
+                                                                    <span className="group-hover:hidden">Meet Done</span>
+                                                                    <span className="hidden group-hover:inline">Undo Meet</span>
+                                                                </button>
+                                                            ) : (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="secondary"
+                                                                    className="h-6 rounded-lg text-[10px] font-bold px-2 gap-1 bg-primary/10 text-primary hover:bg-primary/20 border-none shrink-0"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setMeetupStudent(student);
+                                                                        setMeetingDesc("");
+                                                                        setMeetingDate(new Date().toISOString().split('T')[0]);
+                                                                        setMarkCompleted(true);
+                                                                        setShowMeetupDialog(true);
+                                                                    }}
+                                                                >
+                                                                    <Users className="w-3 h-3 text-primary" /> Meet Up
+                                                                </Button>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>

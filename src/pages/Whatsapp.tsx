@@ -8,6 +8,7 @@ import api from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 import { getStudents, getCategories, Karyakarta } from "@/lib/store";
 import { Student } from "@/types";
+import { isSameName } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -208,6 +209,15 @@ export default function Whatsapp() {
                     setLoading(false);
                     timeoutId = setTimeout(checkStatus, 1000); // Check every 1s for faster display
                 } else {
+                    if (qrData && qrData.success === false && qrData.message) {
+                        toast.error(qrData.message);
+                        if (qrData.message.includes("already connected")) {
+                            setConnected(false);
+                            setQr(null);
+                            setLoading(false);
+                            return; // Stop polling on duplicate connection error
+                        }
+                    }
                     setConnected(false);
                     setQr(null);
                     setLoading(false);
@@ -229,9 +239,7 @@ export default function Whatsapp() {
     }, []);
 
     const myCategory = useMemo(() => {
-        return karyakartas.find(
-            c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
-        );
+        return karyakartas.find(c => isSameName(c.name, adminName));
     }, [karyakartas, adminName]);
 
     const myAssignedStudents = useMemo(() => {

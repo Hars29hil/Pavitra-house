@@ -17,6 +17,7 @@ import { Student } from '@/types';
 import api from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConfirm } from '@/contexts/ConfirmationContext';
+import { isSameName } from '@/lib/utils';
 
 export default function Education() {
     const navigate = useNavigate();
@@ -151,9 +152,7 @@ export default function Education() {
     };
 
     const myCategory = useMemo(() => {
-        return karyakartas.find(
-            c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
-        );
+        return karyakartas.find(c => isSameName(c.name, adminName));
     }, [karyakartas, adminName]);
 
     const myAssignedStudents = useMemo(() => {

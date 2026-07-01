@@ -18,6 +18,7 @@ import { Student } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { BulkUpdate } from '@/components/BulkUpdate';
 import { uploadToImgBB } from '@/lib/imgbb';
+import { isSameName } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 
@@ -339,9 +340,7 @@ const AddStudent = () => {
         if (adminRole === 'Karyakarta' || adminRole === 'Sub-Karyakarta') {
           try {
             const categoriesData = await getCategories();
-            const myCat = categoriesData.find(
-              c => c.name.trim().toLowerCase() === adminName.trim().toLowerCase()
-            );
+            const myCat = categoriesData.find(c => isSameName(c.name, adminName));
             if (myCat) {
               const updatedStudentIds = [...(myCat.studentIds || []), newStudent.id];
               await updateCategory(myCat.id, { studentIds: updatedStudentIds });
