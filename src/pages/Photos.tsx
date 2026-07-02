@@ -482,61 +482,67 @@ export default function Photos() {
     );
 
     return (
-        <div className="min-h-screen bg-background relative animate-fade-in flex flex-col">
+        <div className="min-h-screen bg-slate-50 relative animate-fade-in flex flex-col font-sans">
             <AppHeader title="Hostel Hub" />
 
             <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full flex flex-col gap-6">
                 
-                {/* Header Section */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        {view !== "students" && (
+                {/* Modern Gradient Header Card */}
+                <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white p-6 sm:p-8 rounded-[2rem] shadow-soft-lg hover:shadow-xl transition-all duration-500 group">
+                    {/* Decorative Background Glows */}
+                    <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-2xl group-hover:scale-110 transition-transform duration-700" />
+                    <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-purple-500/20 rounded-full blur-2xl group-hover:scale-110 transition-transform duration-700" />
+
+                    <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            {view !== "students" && (
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="rounded-2xl text-white hover:text-white hover:bg-white/15 bg-white/10 border border-white/10 shrink-0"
+                                    onClick={() => {
+                                        if (view === "files") {
+                                            if (selectedStudent) loadFolders(selectedStudent);
+                                        } else {
+                                            setView("students");
+                                            setSelectedStudent(null);
+                                        }
+                                    }}
+                                >
+                                    <ArrowLeft className="w-5 h-5" />
+                                </Button>
+                            )}
+                            <div>
+                                <h2 className="text-xl sm:text-2xl font-black flex items-center gap-2 drop-shadow-sm">
+                                    <Sparkles className="w-6 h-6 text-yellow-300 fill-yellow-300 animate-pulse" />
+                                    {view === "students" && "Yuvak Photo Gallery"}
+                                    {view === "folders" && `${selectedStudent?.name}'s Folders`}
+                                    {view === "files" && `${selectedFolder}`}
+                                </h2>
+                                <p className="text-white/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider mt-1">
+                                    {view === "students" && "Select a Yuvak to view folders"}
+                                    {view === "folders" && `Manage folders for room ${selectedStudent?.room_no}`}
+                                    {view === "files" && `Uploaded photos, videos, and notes`}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Action buttons based on view */}
+                        {view === "folders" && (
                             <Button 
-                                variant="outline" 
-                                size="icon" 
-                                className="rounded-xl border-border/50 hover:bg-muted/50"
-                                onClick={() => {
-                                    if (view === "files") {
-                                        if (selectedStudent) loadFolders(selectedStudent);
-                                    } else {
-                                        setView("students");
-                                        setSelectedStudent(null);
-                                    }
-                                }}
+                                className="rounded-2xl font-bold gap-2 shadow-soft hover:shadow-soft-lg transition-all bg-white text-indigo-600 hover:bg-white/95 border-none h-11 px-5"
+                                onClick={() => setShowCreateFolderDialog(true)}
                             >
-                                <ArrowLeft className="w-5 h-5" />
+                                <FolderPlus className="w-4.5 h-4.5 text-indigo-600" /> Create Folder
                             </Button>
                         )}
-                        <div>
-                            <h2 className="text-2xl font-black text-foreground flex items-center gap-2">
-                                <FolderOpen className="w-7 h-7 text-primary" />
-                                {view === "students" && "Yuvak Photo Gallery"}
-                                {view === "folders" && `${selectedStudent?.name}'s Folders`}
-                                {view === "files" && `${selectedFolder}`}
-                            </h2>
-                            <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mt-0.5">
-                                {view === "students" && "Select a Yuvak to view folders"}
-                                {view === "folders" && `Manage folders for room ${selectedStudent?.room_no}`}
-                                {view === "files" && `Uploaded photos and videos`}
-                            </p>
-                        </div>
                     </div>
-
-                    {/* Action buttons based on view */}
-                    {view === "folders" && (
-                        <Button 
-                            className="rounded-xl font-bold gap-2 shadow-soft hover:shadow-soft-lg transition-all"
-                            onClick={() => setShowCreateFolderDialog(true)}
-                        >
-                            <FolderPlus className="w-4 h-4" /> Create Folder
-                        </Button>
-                    )}
                 </div>
 
                 {loading && (
                     <div className="flex-1 flex flex-col items-center justify-center p-20 text-primary">
-                        <Loader2 className="w-10 h-10 animate-spin" />
-                        <span className="font-bold text-sm mt-3">Loading gallery content...</span>
+                        <Loader2 className="w-10 h-10 animate-spin text-indigo-600" />
+                        <span className="font-extrabold text-xs uppercase tracking-widest text-muted-foreground mt-4">Loading gallery content...</span>
                     </div>
                 )}
 
@@ -545,44 +551,50 @@ export default function Photos() {
                         
                         {/* VIEW 1: STUDENTS LIST */}
                         {view === "students" && (
-                            <div className="space-y-4">
-                                <div className="relative max-w-md">
-                                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <div className="space-y-6">
+                                <div className="relative max-w-md w-full">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500" />
                                     <Input 
                                         placeholder="Search Yuvak by name or room..." 
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
-                                        className="pl-10 h-11 bg-white/50 border-border/50 rounded-2xl focus-visible:ring-primary/20"
+                                        className="pl-11 h-12 bg-white border border-slate-200/85 rounded-2xl focus-visible:ring-indigo-500/20 shadow-sm text-sm"
                                     />
                                 </div>
 
-                                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                                     {filteredStudents.length > 0 ? (
                                         filteredStudents.map(student => (
                                             <div 
                                                 key={student.id}
                                                 onClick={() => loadFolders(student)}
-                                                className="p-4 bg-white border border-border/50 rounded-2xl shadow-soft hover:shadow-soft-lg transition-all duration-300 flex items-center justify-between cursor-pointer group hover:border-primary/20"
+                                                className="p-4 bg-white border border-slate-100 rounded-3xl shadow-soft hover:shadow-indigo-100 hover:scale-[1.01] hover:border-indigo-200/60 transition-all duration-300 flex items-center justify-between cursor-pointer group"
                                             >
                                                 <div className="flex items-center gap-3.5 min-w-0">
                                                     <StudentAvatar student={student} />
                                                     <div className="min-w-0">
-                                                        <p className="font-bold text-base text-foreground truncate group-hover:text-primary transition-colors">
+                                                        <p className="font-extrabold text-base text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
                                                             {student.name}
                                                         </p>
-                                                        <p className="text-xs text-muted-foreground truncate">
-                                                            {student.mobile || "No Mobile"} • Room {student.room_no || 'N/A'}
+                                                        <p className="text-xs text-slate-500 truncate flex items-center gap-1.5 mt-1 font-medium">
+                                                            <span>{student.mobile || "No Mobile"}</span>
+                                                            <span className="text-slate-300">•</span>
+                                                            <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-bold text-[9px] border border-indigo-100/50">
+                                                                Room {student.room_no || 'N/A'}
+                                                            </span>
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-all shrink-0 group-hover:translate-x-1" />
+                                                <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-indigo-50 flex items-center justify-center transition-colors shrink-0 group-hover:translate-x-1 duration-300">
+                                                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                                                </div>
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="col-span-full py-16 text-center text-muted-foreground flex flex-col items-center justify-center">
-                                            <User className="w-12 h-12 opacity-20 mb-2" />
-                                            <p className="font-bold">No Yuvaks found</p>
-                                            <p className="text-xs">Try searching for a different name or room number</p>
+                                        <div className="col-span-full py-16 text-center text-slate-400 bg-white rounded-[2rem] border border-dashed flex flex-col items-center justify-center p-6 space-y-2">
+                                            <User className="w-12 h-12 opacity-20 mb-1" />
+                                            <p className="font-bold text-slate-700">No Yuvaks found</p>
+                                            <p className="text-xs text-muted-foreground">Try searching for a different name or room number</p>
                                         </div>
                                     )}
                                 </div>
@@ -597,10 +609,12 @@ export default function Photos() {
                                         <div 
                                             key={folder}
                                             onClick={() => loadFiles(folder)}
-                                            className="p-5 bg-white border border-border/40 rounded-3xl shadow-soft hover:shadow-soft-lg transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer group relative border-l-4 border-l-primary/60 hover:border-primary/30 min-h-[140px]"
+                                            className="p-5 bg-gradient-to-br from-amber-50/70 to-orange-50/40 border border-amber-200/50 rounded-[2rem] shadow-soft hover:shadow-amber-100 hover:border-amber-300 transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer group relative min-h-[150px] hover:scale-[1.02]"
                                         >
-                                            <FolderOpen className="w-10 h-10 text-amber-500 group-hover:scale-110 transition-transform mb-3" />
-                                            <span className="font-bold text-sm text-foreground break-all line-clamp-2 px-1">
+                                            <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-all shadow-inner border border-amber-200/20">
+                                                <FolderOpen className="w-6 h-6 text-amber-600" />
+                                            </div>
+                                            <span className="font-extrabold text-sm text-slate-800 break-all line-clamp-2 px-1">
                                                 {folder}
                                             </span>
                                             
@@ -608,7 +622,7 @@ export default function Photos() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="absolute top-2 left-2 w-7 h-7 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                className="absolute top-3 left-3 w-8 h-8 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 opacity-0 group-hover:opacity-100 transition-all"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleShareFolder(folder);
@@ -622,24 +636,26 @@ export default function Photos() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="absolute top-2 right-2 w-7 h-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                className="absolute top-3 right-3 w-8 h-8 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
                                                 onClick={(e) => handleDeleteFolder(e, folder)}
+                                                title="Delete Folder"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="col-span-full py-20 text-center text-muted-foreground flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-3xl border border-dashed border-border/60">
-                                        <FolderOpen className="w-14 h-14 opacity-20 mb-3" />
-                                        <p className="font-bold text-lg text-foreground">No folders created yet</p>
-                                        <p className="text-xs max-w-xs mt-1">Create a folder like "Birthday Photo" to start organizing photos and videos.</p>
+                                    <div className="col-span-full py-20 text-center text-slate-400 bg-white/60 backdrop-blur-sm rounded-[2rem] border border-dashed flex flex-col items-center justify-center p-6 space-y-4 max-w-lg mx-auto">
+                                        <FolderOpen className="w-14 h-14 opacity-25 text-indigo-500" />
+                                        <div>
+                                            <p className="font-extrabold text-lg text-slate-800">No folders created yet</p>
+                                            <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">Create a folder (like "2026") to start organizing photos, videos, and meetup notes.</p>
+                                        </div>
                                         <Button 
-                                            variant="outline" 
-                                            className="mt-4 rounded-xl font-bold"
+                                            className="rounded-xl font-bold gap-2 shadow-soft hover:shadow-soft-lg"
                                             onClick={() => setShowCreateFolderDialog(true)}
                                         >
-                                            <FolderPlus className="w-4 h-4 mr-2" /> Create First Folder
+                                            <FolderPlus className="w-4 h-4" /> Create First Folder
                                         </Button>
                                     </div>
                                 )}
@@ -649,25 +665,25 @@ export default function Photos() {
                         {/* VIEW 3: FILES GRID */}
                         {view === "files" && (
                             <div className="space-y-6">
-                                {/* Back link breadcrumb */}
-                                <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                                    <span className="cursor-pointer hover:underline" onClick={() => setView("students")}>Gallery</span>
+                                {/* Elegant Breadcrumb Path */}
+                                <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-slate-400 bg-white px-4 py-2.5 rounded-2xl border border-slate-100/80 w-fit shadow-sm">
+                                    <span className="cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => setView("students")}>Gallery</span>
                                     <ChevronRight className="w-3.5 h-3.5" />
-                                    <span className="cursor-pointer hover:underline" onClick={() => loadFolders(selectedStudent!)}>{selectedStudent?.name}</span>
+                                    <span className="cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => loadFolders(selectedStudent!)}>{selectedStudent?.name}</span>
                                     <ChevronRight className="w-3.5 h-3.5" />
-                                    <span className="text-foreground">{selectedFolder}</span>
+                                    <span className="text-slate-800 font-extrabold">{selectedFolder}</span>
                                 </div>
 
-                                {/* Styled Tabs / Navigation inside Folder */}
-                                <div className="flex items-center justify-between border-b border-border/40 pb-3 flex-wrap gap-3">
-                                    <div className="flex gap-1 bg-muted/40 p-1 rounded-xl border border-border/30">
+                                {/* Custom Glassmorphism tab switcher */}
+                                <div className="flex items-center justify-between border-b border-slate-200/60 pb-3 flex-wrap gap-4">
+                                    <div className="flex gap-1 bg-slate-200/50 p-1.5 rounded-2xl border border-slate-200/40">
                                         <button
                                             onClick={() => setActiveTab("photos")}
                                             className={cn(
-                                                "px-4 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
+                                                "px-5 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5",
                                                 activeTab === "photos"
-                                                    ? "bg-white text-primary shadow-sm"
-                                                    : "text-muted-foreground hover:text-foreground"
+                                                    ? "bg-white text-indigo-600 shadow-sm"
+                                                    : "text-slate-500 hover:text-slate-800"
                                             )}
                                         >
                                             <ImageIcon className="w-3.5 h-3.5" /> Photos & Videos
@@ -675,10 +691,10 @@ export default function Photos() {
                                         <button
                                             onClick={() => setActiveTab("notes")}
                                             className={cn(
-                                                "px-4 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
+                                                "px-5 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5",
                                                 activeTab === "notes"
-                                                    ? "bg-white text-primary shadow-sm"
-                                                    : "text-muted-foreground hover:text-foreground"
+                                                    ? "bg-white text-indigo-600 shadow-sm"
+                                                    : "text-slate-500 hover:text-slate-800"
                                             )}
                                         >
                                             <FileText className="w-3.5 h-3.5" /> Notes
@@ -699,7 +715,7 @@ export default function Photos() {
                                                     disabled={uploading}
                                                 />
                                                 <Button 
-                                                    className="rounded-xl font-bold gap-2 shadow-soft hover:shadow-soft-lg transition-all"
+                                                    className="rounded-xl font-bold gap-2 shadow-soft hover:shadow-soft-lg transition-all h-10 bg-indigo-600 hover:bg-indigo-700 text-white"
                                                     onClick={() => document.getElementById("gallery-file-input")?.click()}
                                                     disabled={uploading}
                                                 >
@@ -709,14 +725,14 @@ export default function Photos() {
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <UploadCloud className="w-4 h-4" /> Upload Photo/Video
+                                                            <UploadCloud className="w-4 h-4" /> Upload Media
                                                         </>
                                                     )}
                                                 </Button>
                                             </div>
                                         ) : (
                                             <Button 
-                                                className="rounded-xl font-bold gap-2 shadow-soft hover:shadow-soft-lg bg-amber-600 hover:bg-amber-700 text-white transition-all"
+                                                className="rounded-xl font-bold gap-2 shadow-soft hover:shadow-soft-lg bg-amber-600 hover:bg-amber-700 text-white transition-all h-10"
                                                 onClick={() => {
                                                     setIsEditingNote(false);
                                                     setNoteTitle("");
@@ -738,7 +754,7 @@ export default function Photos() {
                                                 <div 
                                                     key={file.name}
                                                     onClick={() => setPreviewFile(file)}
-                                                    className="group bg-white border border-border/40 rounded-3xl overflow-hidden shadow-soft hover:shadow-soft-lg transition-all duration-300 cursor-pointer flex flex-col relative aspect-square animate-fade-in"
+                                                    className="group bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-soft hover:shadow-indigo-100 hover:scale-[1.02] hover:border-indigo-100 transition-all duration-300 cursor-pointer flex flex-col relative aspect-square"
                                                 >
                                                     <div className="flex-1 bg-slate-50 flex items-center justify-center overflow-hidden relative">
                                                         {file.type === "image" && (
@@ -809,14 +825,14 @@ export default function Photos() {
                                 ) : (
                                     // Render Notes
                                     files.filter(f => f.type === 'note').length > 0 ? (
-                                        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 animate-fade-in">
+                                        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 animate-fade-in font-sans">
                                             {files.filter(f => f.type === 'note').map(file => (
                                                 <div 
                                                     key={file.name}
                                                     onClick={() => setPreviewFile(file)}
-                                                    className="group bg-white border border-border/40 rounded-3xl overflow-hidden shadow-soft hover:shadow-soft-lg transition-all duration-300 cursor-pointer flex flex-col relative aspect-square"
+                                                    className="group bg-gradient-to-br from-amber-50/60 to-orange-50/30 border border-amber-200/40 rounded-[2rem] overflow-hidden shadow-soft hover:shadow-amber-100 hover:border-amber-300 transition-all duration-300 cursor-pointer flex flex-col relative aspect-square hover:scale-[1.02]"
                                                 >
-                                                    <div className="flex-1 bg-amber-50/20 flex flex-col p-4 text-left overflow-hidden">
+                                                    <div className="flex-1 bg-transparent flex flex-col p-4 text-left overflow-hidden">
                                                         <FileText className="w-8 h-8 text-amber-600 mb-2 shrink-0" />
                                                         <span className="text-[9px] uppercase font-extrabold tracking-widest text-amber-700/80 mb-1.5 shrink-0">
                                                             Text Note
@@ -826,7 +842,7 @@ export default function Photos() {
                                                         </p>
                                                     </div>
                                                     <div className="p-3 border-t bg-white flex items-center justify-between gap-2 shrink-0">
-                                                        <span className="text-xs font-bold text-foreground truncate flex-1 leading-none">
+                                                        <span className="text-xs font-bold text-slate-800 truncate flex-1 leading-none">
                                                             {file.name.substring(file.name.indexOf('_') + 1).replace('.txt', '')}
                                                         </span>
                                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -835,7 +851,7 @@ export default function Photos() {
                                                                     e.stopPropagation();
                                                                     handleShareFile(file);
                                                                 }}
-                                                                className="p-1 rounded bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                                                                className="p-1.5 rounded bg-slate-50 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
                                                                 title="Copy Share Link"
                                                             >
                                                                 <Share2 className="w-3.5 h-3.5" />
@@ -845,17 +861,17 @@ export default function Photos() {
                                                                     e.stopPropagation();
                                                                     downloadNoteAsPDF(file);
                                                                 }}
-                                                                className="p-1 rounded bg-muted text-muted-foreground hover:bg-emerald-50 hover:text-emerald-600 transition-all"
+                                                                className="p-1.5 rounded bg-slate-50 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 transition-all"
                                                                 title="Download PDF"
                                                             >
-                                                                <FileText className="w-3.5 h-3.5" />
+                                                                <Download className="w-3.5 h-3.5" />
                                                             </button>
                                                             <button 
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleDeleteFile(file.name);
                                                                 }}
-                                                                className="p-1 rounded bg-muted text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-all"
+                                                                className="p-1.5 rounded bg-slate-50 text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all"
                                                                 title="Delete"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
