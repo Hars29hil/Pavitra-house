@@ -60,6 +60,19 @@ export default function Whatsapp() {
         try {
             setRequestingCode(true);
             setPairingCode(null);
+
+            // Save/check phone number first
+            const saveRes = await api.post('/api/whatsapp-phone?action=save', {
+                adminName,
+                phoneNumber
+            });
+
+            if (!saveRes.data.success) {
+                toast.error(saveRes.data.error || "Failed to update phone number in database");
+                setRequestingCode(false);
+                return;
+            }
+
             const res = await api.post('/api/connect', { phoneNumber });
             if (res.data.success && res.data.pairingCode) {
                 setPairingCode(res.data.pairingCode);
@@ -158,6 +171,9 @@ export default function Whatsapp() {
     };
 
     useEffect(() => {
+        let timeoutId: NodeJS.Timeout;
+        let isMounted = true;
+
         // 1. Fetch Data ONCE on mount
         const fetchData = async () => {
             try {
@@ -169,27 +185,49 @@ export default function Whatsapp() {
                 setKaryakartas(categoriesData);
 
                 // Load Group Link from settings
-                const savedGroupLink = await api.get('/api/status'); // We could use a setting, but let's check if we have a way to get settings
-                // Better: use the store helper
                 const { getSetting } = await import('@/lib/store');
                 const link = await getSetting('whatsapp_group_link');
                 if (link) setGroupLink(link);
+
+                // Load WhatsApp Phone Number from DB
+                const phoneRes = await api.get(`/api/whatsapp-phone?action=get&adminName=${adminName}`);
+                if (phoneRes.data.success && phoneRes.data.phoneNumber) {
+                    setPhoneNumber(phoneRes.data.phoneNumber);
+                    // Trigger immediate check
+                    checkStatus(phoneRes.data.phoneNumber);
+                    return;
+                }
             } catch (error) {
                 console.error("Failed to load data", error);
             }
+            checkStatus("");
         };
 
-        fetchData();
-
-        // 2. Poll for Status & QR
-        let timeoutId: NodeJS.Timeout;
-        let isMounted = true;
-
-        const checkStatus = async () => {
+        const checkStatus = async (currentPhone?: string) => {
             if (!isMounted) return;
 
+            const phoneToCheck = currentPhone !== undefined ? currentPhone : phoneNumber;
+
+            // 1. Try checking connection status of saved number
+            if (phoneToCheck) {
+                try {
+                    const checkRes = await api.get('/api/check-connected', {
+                        params: { phoneNumber: phoneToCheck }
+                    });
+                    if (checkRes.data.success && checkRes.data.connected) {
+                        setConnected(true);
+                        setQr(null);
+                        setLoading(false);
+                        timeoutId = setTimeout(() => checkStatus(), 10000);
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Check Connected Error:", e);
+                }
+            }
+
+            // 2. Fallback to default QR/Session check
             try {
-                // Use the configured api instance for consistency
                 const res = await api.get('/api/get-qr');
                 const qrData = res.data;
 
@@ -197,17 +235,17 @@ export default function Whatsapp() {
                     setConnected(true);
                     setQr(null);
                     setLoading(false);
-                    timeoutId = setTimeout(checkStatus, 10000); // Check again in 10s
+                    timeoutId = setTimeout(() => checkStatus(), 10000);
                 } else if (qrData.success && qrData.message === "Authenticated, loading...") {
                     setConnected(false);
                     setQr(null);
                     setLoading(true);
-                    timeoutId = setTimeout(checkStatus, 3000); // Poll faster
+                    timeoutId = setTimeout(() => checkStatus(), 3000);
                 } else if (qrData.success && qrData.qr) {
                     setConnected(false);
                     setQr(qrData.qr);
                     setLoading(false);
-                    timeoutId = setTimeout(checkStatus, 1000); // Check every 1s for faster display
+                    timeoutId = setTimeout(() => checkStatus(), 1000);
                 } else {
                     if (qrData && qrData.success === false && qrData.message) {
                         toast.error(qrData.message);
@@ -215,28 +253,28 @@ export default function Whatsapp() {
                             setConnected(false);
                             setQr(null);
                             setLoading(false);
-                            return; // Stop polling on duplicate connection error
+                            return;
                         }
                     }
                     setConnected(false);
                     setQr(null);
                     setLoading(false);
-                    timeoutId = setTimeout(checkStatus, 1000); // Check every 1s
+                    timeoutId = setTimeout(() => checkStatus(), 1000);
                 }
             } catch (error) {
                 console.error("Connection Error:", error);
                 setLoading(false);
-                timeoutId = setTimeout(checkStatus, 2000); // Wait slightly longer on error
+                timeoutId = setTimeout(() => checkStatus(), 2000);
             }
         };
 
-        checkStatus();
+        fetchData();
 
         return () => {
             isMounted = false;
             clearTimeout(timeoutId);
         };
-    }, []);
+    }, [adminName, phoneNumber]);
 
     const myCategory = useMemo(() => {
         return karyakartas.find(c => isSameName(c.name, adminName));
