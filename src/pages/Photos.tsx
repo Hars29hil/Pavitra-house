@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
     FolderOpen, FolderPlus, ArrowLeft, UploadCloud, Trash2, 
     Download, Image as ImageIcon, Video as VideoIcon, Play, X, 
@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import api from "@/lib/api";
+import api, { API_BASE_URL } from "@/lib/api";
 import { useConfirm } from "@/contexts/ConfirmationContext";
+import { getCategories, Karyakarta } from "@/lib/store";
+import { isSameName } from "@/lib/utils";
 
 interface Student {
     id: string;
@@ -28,6 +30,34 @@ interface MediaFile {
     size: number;
     date: number;
     content?: string;
+}
+
+function StudentAvatar({ student }: { student: Student }) {
+    const [error, setError] = useState(false);
+    
+    useEffect(() => {
+        setError(false);
+    }, [student.profileImage]);
+
+    if (student.profileImage && !error) {
+        return (
+            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 shadow-soft">
+                <img 
+                    src={student.profileImage} 
+                    alt={student.name} 
+                    className="w-full h-full object-cover"
+                    onError={() => setError(true)}
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-12 h-12 rounded-xl bg-primary/10 flex flex-col items-center justify-center shrink-0">
+            <span className="text-primary font-bold text-sm leading-none">{student.room_no || 'N/A'}</span>
+            <span className="text-primary/70 font-bold text-[8px] uppercase mt-0.5">Room</span>
+        </div>
+    );
 }
 
 export default function Photos() {
@@ -63,17 +93,58 @@ export default function Photos() {
     // Lightbox / Preview state
     const [previewFile, setPreviewFile] = useState<MediaFile | null>(null);
 
-    // Fetch students list on mount
+    // Categories state
+    const [categories, setCategories] = useState<Karyakarta[]>([]);
+
+    // Resolve profile image URL helper
+    const resolveProfileImageUrl = (url: string | null | undefined): string => {
+        if (!url) return '';
+        if (url.startsWith('/api/uploads/') || url.startsWith('api/uploads/')) {
+            const cleanPath = url.startsWith('/') ? url : '/' + url;
+            return `${API_BASE_URL}${cleanPath}`;
+        }
+        if (url.includes('localhost:') && (url.includes('/api/uploads/') || url.includes('/uploads/'))) {
+            const pathStart = url.indexOf('/api/uploads/');
+            if (pathStart !== -1) {
+                return `${API_BASE_URL}${url.substring(pathStart)}`;
+            }
+            const uploadsStart = url.indexOf('/uploads/');
+            if (uploadsStart !== -1) {
+                return `${API_BASE_URL}/api${url.substring(uploadsStart)}`;
+            }
+        }
+        return url;
+    };
+
+    // Fetch students list and categories on mount
     useEffect(() => {
         fetchStudents();
+        fetchCategories();
     }, []);
+
+    const fetchCategories = async () => {
+        try {
+            const data = await getCategories();
+            setCategories(data || []);
+        } catch (error) {
+            console.error("Failed to load categories", error);
+        }
+    };
 
     const fetchStudents = async () => {
         try {
             setLoading(true);
             const res = await api.get("/api/gallery?action=list_students");
             if (res.data.success) {
-                setStudents(res.data.students || []);
+                const mapped = (res.data.students || []).map((s: any) => ({
+                    id: s.id,
+                    name: s.name,
+                    room_no: s.room_no,
+                    mobile: s.mobile,
+                    is_alumni: s.is_alumni === true || s.is_alumni === 1 || s.is_alumni === '1',
+                    profileImage: resolveProfileImageUrl(s.profile_image)
+                }));
+                setStudents(mapped);
             } else {
                 toast.error("Failed to load students list");
             }
@@ -84,6 +155,31 @@ export default function Photos() {
             setLoading(false);
         }
     };
+
+    const adminRole = localStorage.getItem('adminRole') || '';
+    const adminName = localStorage.getItem('adminName') || '';
+
+    const myCategory = useMemo(() => {
+        return categories.find(c => isSameName(c.name, adminName));
+    }, [categories, adminName]);
+
+    const myAssignedStudents = useMemo(() => {
+        if (adminRole === 'admin') return students;
+        if (!myCategory) return [];
+
+        let assignedIds = new Set<string>(myCategory.studentIds || []);
+        if (myCategory.type === 'main') {
+            const subs = categories.filter(c => c.parentId === myCategory.id);
+            subs.forEach(sub => {
+                (sub.studentIds || []).forEach(id => assignedIds.add(id));
+                if (sub.studentId) {
+                    assignedIds.add(sub.studentId);
+                }
+            });
+        }
+        const ids = Array.from(assignedIds);
+        return students.filter(s => ids.includes(s.id));
+    }, [students, categories, myCategory, adminRole]);
 
     // Load folders for selected student
     const loadFolders = async (student: Student) => {
@@ -307,7 +403,7 @@ export default function Photos() {
     };
 
     // Filter students by query
-    const filteredStudents = students.filter(s => 
+    const filteredStudents = myAssignedStudents.filter(s => 
         (s.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (s.room_no || "").toString().toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -436,24 +532,7 @@ export default function Photos() {
                                                 className="p-4 bg-white border border-border/50 rounded-2xl shadow-soft hover:shadow-soft-lg transition-all duration-300 flex items-center justify-between cursor-pointer group hover:border-primary/20"
                                             >
                                                 <div className="flex items-center gap-3.5 min-w-0">
-                                                    {student.profileImage ? (
-                                                        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 shadow-soft">
-                                                            <img 
-                                                                src={student.profileImage} 
-                                                                alt={student.name} 
-                                                                className="w-full h-full object-cover"
-                                                                onError={(e) => {
-                                                                    // Fallback if image fails to load
-                                                                    (e.target as HTMLImageElement).src = '';
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    ) : (
-                                                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex flex-col items-center justify-center shrink-0">
-                                                            <span className="text-primary font-bold text-sm leading-none">{student.room_no || 'N/A'}</span>
-                                                            <span className="text-primary/70 font-bold text-[8px] uppercase mt-0.5">Room</span>
-                                                        </div>
-                                                    )}
+                                                    <StudentAvatar student={student} />
                                                     <div className="min-w-0">
                                                         <p className="font-bold text-base text-foreground truncate group-hover:text-primary transition-colors">
                                                             {student.name}

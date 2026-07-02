@@ -666,8 +666,14 @@ const Categories = () => {
                           {/* Main Karyakarta Header */}
                           <div className="p-6 bg-gray-50/50 flex items-center justify-between border-b border-border/50">
                             <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                                <UserCircle2 className="w-7 h-7" />
+                              <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border border-border/50">
+                                {main.profileImage ? (
+                                  <img src={main.profileImage} alt={main.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full bg-primary/10 flex items-center justify-center text-primary">
+                                    <UserCircle2 className="w-7 h-7" />
+                                  </div>
+                                )}
                               </div>
                               <div>
                                 <h4 className="text-xl font-bold text-foreground group-hover/main:text-primary transition-colors">{main.name}</h4>
@@ -704,7 +710,15 @@ const Categories = () => {
                                     }}
                                   >
                                     <div className="flex items-center gap-3">
-                                      <div className="w-2 h-2 rounded-full bg-primary/40" />
+                                      <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-border/50">
+                                        {sub.profileImage ? (
+                                          <img src={sub.profileImage} alt={sub.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="w-full h-full bg-primary/10 flex items-center justify-center text-primary">
+                                            <UserCircle2 className="w-5 h-5" />
+                                          </div>
+                                        )}
+                                      </div>
                                       <div>
                                         <h5 className="font-bold text-foreground group-hover/sub:text-primary transition-colors">{sub.name}</h5>
                                         <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
@@ -790,10 +804,15 @@ const Categories = () => {
             /* Detail View Section */
             <div className="space-y-6 animate-fade-in">
               {/* Header / Back Button */}
-              <div className="flex items-center gap-4 border-b border-border/50 pb-6">
+               <div className="flex items-center gap-4 border-b border-border/50 pb-6">
                 <Button variant="outline" size="icon" className="rounded-full" onClick={() => setSearchParams({})}>
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
+                {selectedKaryakartaForDetail?.profileImage && (
+                  <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border border-border/50">
+                    <img src={selectedKaryakartaForDetail.profileImage} alt={selectedKaryakartaForDetail.name} className="w-full h-full object-cover" />
+                  </div>
+                )}
                 <div>
                   <h2 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
                     {selectedKaryakartaForDetail?.name}

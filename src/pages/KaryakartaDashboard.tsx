@@ -132,10 +132,13 @@ const KaryakartaDashboard = () => {
         const subCat = mySubKaryakartas.find(s => s.id === subId);
         return subCat ? (subCat.studentIds || []) : [];
       } else {
-        // 'all' - Union of direct students and all sub-karyakarta students
+        // 'all' - Union of direct students and all sub-karyakarta students (including sub-karyakartas themselves)
         const ids = new Set<string>(myCategory.studentIds || []);
         mySubKaryakartas.forEach(sub => {
           (sub.studentIds || []).forEach(id => ids.add(id));
+          if (sub.studentId) {
+            ids.add(sub.studentId);
+          }
         });
         return Array.from(ids);
       }

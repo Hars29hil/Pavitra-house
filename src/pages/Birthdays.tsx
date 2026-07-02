@@ -284,6 +284,9 @@ const Birthdays = () => {
             const subs = categories.filter(c => c.parentId === myCategory.id);
             subs.forEach(sub => {
                 (sub.studentIds || []).forEach(id => assignedIds.add(id));
+                if (sub.studentId) {
+                    assignedIds.add(sub.studentId);
+                }
             });
         }
         const ids = Array.from(assignedIds);

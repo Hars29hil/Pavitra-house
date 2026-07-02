@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Check, Tag, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { Task, Student } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, isSameName } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -43,12 +43,36 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, students }: TaskIte
 
   const formatName = (name: string) => {
     if (!name) return '';
-    const parts = name.trim().split(' ');
+    const parts = name.trim().split(/\s+/);
     if (parts.length >= 3) {
       const last = parts.shift();
       return [...parts, last].join(' ');
+    } else if (parts.length === 2) {
+      return [parts[1], parts[0]].join(' ');
     }
     return name;
+  };
+
+  const getFirstName = (fullName: string) => {
+    if (!fullName) return '';
+    const formatted = formatName(fullName);
+    return formatted.split(' ')[0];
+  };
+
+  const getFirstNameWithRoom = (nameOrId: string) => {
+    if (!nameOrId) return '';
+    const trimmed = nameOrId.trim();
+    
+    let student: Student | undefined = undefined;
+    if (students) {
+      student = students.find(s => isSameName(s.name, trimmed) || s.id === trimmed);
+    }
+    
+    const firstName = getFirstName(trimmed);
+    if (student && student.roomNo) {
+      return `${firstName} (${student.roomNo})`;
+    }
+    return firstName;
   };
 
   const isYuvakMeet = task.title.startsWith('Yuvak Meet:');
@@ -129,7 +153,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, students }: TaskIte
           {showCreator && !customBadge && (
             <div className="flex items-center gap-1.5 mt-1">
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-tight whitespace-nowrap">
-                ✍️ By: {task.createdBy ? task.createdBy.trim().split(' ')[0] : ''} {adminRole === 'admin' && task.assignedToName ? `To: ${task.assignedToName.split(',').map(n => n.trim().split(' ')[0]).join(', ')}` : ''}
+                ✍️ By: {task.createdBy ? getFirstName(task.createdBy) : ''} {adminRole === 'admin' && task.assignedToName ? `To: ${task.assignedToName.split(',').map(n => getFirstNameWithRoom(n)).join(', ')}` : ''}
               </span>
             </div>
           )}
