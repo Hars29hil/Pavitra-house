@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import api, { API_BASE_URL } from "@/lib/api";
 import { useConfirm } from "@/contexts/ConfirmationContext";
 import { getCategories, Karyakarta } from "@/lib/store";
-import { isSameName } from "@/lib/utils";
+import { cn, isSameName } from "@/lib/utils";
 
 interface Student {
     id: string;
