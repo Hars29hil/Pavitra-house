@@ -452,11 +452,7 @@ const Tasks = () => {
           size="icon"
           onClick={() => {
             setTaskToEdit(null);
-            if (adminRole === 'admin') {
-              setShowCreateDialog(true);
-            } else {
-              setShowTypeSelection(true);
-            }
+            setShowTypeSelection(true);
           }}
         >
           <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
