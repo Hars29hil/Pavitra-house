@@ -20,6 +20,7 @@ import NotFound from "./pages/NotFound";
 import Whatsapp from "./pages/Whatsapp";
 import Tags from "./pages/Tags";
 import Photos from "./pages/Photos";
+import ShareView from "./pages/ShareView";
 
 import { TaskNotificationManager } from "@/components/TaskNotificationManager";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -75,6 +76,7 @@ const router = createBrowserRouter(
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="/students-check" element={<NotificationCheck />} />
+      <Route path="/share" element={<ShareView />} />
       <Route path="/" element={<RootRedirect />} />
 
       {/* Protected Routes */}

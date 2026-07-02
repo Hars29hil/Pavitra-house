@@ -2,8 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { 
     FolderOpen, FolderPlus, ArrowLeft, UploadCloud, Trash2, 
     Download, Image as ImageIcon, Video as VideoIcon, Play, X, 
-    Search, Sparkles, Loader2, User, ChevronRight, FileText, Film
+    Search, Sparkles, Loader2, User, ChevronRight, FileText, Film,
+    Share2, Edit2
 } from "lucide-react";
+import { jsPDF } from "jspdf";
 import { AppHeader } from "@/components/AppHeader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -89,6 +91,10 @@ export default function Photos() {
 
     // Upload state
     const [uploading, setUploading] = useState(false);
+
+    // Subfolder & share states
+    const [activeTab, setActiveTab] = useState<"photos" | "notes">("photos");
+    const [isEditingNote, setIsEditingNote] = useState(false);
 
     // Lightbox / Preview state
     const [previewFile, setPreviewFile] = useState<MediaFile | null>(null);
@@ -402,6 +408,73 @@ export default function Photos() {
         }
     };
 
+    const downloadNoteAsPDF = (note: any) => {
+        try {
+            const doc = new jsPDF();
+            const margin = 15;
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const maxLineWidth = pageWidth - (margin * 2);
+
+            // Title
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(20);
+            const title = note.name.substring(note.name.indexOf('_') + 1).replace('.txt', '');
+            doc.text(title, margin, 25);
+
+            // Horizontal Line
+            doc.setDrawColor(220, 220, 220);
+            doc.setLineWidth(0.5);
+            doc.line(margin, 30, pageWidth - margin, 30);
+
+            // Date
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(9);
+            doc.setTextColor(120, 120, 120);
+            const formattedDate = new Date(note.date * 1000).toLocaleString();
+            doc.text(`Last Updated: ${formattedDate}`, margin, 37);
+
+            // Content
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11);
+            doc.setTextColor(60, 60, 60);
+            
+            const contentText = note.content || '';
+            const splitText = doc.splitTextToSize(contentText, maxLineWidth);
+            
+            let currentHeight = 46;
+            const pageHeight = doc.internal.pageSize.getHeight();
+            
+            for (let i = 0; i < splitText.length; i++) {
+                if (currentHeight + 10 > pageHeight - margin) {
+                    doc.addPage();
+                    currentHeight = margin + 10;
+                }
+                doc.text(splitText[i], margin, currentHeight);
+                currentHeight += 6.5;
+            }
+
+            doc.save(`${title.replace(/\s+/g, '_')}.pdf`);
+            toast.success("PDF downloaded!");
+        } catch (error) {
+            console.error("PDF generation failed:", error);
+            toast.error("Failed to generate PDF");
+        }
+    };
+
+    const handleShareFile = (file: any) => {
+        if (!selectedStudent || !selectedFolder) return;
+        const shareUrl = `${window.location.origin}/share?studentId=${selectedStudent.id}&folder=${encodeURIComponent(selectedFolder)}&file=${encodeURIComponent(file.name)}`;
+        navigator.clipboard.writeText(shareUrl);
+        toast.success("Photo share link copied!");
+    };
+
+    const handleShareFolder = (folderName: string) => {
+        if (!selectedStudent) return;
+        const shareUrl = `${window.location.origin}/share?studentId=${selectedStudent.id}&folder=${encodeURIComponent(folderName)}`;
+        navigator.clipboard.writeText(shareUrl);
+        toast.success("Folder share link copied!");
+    };
+
     // Filter students by query
     const filteredStudents = myAssignedStudents.filter(s => 
         (s.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -457,46 +530,6 @@ export default function Photos() {
                         >
                             <FolderPlus className="w-4 h-4" /> Create Folder
                         </Button>
-                    )}
-
-                    {view === "files" && (
-                        <div className="flex flex-wrap gap-2">
-                            <input 
-                                type="file" 
-                                id="gallery-file-input" 
-                                className="hidden" 
-                                accept="image/*,video/*"
-                                multiple
-                                onChange={handleFileUpload}
-                                disabled={uploading}
-                            />
-                            <Button 
-                                className="rounded-xl font-bold gap-2 shadow-soft hover:shadow-soft-lg transition-all"
-                                onClick={() => document.getElementById("gallery-file-input")?.click()}
-                                disabled={uploading}
-                            >
-                                {uploading ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" /> Uploading...
-                                    </>
-                                ) : (
-                                    <>
-                                        <UploadCloud className="w-4 h-4" /> Upload Photo/Video
-                                    </>
-                                )}
-                            </Button>
-                            <Button 
-                                variant="outline"
-                                className="rounded-xl font-bold gap-2 shadow-soft border-border/50 hover:bg-muted/50"
-                                onClick={() => {
-                                    setNoteTitle("");
-                                    setNoteContent("");
-                                    setShowCreateNoteDialog(true);
-                                }}
-                            >
-                                <FileText className="w-4 h-4" /> Create Note
-                            </Button>
-                        </div>
                     )}
                 </div>
 
@@ -571,6 +604,20 @@ export default function Photos() {
                                                 {folder}
                                             </span>
                                             
+                                            {/* Folder Share Button */}
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="absolute top-2 left-2 w-7 h-7 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleShareFolder(folder);
+                                                }}
+                                                title="Copy Share Link"
+                                            >
+                                                <Share2 className="w-4 h-4" />
+                                            </Button>
+
                                             {/* Folder Delete Button */}
                                             <Button
                                                 variant="ghost"
@@ -611,89 +658,220 @@ export default function Photos() {
                                     <span className="text-foreground">{selectedFolder}</span>
                                 </div>
 
-                                {files.length > 0 ? (
-                                    <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                                        {files.map(file => (
-                                            <div 
-                                                key={file.name}
-                                                onClick={() => setPreviewFile(file)}
-                                                className="group bg-white border border-border/40 rounded-3xl overflow-hidden shadow-soft hover:shadow-soft-lg transition-all duration-300 cursor-pointer flex flex-col relative aspect-square"
-                                            >
-                                                {/* Thumbnail representation */}
-                                                <div className="flex-1 bg-slate-50 flex items-center justify-center overflow-hidden relative">
-                                                    {file.type === "image" && (
-                                                        <img 
-                                                            src={file.url} 
-                                                            alt={file.name}
-                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                                            loading="lazy"
-                                                        />
-                                                    )}
-                                                    {file.type === "video" && (
-                                                        <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-white p-3 text-center">
-                                                            <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-2 text-white">
-                                                                <Play className="w-6 h-6 fill-white" />
-                                                            </div>
-                                                            <span className="text-[10px] uppercase font-bold tracking-widest text-white/60 flex items-center gap-1">
-                                                                <Film className="w-3.5 h-3.5" /> Video
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                    {file.type === "note" && (
-                                                        <div className="w-full h-full bg-amber-50/50 flex flex-col p-4 text-left overflow-hidden">
-                                                            <FileText className="w-8 h-8 text-amber-600 mb-2 shrink-0" />
-                                                            <span className="text-[9px] uppercase font-extrabold tracking-widest text-amber-700/80 mb-1.5 shrink-0">
-                                                                Text Note
-                                                            </span>
-                                                            <p className="text-xs text-slate-600 font-medium line-clamp-4 leading-relaxed break-all select-none">
-                                                                {file.content || ""}
-                                                            </p>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                {/* Styled Tabs / Navigation inside Folder */}
+                                <div className="flex items-center justify-between border-b border-border/40 pb-3 flex-wrap gap-3">
+                                    <div className="flex gap-1 bg-muted/40 p-1 rounded-xl border border-border/30">
+                                        <button
+                                            onClick={() => setActiveTab("photos")}
+                                            className={cn(
+                                                "px-4 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
+                                                activeTab === "photos"
+                                                    ? "bg-white text-primary shadow-sm"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            <ImageIcon className="w-3.5 h-3.5" /> Photos & Videos
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab("notes")}
+                                            className={cn(
+                                                "px-4 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
+                                                activeTab === "notes"
+                                                    ? "bg-white text-primary shadow-sm"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            <FileText className="w-3.5 h-3.5" /> Notes
+                                        </button>
+                                    </div>
 
-                                                {/* Info Bar */}
-                                                <div className="p-3 border-t bg-white flex items-center justify-between gap-2 shrink-0">
-                                                    <span className="text-xs font-bold text-foreground truncate flex-1 leading-none">
-                                                        {file.name.substring(file.name.indexOf('_') + 1).replace('.txt', '')}
-                                                    </span>
-                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <a 
-                                                            href={file.url}
-                                                            download={file.name}
-                                                            onClick={e => e.stopPropagation()} // Stop opening preview
-                                                            className="p-1 rounded bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
-                                                            title="Download"
-                                                        >
-                                                            <Download className="w-3.5 h-3.5" />
-                                                        </a>
-                                                        <button 
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDeleteFile(file.name);
-                                                            }}
-                                                            className="p-1 rounded bg-muted text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-all"
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
+                                    {/* Action Buttons based on Active Tab */}
+                                    <div className="flex gap-2">
+                                        {activeTab === "photos" ? (
+                                            <div className="flex items-center gap-2">
+                                                <input 
+                                                    type="file" 
+                                                    id="gallery-file-input" 
+                                                    className="hidden" 
+                                                    accept="image/*,video/*"
+                                                    multiple
+                                                    onChange={handleFileUpload}
+                                                    disabled={uploading}
+                                                />
+                                                <Button 
+                                                    className="rounded-xl font-bold gap-2 shadow-soft hover:shadow-soft-lg transition-all"
+                                                    onClick={() => document.getElementById("gallery-file-input")?.click()}
+                                                    disabled={uploading}
+                                                >
+                                                    {uploading ? (
+                                                        <>
+                                                            <Loader2 className="w-4 h-4 animate-spin" /> Uploading...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <UploadCloud className="w-4 h-4" /> Upload Photo/Video
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <Button 
+                                                className="rounded-xl font-bold gap-2 shadow-soft hover:shadow-soft-lg bg-amber-600 hover:bg-amber-700 text-white transition-all"
+                                                onClick={() => {
+                                                    setIsEditingNote(false);
+                                                    setNoteTitle("");
+                                                    setNoteContent("");
+                                                    setShowCreateNoteDialog(true);
+                                                }}
+                                            >
+                                                <FileText className="w-4 h-4" /> Create Note
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {activeTab === "photos" ? (
+                                    // Render Photos / Videos
+                                    files.filter(f => f.type === 'image' || f.type === 'video').length > 0 ? (
+                                        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                                            {files.filter(f => f.type === 'image' || f.type === 'video').map(file => (
+                                                <div 
+                                                    key={file.name}
+                                                    onClick={() => setPreviewFile(file)}
+                                                    className="group bg-white border border-border/40 rounded-3xl overflow-hidden shadow-soft hover:shadow-soft-lg transition-all duration-300 cursor-pointer flex flex-col relative aspect-square animate-fade-in"
+                                                >
+                                                    <div className="flex-1 bg-slate-50 flex items-center justify-center overflow-hidden relative">
+                                                        {file.type === "image" && (
+                                                            <img 
+                                                                src={file.url} 
+                                                                alt={file.name}
+                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                                loading="lazy"
+                                                            />
+                                                        )}
+                                                        {file.type === "video" && (
+                                                            <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-white p-3 text-center">
+                                                                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-2 text-white">
+                                                                    <Play className="w-6 h-6 fill-white" />
+                                                                </div>
+                                                                <span className="text-[10px] uppercase font-bold tracking-widest text-white/60 flex items-center gap-1">
+                                                                    <Film className="w-3.5 h-3.5" /> Video
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="p-3 border-t bg-white flex items-center justify-between gap-2 shrink-0">
+                                                        <span className="text-xs font-bold text-foreground truncate flex-1 leading-none">
+                                                            {file.name.substring(file.name.indexOf('_') + 1)}
+                                                        </span>
+                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleShareFile(file);
+                                                                }}
+                                                                className="p-1 rounded bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                                                                title="Copy Share Link"
+                                                            >
+                                                                <Share2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <a 
+                                                                href={file.url}
+                                                                download={file.name}
+                                                                onClick={e => e.stopPropagation()}
+                                                                className="p-1 rounded bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                                                                title="Download"
+                                                            >
+                                                                    <Download className="w-3.5 h-3.5" />
+                                                            </a>
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteFile(file.name);
+                                                                }}
+                                                                className="p-1 rounded bg-muted text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-all"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="py-20 text-center text-muted-foreground flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-3xl border border-dashed border-border/60 w-full col-span-full">
+                                            <ImageIcon className="w-14 h-14 opacity-20 mb-3" />
+                                            <p className="font-bold text-lg text-foreground">No photos or videos uploaded yet</p>
+                                            <p className="text-xs mt-1">Upload a photo or video under the "/photo" subdirectory.</p>
+                                        </div>
+                                    )
                                 ) : (
-                                    <div className="py-20 text-center text-muted-foreground flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-3xl border border-dashed border-border/60">
-                                        <ImageIcon className="w-14 h-14 opacity-20 mb-3" />
-                                        <p className="font-bold text-lg text-foreground">No media files uploaded yet</p>
-                                        <p className="text-xs mt-1">Be the first to upload a photo or video here.</p>
-                                        <Button 
-                                            className="mt-4 rounded-xl font-bold"
-                                            onClick={() => document.getElementById("gallery-file-input")?.click()}
-                                        >
-                                            <UploadCloud className="w-4 h-4 mr-2" /> Upload File
-                                        </Button>
-                                    </div>
+                                    // Render Notes
+                                    files.filter(f => f.type === 'note').length > 0 ? (
+                                        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 animate-fade-in">
+                                            {files.filter(f => f.type === 'note').map(file => (
+                                                <div 
+                                                    key={file.name}
+                                                    onClick={() => setPreviewFile(file)}
+                                                    className="group bg-white border border-border/40 rounded-3xl overflow-hidden shadow-soft hover:shadow-soft-lg transition-all duration-300 cursor-pointer flex flex-col relative aspect-square"
+                                                >
+                                                    <div className="flex-1 bg-amber-50/20 flex flex-col p-4 text-left overflow-hidden">
+                                                        <FileText className="w-8 h-8 text-amber-600 mb-2 shrink-0" />
+                                                        <span className="text-[9px] uppercase font-extrabold tracking-widest text-amber-700/80 mb-1.5 shrink-0">
+                                                            Text Note
+                                                        </span>
+                                                        <p className="text-xs text-slate-600 font-medium line-clamp-4 leading-relaxed break-all select-none">
+                                                            {file.content || ""}
+                                                        </p>
+                                                    </div>
+                                                    <div className="p-3 border-t bg-white flex items-center justify-between gap-2 shrink-0">
+                                                        <span className="text-xs font-bold text-foreground truncate flex-1 leading-none">
+                                                            {file.name.substring(file.name.indexOf('_') + 1).replace('.txt', '')}
+                                                        </span>
+                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleShareFile(file);
+                                                                }}
+                                                                className="p-1 rounded bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                                                                title="Copy Share Link"
+                                                            >
+                                                                <Share2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    downloadNoteAsPDF(file);
+                                                                }}
+                                                                className="p-1 rounded bg-muted text-muted-foreground hover:bg-emerald-50 hover:text-emerald-600 transition-all"
+                                                                title="Download PDF"
+                                                            >
+                                                                <FileText className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteFile(file.name);
+                                                                }}
+                                                                className="p-1 rounded bg-muted text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-all"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="py-20 text-center text-muted-foreground flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-3xl border border-dashed border-border/60 w-full col-span-full">
+                                            <FileText className="w-14 h-14 opacity-20 mb-3" />
+                                            <p className="font-bold text-lg text-foreground">No notes created yet</p>
+                                            <p className="text-xs mt-1">Create a text note under the "/note" subdirectory.</p>
+                                        </div>
+                                    )
                                 )}
                             </div>
                         )}
@@ -743,7 +921,7 @@ export default function Photos() {
             <Dialog open={showCreateNoteDialog} onOpenChange={setShowCreateNoteDialog}>
                 <DialogContent className="sm:max-w-md rounded-3xl p-6 border-none bg-white">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-black">Create Note</DialogTitle>
+                        <DialogTitle className="text-xl font-black">{isEditingNote ? "Edit Note" : "Create Note"}</DialogTitle>
                         <DialogDescription className="sr-only">Enter note details to save in this folder</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 pt-3">
@@ -753,7 +931,11 @@ export default function Photos() {
                                 placeholder="e.g. Anandswami Say Note, Meetup details"
                                 value={noteTitle}
                                 onChange={e => setNoteTitle(e.target.value)}
-                                className="h-11 rounded-xl focus-visible:ring-primary/20"
+                                readOnly={isEditingNote}
+                                className={cn(
+                                    "h-11 rounded-xl focus-visible:ring-primary/20",
+                                    isEditingNote && "bg-muted/50 text-muted-foreground"
+                                )}
                             />
                         </div>
                         <div className="space-y-2">
@@ -832,11 +1014,40 @@ export default function Photos() {
                             </div>
                         )}
  
-                        <div className="flex items-center gap-4 justify-between w-full max-w-2xl px-2">
+                        <div className="flex items-center gap-4 justify-between w-full max-w-2xl px-2 flex-wrap">
                             <span className="text-white font-bold truncate text-sm">
                                 {previewFile.name.substring(previewFile.name.indexOf('_') + 1).replace('.txt', '')}
                             </span>
                             <div className="flex gap-2">
+                                {previewFile.type === "note" && (
+                                    <>
+                                        <button 
+                                            onClick={() => {
+                                                const rawName = previewFile.name.substring(previewFile.name.indexOf('_') + 1).replace('.txt', '');
+                                                setNoteTitle(rawName);
+                                                setNoteContent(previewFile.content || '');
+                                                setIsEditingNote(true);
+                                                setShowCreateNoteDialog(true);
+                                                setPreviewFile(null);
+                                            }}
+                                            className="p-2 bg-amber-600/20 text-amber-400 border border-amber-500/20 rounded-xl hover:bg-amber-600/30 hover:scale-105 transition-all text-xs font-bold flex items-center gap-1.5"
+                                        >
+                                            <Edit2 className="w-4 h-4" /> Edit
+                                        </button>
+                                        <button 
+                                            onClick={() => downloadNoteAsPDF(previewFile)}
+                                            className="p-2 bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-600/30 hover:scale-105 transition-all text-xs font-bold flex items-center gap-1.5"
+                                        >
+                                            <FileText className="w-4 h-4" /> PDF
+                                        </button>
+                                    </>
+                                )}
+                                <button 
+                                    onClick={() => handleShareFile(previewFile)}
+                                    className="p-2 bg-blue-600/20 text-blue-400 border border-blue-500/20 rounded-xl hover:bg-blue-600/30 hover:scale-105 transition-all text-xs font-bold flex items-center gap-1.5"
+                                >
+                                    <Share2 className="w-4 h-4" /> Share
+                                </button>
                                 <a 
                                     href={previewFile.url} 
                                     download={previewFile.name}
