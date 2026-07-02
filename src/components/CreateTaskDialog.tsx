@@ -298,8 +298,8 @@ export const CreateTaskDialog = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-full max-w-[100vw] h-[100dvh] max-h-none rounded-none shadow-none p-4 sm:p-8 border-none overflow-y-auto bg-background flex flex-col items-center">
-                <div className="w-full max-w-2xl flex flex-col flex-1">
+            <DialogContent className="sm:max-w-xl rounded-3xl p-6 border-none bg-white max-h-[90vh] overflow-y-auto">
+                <div className="w-full flex flex-col">
                 <DialogHeader>
                     <DialogTitle>{taskToEdit ? 'Edit Task' : 'Create New Task'}</DialogTitle>
                     <DialogDescription className="sr-only">Fill in the form to create and assign a new task to students.</DialogDescription>

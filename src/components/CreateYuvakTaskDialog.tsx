@@ -168,8 +168,8 @@ export const CreateYuvakTaskDialog = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-full max-w-[100vw] h-[100dvh] max-h-none rounded-none shadow-none p-4 sm:p-8 border-none overflow-y-auto bg-background flex flex-col items-center">
-                <div className="w-full max-w-2xl flex flex-col flex-1">
+            <DialogContent className="sm:max-w-xl rounded-3xl p-6 border-none bg-white max-h-[90vh] overflow-y-auto">
+                <div className="w-full flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Yuvak Meet</DialogTitle>
                         <DialogDescription className="sr-only">Log how you met Yuvaks and keep track of interaction frequency.</DialogDescription>
