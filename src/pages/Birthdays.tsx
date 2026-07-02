@@ -77,7 +77,7 @@ const Birthdays = () => {
 
         try {
             setSavingMeetup(true);
-            const birthdayFolder = `Birthday ${new Date().getFullYear()}`;
+            const birthdayFolder = `${new Date().getFullYear()}`;
 
             // Save the meetup details directly as a text note in the student's Birthday folder
             const res = await api.post('/api/gallery?action=save_note', {
@@ -187,7 +187,7 @@ const Birthdays = () => {
         if (!isConfirmed) return;
 
         try {
-            const birthdayFolder = `Birthday ${new Date().getFullYear()}`;
+            const birthdayFolder = `${new Date().getFullYear()}`;
             const res = await api.post('/api/gallery?action=delete_file', {
                 student_id: student.id,
                 folder_name: birthdayFolder,
